@@ -1,0 +1,44 @@
+/* About Hero Section Styles - Admin Preview */
+
+.about-hero-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.about-hero-text {
+  width: 100%;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+.about-hero-image {
+  width: 100%;
+  height: auto;
+  flex-shrink: 0;
+}
+
+/* Desktop styles */
+@media (min-width: 1024px) {
+  .about-hero-container {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 48px;
+  }
+
+  .about-hero-text {
+    max-width: 45%;
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  .about-hero-image {
+    width: 700px;
+    height: 512px;
+    flex-shrink: 0;
+  }
+}
+

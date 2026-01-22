@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+@import "../styles/globals.css";
+@import "../styles/color-system.css";
+@import "../styles/animations.css";
+
+@font-face {
+  font-family: 'UTM Alexander';
+  src: url('/fonts/UTMAlexander.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+
+/* Fade opacity về 0 ở 2 mép ngang */
+.mask-fade-x {
+  mask-image: linear-gradient(to right,
+      transparent,
+      black 12%,
+      black 88%,
+      transparent);
+  -webkit-mask-image: linear-gradient(to right,
+      transparent,
+      black 12%,
+      black 88%,
+      transparent);
+}
+
+/* Mobile: fade sớm hơn cho đỡ rối */
+@media (max-width: 768px) {
+  .mask-fade-x {
+    mask-image: linear-gradient(to right,
+        transparent,
+        black 18%,
+        black 82%,
+        transparent);
+    -webkit-mask-image: linear-gradient(to right,
+        transparent,
+        black 18%,
+        black 82%,
+        transparent);
+  }
+}
+
+@keyframes rgb-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.rgb-led-border {
+  background: conic-gradient(from 0deg,
+      #ff004c,
+      #ff8a00,
+      #ffee00,
+      #00ff85,
+      #00cfff,
+      #6a5cff,
+      #ff00c8,
+      #ff004c);
+  animation: rgb-rotate 2.5s linear infinite;
+}

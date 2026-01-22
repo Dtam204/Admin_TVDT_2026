@@ -1,0 +1,375 @@
+# Library Admin Panel - Coding Guidelines for AI Assistants
+
+## Project Overview
+This is a Next.js 16 Admin Panel using App Router with Server-Side Rendering (SSR). The project is ADMIN-ONLY (no public frontend).
+
+### Architecture:
+- **Admin Routes**: `app/(admin)/admin/[module]/page.tsx` - Admin pages
+- **Admin Components**: `components/admin/*.tsx` - Admin-specific components
+- **UI Components**: `components/ui/*.tsx` - Shadcn/UI components
+- **API Client**: `lib/api/admin/` - Admin API integration
+- **Auth**: Cookie-based authentication with `cms_sfb_token`
+
+## Architecture & Rendering Rules
+
+### Server Components First (CRITICAL)
+- **Default**: All components are Server Components (NO "use client")
+- **Only add "use client" when**:
+  - Using React hooks: useState, useEffect, useCallback, useMemo
+  - Using browser APIs: window, document, localStorage, sessionStorage
+  - Using event handlers: onClick, onChange, onSubmit, onKeyDown
+  - Using Next.js client hooks: usePathname, useRouter, useSearchParams
+  - Using third-party client libraries: react-hook-form, sonner toasts
+
+### Admin Pages Are Client Components:
+- All pages in `app/(admin)/admin/` use "use client" for form handling and state management
+- Components in `components/admin/` are mostly client components for interactivity
+
+## File Structure & Naming
+
+### Admin Routes
+- Pattern: `app/(admin)/admin/[module]/page.tsx`
+- Export: `export default function ModuleAdminPage()`
+- Always include "use client" for interactive pages
+
+### Admin Components
+- Pattern: `components/admin/ComponentName.tsx` (PascalCase)
+- Export: `export function ComponentName()` or `export default ComponentName`
+- Most are Client Components due to form/state requirements
+
+### UI Components (Shadcn/UI)
+- Pattern: `components/ui/component-name.tsx` (kebab-case)
+- Export: `export { Component, type ComponentProps }`
+- Follow Shadcn/UI conventions
+
+## Import Patterns
+
+### Path Aliases (ALWAYS use @/ for cleaner imports)
+```tsx
+import { adminApiCall, AdminEndpoints } from "@/lib/api/admin";
+import { Button } from "@/components/ui/button";
+import ImageUpload from "@/components/admin/ImageUpload";
+import { getLocalizedText } from "@/lib/utils/i18n";
+```
+
+### Import Order
+1. React/Next.js imports
+2. Third-party libraries (lucide-react, sonner, etc.)
+3. Local components (@/components)
+4. Local utilities (@/lib)
+5. Types/interfaces
+
+## Admin API Integration
+
+### Using Admin API Client
+```tsx
+import { adminApiCall, AdminEndpoints } from "@/lib/api/admin";
+import { toast } from "sonner";
+
+// GET request
+const response = await adminApiCall<{ data: any[] }>(
+  AdminEndpoints.news.list
+);
+
+// POST request
+const response = await adminApiCall(
+  AdminEndpoints.news.create,
+  {
+    method: 'POST',
+    body: JSON.stringify(formData),
+  }
+);
+
+// Error handling
+try {
+  await adminApiCall(endpoint, options);
+  toast.success("Lưu thành công!");
+} catch (error) {
+  toast.error(error.message || "Có lỗi xảy ra");
+}
+```
+
+## Internationalization (i18n)
+
+### Admin manages multilingual content (vi/en/ja)
+
+### LocaleInput Component
+```tsx
+import { LocaleInput } from "@/components/admin/LocaleInput";
+
+<LocaleInput
+  label="Tiêu đề"
+  value={data.title} // Can be string or {vi, en, ja} object
+  onChange={(value) => handleChange('title', value)}
+  locale={locale}
+  type="text"
+/>
+```
+
+### Locale Utilities
+```tsx
+import { 
+  getLocalizedText, 
+  applyLocale,
+  getLocaleValue,
+  setLocaleValue 
+} from "@/lib/utils/i18n";
+import { getLocaleValue as getAdminLocaleValue } from "@/lib/utils/locale-admin";
+
+// Get text in specific locale
+const text = getLocalizedText(data.title, 'vi');
+
+// Apply locale to entire object
+const localizedData = applyLocale(data, 'vi');
+
+// Admin-specific locale handling
+const value = getAdminLocaleValue(data, 'title', 'vi');
+```
+
+## Form Handling
+
+### React Hook Form Pattern
+```tsx
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+const { register, handleSubmit, formState: { errors } } = useForm();
+
+const onSubmit = async (data) => {
+  try {
+    await adminApiCall(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    toast.success("Saved!");
+  } catch (error) {
+    toast.error(error.message);
+  }
+};
+
+<form onSubmit={handleSubmit(onSubmit)}>
+  <Input {...register("title", { required: true })} />
+  {errors.title && <span>Required</span>}
+  <Button type="submit">Save</Button>
+</form>
+```
+
+## Media Library Integration
+
+### ImageUpload Component
+```tsx
+import ImageUpload from "@/components/admin/ImageUpload";
+
+<ImageUpload
+  value={imageUrl}
+  onChange={(url) => setFormData({ ...formData, image: url })}
+  label="Hình ảnh"
+  required
+/>
+```
+
+### MediaUpload Component (Multiple Files)
+```tsx
+import { MediaUpload } from "@/components/admin/MediaUpload";
+
+<MediaUpload
+  value={images}
+  onChange={(files) => setImages(files)}
+  multiple={true}
+  maxFiles={5}
+  label="Gallery"
+/>
+```
+
+## Translation Controls
+
+### AI-Powered Translation
+```tsx
+import { useTranslationControls } from "@/lib/hooks/useTranslationControls";
+import { AIProviderSelector } from "@/components/admin/AIProviderSelector";
+
+const {
+  handleTranslate,
+  isTranslating,
+  selectedProvider,
+  setSelectedProvider
+} = useTranslationControls();
+
+// Translate field from vi to en
+await handleTranslate('vi', 'en', data.title.vi, (translated) => {
+  setData({
+    ...data,
+    title: { ...data.title, en: translated }
+  });
+});
+
+// UI
+<AIProviderSelector
+  value={selectedProvider}
+  onChange={setSelectedProvider}
+/>
+```
+
+## UI Components (Shadcn/UI)
+
+### Common Components
+- `Button` - Primary actions
+- `Input`, `Textarea` - Form inputs
+- `Select` - Dropdown select
+- `Switch` - Toggle boolean
+- `Card` - Content container
+- `Table` - Data tables
+- `Dialog` - Modal dialogs
+- `Tabs` - Tab navigation
+- `toast` (sonner) - Notifications
+
+### Usage Example
+```tsx
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
+
+<Card>
+  <CardHeader>
+    <CardTitle>Settings</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="name">Name</Label>
+        <Input id="name" />
+      </div>
+      <div className="flex items-center gap-2">
+        <Switch id="active" />
+        <Label htmlFor="active">Active</Label>
+      </div>
+      <Button onClick={() => toast.success("Saved!")}>
+        Save
+      </Button>
+    </div>
+  </CardContent>
+</Card>
+```
+
+## Authentication Patterns
+
+### Protected Pages
+All admin pages should be under `/admin/*` routes which are automatically protected.
+
+### Token Management
+```tsx
+import { getAuthToken, setAuthToken, removeAuthToken } from "@/lib/auth/token";
+
+// Check if authenticated
+const token = getAuthToken();
+if (!token) {
+  router.push('/admin/login');
+}
+
+// Save token after login
+setAuthToken(response.token);
+
+// Logout
+removeAuthToken();
+router.push('/admin/login');
+```
+
+## Design System
+
+### Color Palette
+- **Primary**: `#006FB3` (Blue)
+- **Secondary**: `#0088D9` (Light Blue)
+- **Success**: `green-600`
+- **Warning**: `yellow-600`
+- **Error**: `red-600`
+- **Muted**: `gray-500`
+
+### Spacing
+- Section padding: `py-8` to `py-12`
+- Container: `container mx-auto px-6`
+- Gap: `gap-4` or `gap-6` for spacing between elements
+
+### Border Radius
+- Small: `rounded-lg`
+- Medium: `rounded-xl`
+- Large: `rounded-2xl`
+
+## TypeScript Guidelines
+
+### Type Definitions
+```tsx
+type Locale = 'vi' | 'en' | 'ja';
+
+interface NewsItem {
+  id: number;
+  title: string | Record<Locale, string>;
+  content: string | Record<Locale, string>;
+  slug: string;
+  published: boolean;
+  publishedAt?: string;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+}
+```
+
+### API Response Typing
+```tsx
+const response = await adminApiCall<ApiResponse<NewsItem[]>>(
+  AdminEndpoints.news.list
+);
+
+if (response.success && response.data) {
+  setNews(response.data);
+}
+```
+
+## Code Quality Rules
+
+1. **Always use TypeScript types** - No `any` unless absolutely necessary
+2. **Error handling** - Always wrap API calls in try/catch
+3. **Loading states** - Show loading spinners for async operations
+4. **Validation** - Validate forms before submission
+5. **Accessibility** - Use semantic HTML and ARIA labels
+6. **Responsive** - All UI should work on mobile, tablet, desktop
+7. **Comments** - Document complex business logic in Vietnamese
+
+## Common Mistakes to Avoid
+
+### ❌ Don't:
+- Use public API endpoints (they don't exist anymore)
+- Use locale routing (no more /vi, /en, /ja routes)
+- Import from deleted folders (pages/, components/public/, components/homepage/)
+- Use ImageWithFallback from figma folder (may be deleted)
+- Hardcode API URLs (use environment variables)
+
+### ✅ Do:
+- Use admin API endpoints only
+- Use @/ path aliases for imports
+- Use Shadcn/UI components from components/ui/
+- Use proper TypeScript types
+- Handle errors gracefully with toast notifications
+- Show loading states during API calls
+
+## Testing Checklist
+
+Before considering a feature complete:
+- [ ] Tested CRUD operations (Create, Read, Update, Delete)
+- [ ] Tested form validation
+- [ ] Tested error handling
+- [ ] Tested loading states
+- [ ] Tested on different screen sizes
+- [ ] Verified no console errors
+- [ ] Verified proper TypeScript typing
+- [ ] Verified proper i18n for multilingual fields
+
+---
+
+**Remember**: This is an ADMIN PANEL only. No public routes, no locale routing, no public SEO needed.

@@ -1,0 +1,8 @@
+/* SFB Brand Colors */
+:root {
+  --color-primary: rgb(0, 111, 179);
+  --color-primary-light: rgb(0, 136, 217);
+  --color-primary-dark: rgb(0, 85, 137);
+  --color-primary-bg: rgb(230, 244, 255);
+  --color-primary-bg-light: rgb(214, 238, 255);
+}
