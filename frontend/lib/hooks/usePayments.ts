@@ -9,7 +9,7 @@ import { adminApiCall } from '@/lib/api/admin/client';
 const paymentsApi = {
   getAll: async (params?: any) => {
     const query = new URLSearchParams(params).toString();
-    return adminApiCall(`/api/admin/payments?${query}`);
+    return adminApiCall(`/api/admin/member-actions/all-transactions?${query}`);
   },
 
   getById: async (id: number) => {
@@ -17,7 +17,7 @@ const paymentsApi = {
   },
 
   create: async (data: any) => {
-    return adminApiCall('/api/admin/payments', {
+    return adminApiCall('/api/admin/member-actions/transactions', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -52,6 +52,18 @@ export function usePayment(id: number) {
     queryFn: () => paymentsApi.getById(id),
     enabled: !!id && id > 0,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCreateTransaction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: any) => paymentsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+    },
   });
 }
 

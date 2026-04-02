@@ -211,3 +211,24 @@ exports.remove = async (req, res, next) => {
     client.release();
   }
 };
+
+// GET /api/public/membership-plans (For Reader UI)
+exports.getPublicPlans = async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT 
+        id, slug, name, description, price, duration_days,
+        max_books_borrowed, tier_code, status
+      FROM membership_plans
+      WHERE status = 'active'
+      ORDER BY price ASC
+    `);
+
+    return res.json({
+      success: true,
+      data: rows,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};

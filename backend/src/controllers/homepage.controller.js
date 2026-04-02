@@ -6,7 +6,7 @@ exports.getHomepageBlock = async (req, res, next) => {
     const { sectionType } = req.params;
 
     const { rows } = await pool.query(
-      'SELECT * FROM homepage_blocks WHERE section_type = $1',
+      'SELECT * FROM homepage_sections WHERE section_type = $1',
       [sectionType],
     );
 
@@ -23,7 +23,7 @@ exports.getHomepageBlock = async (req, res, next) => {
       data: {
         id: row.id,
         sectionType: row.section_type,
-        data: row.data || {},
+        data: row.section_data || {},
         isActive: row.is_active !== undefined ? row.is_active : true,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
@@ -40,8 +40,8 @@ exports.getAllHomepageBlocks = async (req, res, next) => {
     const { active } = req.query;
 
     let query = `
-      SELECT id, section_type, data, is_active, created_at, updated_at
-      FROM homepage_blocks
+      SELECT id, section_type, section_data as data, is_active, created_at, updated_at
+      FROM homepage_sections
     `;
     const params = [];
 
@@ -85,7 +85,7 @@ exports.updateHomepageBlock = async (req, res, next) => {
 
     // Check if block exists
     const checkResult = await pool.query(
-      'SELECT id FROM homepage_blocks WHERE section_type = $1',
+      'SELECT id FROM homepage_sections WHERE section_type = $1',
       [sectionType],
     );
 
@@ -94,8 +94,8 @@ exports.updateHomepageBlock = async (req, res, next) => {
       // Create new block
       result = await pool.query(
         `
-          INSERT INTO homepage_blocks (section_type, data, is_active)
-          VALUES ($1, $2, $3)
+          INSERT INTO homepage_sections (section_key, section_type, section_name, section_data, is_active)
+          VALUES ($1, $1, $1, $2, $3)
           RETURNING *
         `,
         [sectionType, JSON.stringify(data), isActive],
@@ -104,8 +104,8 @@ exports.updateHomepageBlock = async (req, res, next) => {
       // Update existing block
       result = await pool.query(
         `
-          UPDATE homepage_blocks
-          SET data = $1, is_active = $2, updated_at = CURRENT_TIMESTAMP
+          UPDATE homepage_sections
+          SET section_data = $1, is_active = $2, updated_at = CURRENT_TIMESTAMP
           WHERE section_type = $3
           RETURNING *
         `,
@@ -120,7 +120,7 @@ exports.updateHomepageBlock = async (req, res, next) => {
       data: {
         id: row.id,
         sectionType: row.section_type,
-        data: row.data || {},
+        data: row.section_data || {},
         isActive: row.is_active !== undefined ? row.is_active : true,
         createdAt: row.created_at,
         updatedAt: row.updated_at,

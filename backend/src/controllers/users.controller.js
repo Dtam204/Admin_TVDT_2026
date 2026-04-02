@@ -40,6 +40,11 @@ exports.getUsers = async (req, res, next) => {
       conditions.push(`LOWER(name) LIKE $${params.length}`);
     }
 
+    // Chỉ lấy Cán bộ/Nhân sự (Bỏ qua role 'user' của Bạn đọc)
+    if (!role) {
+      conditions.push(`LOWER(r.code) != 'user'`);
+    }
+
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 

@@ -66,7 +66,7 @@ NODE_ENV=development
 Tạo file `frontend/.env.local`:
 
   ```env
-  NEXT_PUBLIC_API_URL=http://localhost:4000
+  NEXT_PUBLIC_API_URL=http://localhost:5000
   ```
 
 ## 🗄️ Setup Database
@@ -265,8 +265,8 @@ npm install
 **Lỗi**: `fetch failed` hoặc `ECONNREFUSED`
 
 **Giải pháp**:
-1. Kiểm tra backend đang chạy tại `http://localhost:4000`
-2. Kiểm tra `frontend/.env.local` có `NEXT_PUBLIC_API_URL=http://localhost:4000`
+1. Kiểm tra backend đang chạy tại `http://localhost:5000`
+2. Kiểm tra `frontend/.env.local` có `NEXT_PUBLIC_API_URL=http://localhost:5000`
 3. Restart frontend server
 
 ## 📚 Tài liệu thêm

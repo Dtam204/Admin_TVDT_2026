@@ -45,7 +45,7 @@ PORT=4000
    npm start
    ```
 
-2. Backend sẽ chạy tại: `http://localhost:4000`
+2. Backend sẽ chạy tại: `http://localhost:5000`
 
 3. Media tables sẽ tự động được tạo nếu chưa tồn tại (không cần chạy script riêng)
 

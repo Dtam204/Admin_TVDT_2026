@@ -33,6 +33,8 @@ import {
   Superscript,
   Minus,
   RemoveFormatting,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -109,6 +111,7 @@ export default function RichTextEditor({
     startX: number;
     startWidth: number;
   } | null>(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   // Lưu selection trước khi update
   const saveSelection = () => {
@@ -602,9 +605,9 @@ export default function RichTextEditor({
   };
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden relative">
+    <div className={`border border-gray-200 rounded-lg overflow-hidden relative transition-all ${isFullScreen ? 'fixed inset-4 z-[100] bg-white shadow-2xl flex flex-col' : ''}`}>
       {/* Toolbar */}
-      <div className="flex flex-wrap gap-1 p-2 bg-gray-50 border-b border-gray-200">
+      <div className="flex flex-nowrap overflow-x-auto no-scrollbar gap-1 p-2 bg-gray-50 border-b border-gray-200 scroll-smooth">
         {/* Undo/Redo */}
         <Button
           type="button"
@@ -627,7 +630,7 @@ export default function RichTextEditor({
           <Redo className="w-4 h-4" />
         </Button>
 
-        <div className="w-px h-8 bg-gray-300 mx-1" />
+        <div className="w-px h-8 bg-gray-300 mx-1 flex-shrink-0" />
 
         {/* Text Formatting */}
         <Button
@@ -691,7 +694,7 @@ export default function RichTextEditor({
           <Superscript className="w-4 h-4" />
         </Button>
 
-        <div className="w-px h-8 bg-gray-300 mx-1" />
+        <div className="w-px h-8 bg-gray-300 mx-1 flex-shrink-0" />
 
         {/* Headings - Buttons riêng lẻ cho quick access */}
         <Button
@@ -795,6 +798,18 @@ export default function RichTextEditor({
           <Heading4 className="w-4 h-4" />
         </Button>
 
+        <div className="w-px h-8 bg-gray-300 mx-1 flex-shrink-0" />
+
+        <Button
+          type="button"
+          variant={isFullScreen ? "secondary" : "ghost"}
+          size="icon"
+          className="h-8 w-8 flex-shrink-0"
+          onClick={() => setIsFullScreen(!isFullScreen)}
+          title={isFullScreen ? "Thu nhỏ" : "Toàn màn hình"}
+        >
+          {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+        </Button>
         {/* Normal Paragraph button */}
         <Button
           type="button"

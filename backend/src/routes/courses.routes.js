@@ -15,59 +15,15 @@ const router = express.Router();
  * /api/admin/courses:
  *   get:
  *     tags:
- *       - Courses
+ *       - Admin Courses
  *     summary: Lấy danh sách khóa học
  *     security:
  *       - bearerAuth: []
  */
-router.get('/', requireAuth, getCourses);
-
-/**
- * @openapi
- * /api/admin/courses/:id:
- *   get:
- *     tags:
- *       - Courses
- *     summary: Lấy chi tiết khóa học
- *     security:
- *       - bearerAuth: []
- */
-router.get('/:id', requireAuth, getCourseById);
-
-/**
- * @openapi
- * /api/admin/courses:
- *   post:
- *     tags:
- *       - Courses
- *     summary: Tạo khóa học mới
- *     security:
- *       - bearerAuth: []
- */
-router.post('/', requireAuth, createCourse);
-
-/**
- * @openapi
- * /api/admin/courses/:id:
- *   put:
- *     tags:
- *       - Courses
- *     summary: Cập nhật khóa học
- *     security:
- *       - bearerAuth: []
- */
-router.put('/:id', requireAuth, updateCourse);
-
-/**
- * @openapi
- * /api/admin/courses/:id:
- *   delete:
- *     tags:
- *       - Courses
- *     summary: Xóa khóa học
- *     security:
- *       - bearerAuth: []
- */
-router.delete('/:id', requireAuth, deleteCourse);
+router.get('/', getCourses);
+router.get('/:id', getCourseById);
+router.post('/', createCourse);
+router.put('/:id', updateCourse);
+router.delete('/:id', deleteCourse);
 
 module.exports = router;

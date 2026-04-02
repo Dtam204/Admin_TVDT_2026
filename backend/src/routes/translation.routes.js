@@ -9,7 +9,7 @@ const router = express.Router();
  * /api/admin/translate:
  *   post:
  *     tags:
- *       - Translation
+ *       - Admin Translation
  *     summary: Dịch text hoặc object sang nhiều ngôn ngữ bằng AI
  *     security:
  *       - bearerAuth: []
@@ -50,7 +50,7 @@ router.post('/', requireAuth, translate);
  * /api/admin/translate/field:
  *   post:
  *     tags:
- *       - Translation
+ *       - Admin Translation
  *     summary: Dịch một field cụ thể
  *     security:
  *       - bearerAuth: []

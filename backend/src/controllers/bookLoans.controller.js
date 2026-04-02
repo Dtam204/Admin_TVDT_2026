@@ -74,12 +74,23 @@ exports.getAll = async (req, res, next) => {
 exports.getById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { rows } = await pool.query('SELECT * FROM book_loans WHERE id = $1', [id]);
+    const query = `
+      SELECT bl.*, 
+             m.full_name as member_name, m.card_number as member_card, m.email as member_email, m.phone as member_phone,
+             b.title->>'vi' as book_title, b.author as book_author, b.cover_image, b.media_type, b.access_policy,
+             c.barcode as copy_barcode, c.condition as copy_condition
+      FROM book_loans bl
+      JOIN members m ON bl.member_id = m.id
+      JOIN books b ON bl.book_id = b.id
+      LEFT JOIN publication_copies c ON bl.copy_id = c.id
+      WHERE bl.id = $1
+    `;
+    const { rows } = await pool.query(query, [id]);
 
     if (rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy bookloan',
+        message: 'Không tìm thấy phiếu mượn',
       });
     }
 

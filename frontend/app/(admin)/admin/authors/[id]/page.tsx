@@ -1,76 +1,44 @@
 'use client';
 
-import { use } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthor, useDeleteAuthor } from '@/lib/hooks/useAuthors';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { adminApiCall } from '@/lib/api/admin/client';
+import { ArrowLeft, User, Save, Info, Sparkles, Globe, Link as LinkIcon, Facebook, Twitter, Github } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trash2 } from 'lucide-react';
-import Link from 'next/link';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
-export default function AuthorDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const router = useRouter();
-  const { id } = use(params);
-  const itemId = parseInt(id);
+import { AuthorForm } from '@/components/admin/AuthorForm';
 
-  const { data, isLoading } = useAuthor(itemId);
-  const { mutate: deleteItem, isPending: isDeleting } = useDeleteAuthor();
+export default function EditAuthorPage() {
+  const params = useParams();
+  const id = params.id as string;
 
-  const handleDelete = () => {
-    if (!confirm('Bạn có chắc muốn xóa?')) return;
+  const { data: authorResponse, isLoading } = useQuery({
+    queryKey: ['authors', id],
+    queryFn: () => adminApiCall(`/api/admin/authors/${id}`),
+  });
 
-    deleteItem(itemId, {
-      onSuccess: () => {
-        toast.success('Đã xóa thành công');
-        router.push('/admin/authors');
-      },
-      onError: (error: any) => {
-        toast.error(error.message || 'Không thể xóa');
-      },
-    });
-  };
+  const author = authorResponse?.data || authorResponse;
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="text-center py-12">Đang tải...</div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
-
-  if (!data?.data) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="text-center py-12">Không tìm thấy dữ liệu</div>
-      </div>
-    );
-  }
-
-  const item = data.data;
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
-          <Link href="/admin/authors">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold">Chi tiết Tác giả</h1>
-            <p className="text-muted-foreground">#{itemId}</p>
-          </div>
-        </div>
-        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-          <Trash2 className="w-4 h-4 mr-2" />
-          Xóa
-        </Button>
-      </div>
-
-      <div className="bg-card p-6 rounded-lg border">
-        <pre className="text-sm">{JSON.stringify(item, null, 2)}</pre>
-      </div>
+    <div className="container mx-auto p-6 max-w-6xl">
+      <AuthorForm initialData={author} isNew={false} id={id} />
     </div>
   );
 }

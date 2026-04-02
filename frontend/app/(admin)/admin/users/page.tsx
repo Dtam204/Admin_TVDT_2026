@@ -101,7 +101,13 @@ export default function AdminUsersPage() {
     permissions.has("users.manage") || permissions.has("admin");
 
   const defaultRoleId = useMemo(
-    () => roles.find((r) => r.isDefault && r.isActive)?.id ?? null,
+    () => {
+      // Ưu tiên role Thủ thư (Editor/Librarian) làm mặc định cho CMS
+      const librarianRole = roles.find(r => r.code?.toLowerCase() === 'editor' || r.code?.toLowerCase() === 'librarian');
+      if (librarianRole) return librarianRole.id;
+      // Fallback: Lấy role đầu tiên không phải Admin/User
+      return roles.find(r => r.code?.toLowerCase() !== 'admin' && r.code?.toLowerCase() !== 'user')?.id ?? null;
+    },
     [roles],
   );
 
@@ -340,9 +346,9 @@ export default function AdminUsersPage() {
     <div className="space-y-6 w-full">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl text-gray-900">Quản lý người dùng</h1>
+          <h1 className="text-3xl text-gray-900 font-bold">Danh sách Cán bộ / Nhân sự</h1>
           <p className="text-gray-500 mt-1">
-            Quản lý tài khoản truy cập hệ thống admin
+            Quản trị các tài khoản Thủ thư, Biên tập viên và Giám đốc của hệ thống CMS.
           </p>
         </div>
 
@@ -354,16 +360,16 @@ export default function AdminUsersPage() {
               disabled={!canManageUsers}
             >
               <Plus className="w-4 h-4 mr-2" />
-              Thêm người dùng
+              Thêm Nhân Sự
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {editingUser ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
+                {editingUser ? "Chỉnh sửa tài khoản nhân sự" : "Thêm nhân sự mới"}
               </DialogTitle>
               <DialogDescription>
-                Thiết lập thông tin và phân quyền cho tài khoản
+                Thiết lập thông tin và cấp vai trò (role) cho nhân sự.
               </DialogDescription>
             </DialogHeader>
 
@@ -432,11 +438,16 @@ export default function AdminUsersPage() {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn vai trò" />
+                      <SelectValue placeholder="-- Chọn vai trò --" />
                     </SelectTrigger>
                     <SelectContent>
                       {roles
-                        .filter((r) => r.isActive)
+                        .filter((r) => {
+                          if (!r.isActive || r.code?.toLowerCase() === "user") return false;
+                          // Nếu đang tạo mới, ẩn Admin để tránh tạo nhiều Admin
+                          if (!editingUser && r.code?.toLowerCase() === "admin") return false;
+                          return true;
+                        })
                         .map((role) => (
                           <SelectItem key={role.id} value={String(role.id)}>
                             {role.name}
@@ -493,11 +504,11 @@ export default function AdminUsersPage() {
 
       <Card className="border-0 shadow-lg w-full">
         <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle>Danh sách người dùng</CardTitle>
+          <CardTitle>Danh sách tài khoản nhân sự CMS</CardTitle>
           <div className="relative w-full max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Tìm theo tên hoặc email..."
+              placeholder="Tìm theo tên hiển thị hoặc email..."
               className="pl-9 bg-gray-50 border-0"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -509,7 +520,7 @@ export default function AdminUsersPage() {
             <table className="w-full table-auto text-sm">
               <thead>
                 <tr className="text-left text-gray-500 border-b border-gray-100">
-                  <th className="py-3 px-4 font-medium">Người dùng</th>
+                  <th className="py-3 px-4 font-medium">Nhân sự</th>
                   <th className="py-3 px-4 font-medium">Email</th>
                   <th className="py-3 px-4 font-medium">Vai trò</th>
                   <th className="py-3 px-4 font-medium">Trạng thái</th>
@@ -523,7 +534,7 @@ export default function AdminUsersPage() {
                       colSpan={5}
                       className="py-6 text-center text-gray-500 text-sm"
                     >
-                      Đang tải danh sách người dùng...
+                      Đang tải danh sách nhân sự...
                     </td>
                   </tr>
                 )}
@@ -554,10 +565,19 @@ export default function AdminUsersPage() {
                       <span className="text-gray-700">{user.email}</span>
                     </td>
                     <td className="py-3 px-4">
-                      <Badge variant="outline" className="bg-gray-50">
-                        <ShieldCheck className="w-3 h-3 mr-1" />
-                        {user.roleName}
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="outline" className={`w-fit ${
+                          user.roleCode === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                          user.roleCode === 'editor' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          'bg-orange-50 text-orange-700 border-orange-200'
+                        }`}>
+                          <ShieldCheck className="w-3 h-3 mr-1" />
+                          {user.roleName}
+                        </Badge>
+                        <span className="text-[10px] text-gray-400 font-medium ml-1">
+                          {user.roleCode === 'user' ? '📱 Mobile App' : '💻 Admin CMS'}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <Button

@@ -69,23 +69,15 @@ const mapNews = (row) => {
   return {
     id: row.id,
     title: parseLocaleField(row.title),
-    excerpt: parseLocaleField(row.excerpt),
-    category: row.category || row.category_name || '',
-    categoryId: row.category_id || row.category_code || '',
-    categoryName: row.category_name || row.category || '',
+    excerpt: parseLocaleField(row.summary),
     status: row.status,
     imageUrl: row.image_url || '',
     author: parseLocaleField(row.author),
     readTime: parseLocaleField(row.read_time),
-    gradient: row.gradient || '',
     isFeatured: row.is_featured || false,
-    link: row.slug || '',
+    slug: row.slug || '',
     publishedDate: publishedDate || '',
-    seoTitle: parseLocaleField(row.seo_title),
-    seoDescription: parseLocaleField(row.seo_description),
-    seoKeywords: parseLocaleField(row.seo_keywords),
     // Các cấu hình hiển thị chi tiết bài viết
-    galleryTitle: parseLocaleField(row.gallery_title),
     content: parseLocaleField(row.content),
     galleryImages: (() => {
       if (!row.gallery_images) return [];
@@ -98,13 +90,9 @@ const mapNews = (row) => {
       }
     })(),
     galleryPosition: row.gallery_position || null,
-    showTableOfContents:
-      row.show_table_of_contents !== false,
-    enableShareButtons:
-      row.enable_share_buttons !== false,
     showAuthorBox:
       row.show_author_box !== false,
-    highlightFirstParagraph: undefined, // deprecated
+    commentsCount: parseInt(row.comments_count || 0),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -123,10 +111,6 @@ exports.getNews = async (req, res, next) => {
       conditions.push(`status = $${params.length}`);
     }
 
-    if (category) {
-      params.push(category);
-      conditions.push(`category_id = $${params.length}`);
-    }
 
     if (search) {
       params.push(`%${search.toLowerCase()}%`);
@@ -145,32 +129,21 @@ exports.getNews = async (req, res, next) => {
         n.id,
         n.title,
         n.slug,
-        n.excerpt,
+        n.summary,
         n.content,
-        n.category,
-        n.category_id,
-        c.name AS category_name,
         n.status,
         n.image_url,
         n.author,
         n.read_time,
-        n.gradient,
         n.is_featured,
-        n.gallery_title,
         n.gallery_images,
         n.gallery_position,
-        n.show_table_of_contents,
-        n.enable_share_buttons,
         n.show_author_box,
-        n.highlight_first_paragraph,
-        n.seo_title,
-        n.seo_description,
-        n.seo_keywords,
         TO_CHAR(n.published_date, 'YYYY-MM-DD') AS published_date,
         n.created_at,
-        n.updated_at
+        n.updated_at,
+        (SELECT COUNT(*) FROM comments WHERE object_id = n.id AND object_type = 'news' AND status != 'deleted') as comments_count
       FROM news n
-      LEFT JOIN news_categories c ON n.category_id = c.code
       ${whereClause}
       ORDER BY n.id DESC
     `;
@@ -197,32 +170,21 @@ exports.getNewsById = async (req, res, next) => {
           n.id,
           n.title,
           n.slug,
-          n.excerpt,
+          n.summary,
           n.content,
-          n.category,
-          n.category_id,
-          c.name AS category_name,
           n.status,
           n.image_url,
           n.author,
           n.read_time,
-          n.gradient,
           n.is_featured,
-          n.gallery_title,
           n.gallery_images,
           n.gallery_position,
-          n.show_table_of_contents,
-          n.enable_share_buttons,
           n.show_author_box,
-          n.highlight_first_paragraph,
-          n.seo_title,
-          n.seo_description,
-          n.seo_keywords,
           TO_CHAR(n.published_date, 'YYYY-MM-DD') AS published_date,
           n.created_at,
-          n.updated_at
+          n.updated_at,
+          (SELECT COUNT(*) FROM comments WHERE object_id = n.id AND object_type = 'news' AND status != 'deleted') as comments_count
         FROM news n
-        LEFT JOIN news_categories c ON n.category_id = c.code
         WHERE n.id = $1
         LIMIT 1
       `,
@@ -249,30 +211,19 @@ exports.createNews = async (req, res, next) => {
   try {
     const {
       title,
-      excerpt = '',
-      category = '',
-      categoryId = '',
+      summary,
+      excerpt,
       content = '',
       status = 'draft',
       imageUrl = '',
       author = '',
       readTime = '',
-      gradient = '',
-      link = '',
+      slug = '',
       publishedDate = new Date().toISOString().split('T')[0],
-      seoTitle = '',
-      seoDescription = '',
-      seoKeywords = '',
       isFeatured = false,
-      galleryTitle = '',
-      // Các cấu hình hiển thị chi tiết bài viết
       galleryImages = [],
       galleryPosition = null,
-      showTableOfContents = true,
-      enableShareButtons = true,
       showAuthorBox = true,
-      // highlightFirstParagraph deprecated, không dùng nữa
-      highlightFirstParagraph = false,
     } = req.body;
 
     // Validate title: có thể là string hoặc locale object
@@ -292,52 +243,37 @@ exports.createNews = async (req, res, next) => {
 
     const insertQuery = `
       INSERT INTO news (
-        title, slug, excerpt, content, category, category_id,
-        status, image_url, author, read_time, gradient, published_date,
-        seo_title, seo_description, seo_keywords, is_featured,
-        gallery_title, gallery_images, gallery_position, show_table_of_contents,
-        enable_share_buttons, show_author_box, highlight_first_paragraph
+        title, slug, summary, content,
+        status, image_url, author, read_time, published_date,
+        is_featured, gallery_images, gallery_position, show_author_box
       )
       VALUES (
         $1, $2, $3, $4, $5, $6,
-        $7, $8, $9, $10, $11, $12,
-        $13, $14, $15, $16,
-        $17, $18, $19, $20, $21, $22, $23
+        $7, $8, $9, $10, $11, $12, $13
       )
       RETURNING 
-        id, title, slug, excerpt, content, category, category_id,
-        status, image_url, author, read_time, gradient, 
-        gallery_title, gallery_images, gallery_position, show_table_of_contents,
-        enable_share_buttons, show_author_box, highlight_first_paragraph,
+        id, title, slug, summary, content,
+        status, image_url, author, read_time, 
+        gallery_images, gallery_position, show_author_box, 
         TO_CHAR(published_date, 'YYYY-MM-DD') AS published_date,
-        seo_title, seo_description, seo_keywords, is_featured,
+        is_featured,
         created_at, updated_at
     `;
 
     const params = [
       processLocaleField(title),
-      link,
-      processLocaleField(excerpt),
+      slug,
+      processLocaleField(summary || excerpt || ''),
       processLocaleField(content),
-      category,
-      categoryId,
       status,
       imageUrl,
       processLocaleField(author),
       processLocaleField(readTime),
-      gradient,
       publishedDate,
-      processLocaleField(seoTitle),
-      processLocaleField(seoDescription),
-      processLocaleField(seoKeywords),
       isFeatured,
-      processLocaleField(galleryTitle),
       galleryImagesJson,
       galleryPositionNormalized,
-      showTableOfContents,
-      enableShareButtons,
-      showAuthorBox,
-      highlightFirstParagraph,
+      showAuthorBox
     ];
 
     const { rows } = await pool.query(insertQuery, params);
@@ -357,29 +293,19 @@ exports.updateNews = async (req, res, next) => {
     const { id } = req.params;
     const {
       title,
+      summary,
       excerpt,
-      category,
-      categoryId,
       content,
       status,
       imageUrl,
       author,
       readTime,
-      gradient,
-      link,
+      slug,
       publishedDate,
-      seoTitle,
-      seoDescription,
-      seoKeywords,
       isFeatured,
-      // Các cấu hình hiển thị chi tiết bài viết
       galleryImages,
       galleryPosition,
-      showTableOfContents,
-      enableShareButtons,
       showAuthorBox,
-      galleryTitle,
-      // highlightFirstParagraph (deprecated, không dùng nữa)
     } = req.body;
 
     const fields = [];
@@ -391,19 +317,14 @@ exports.updateNews = async (req, res, next) => {
     };
 
     if (title !== undefined) addField('title', processLocaleField(title));
-    if (link !== undefined) addField('slug', link);
-    if (excerpt !== undefined) addField('excerpt', processLocaleField(excerpt));
+    if (slug !== undefined) addField('slug', slug);
+    if (summary !== undefined || excerpt !== undefined) addField('summary', processLocaleField(summary || excerpt));
+
     if (content !== undefined) addField('content', processLocaleField(content));
-    if (category !== undefined) addField('category', category);
-    if (categoryId !== undefined) addField('category_id', categoryId);
     if (status !== undefined) addField('status', status);
     if (imageUrl !== undefined) addField('image_url', imageUrl);
     if (author !== undefined) addField('author', processLocaleField(author));
     if (readTime !== undefined) addField('read_time', processLocaleField(readTime));
-    if (gradient !== undefined) addField('gradient', gradient);
-    if (seoTitle !== undefined) addField('seo_title', processLocaleField(seoTitle));
-    if (seoDescription !== undefined) addField('seo_description', processLocaleField(seoDescription));
-    if (seoKeywords !== undefined) addField('seo_keywords', processLocaleField(seoKeywords));
     if (publishedDate !== undefined) addField('published_date', publishedDate);
     if (isFeatured !== undefined) addField('is_featured', isFeatured);
     if (galleryImages !== undefined) {
@@ -416,9 +337,6 @@ exports.updateNews = async (req, res, next) => {
         galleryPosition === 'top' ? 'top' : galleryPosition === 'bottom' ? 'bottom' : 'top';
       addField('gallery_position', galleryPositionNormalized);
     }
-    if (galleryTitle !== undefined) addField('gallery_title', processLocaleField(galleryTitle));
-    if (showTableOfContents !== undefined) addField('show_table_of_contents', showTableOfContents);
-    if (enableShareButtons !== undefined) addField('enable_share_buttons', enableShareButtons);
     if (showAuthorBox !== undefined) addField('show_author_box', showAuthorBox);
     // highlight_first_paragraph deprecated - bỏ qua nếu gửi lên
 
@@ -431,17 +349,16 @@ exports.updateNews = async (req, res, next) => {
 
     params.push(id);
 
-    const updateQuery = `
+     const updateQuery = `
       UPDATE news
       SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
       WHERE id = $${params.length}
       RETURNING 
-        id, title, slug, excerpt, content, category, category_id,
-        status, image_url, author, read_time, gradient, 
-        gallery_title, gallery_images, gallery_position, show_table_of_contents,
-        enable_share_buttons, show_author_box, highlight_first_paragraph,
+        id, title, slug, summary, content,
+        status, image_url, author, read_time, 
+        gallery_images, gallery_position, show_author_box, 
         TO_CHAR(published_date, 'YYYY-MM-DD') AS published_date,
-        seo_title, seo_description, seo_keywords, is_featured,
+        is_featured,
         created_at, updated_at
     `;
 
@@ -483,6 +400,52 @@ exports.deleteNews = async (req, res, next) => {
       success: true,
       message: 'Đã xóa bài viết',
     });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// PATCH /api/admin/news/:id/status
+exports.updateNewsStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['draft', 'published', 'archived'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
+    }
+
+    const { rows } = await pool.query(
+      'UPDATE news SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, status',
+      [status, id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
+    }
+
+    return res.json({ success: true, data: rows[0] });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// PATCH /api/admin/news/:id/featured
+exports.toggleNewsFeatured = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { isFeatured } = req.body;
+
+    const { rows } = await pool.query(
+      'UPDATE news SET is_featured = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, is_featured',
+      [isFeatured, id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
+    }
+
+    return res.json({ success: true, data: rows[0] });
   } catch (error) {
     return next(error);
   }

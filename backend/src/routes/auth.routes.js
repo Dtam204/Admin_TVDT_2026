@@ -8,7 +8,7 @@ const router = express.Router();
  * /api/auth/login:
  *   post:
  *     tags:
- *       - Auth
+ *       - Public Auth
  *     summary: Đăng nhập CMS Thư viện TN
  *     requestBody:
  *       required: true

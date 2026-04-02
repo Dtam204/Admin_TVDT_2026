@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
+    "dev": "node --watch server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "setup": "node scripts/setup-simple.js",
     "reset-db": "node scripts/reset-database.js",
@@ -20,9 +20,11 @@
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.13.2",
     "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.3",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "express-rate-limit": "^7.4.1",
     "helmet": "^8.0.0",
@@ -30,7 +32,9 @@
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
+    "pdf-lib": "^1.17.1",
     "pg": "^8.11.3",
+    "slugify": "^1.6.8",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   }

@@ -6,8 +6,13 @@ const {
   updatePermission,
   deletePermission,
 } = require('../controllers/permissions.controller');
+const { requireAuth } = require('../middlewares/auth.middleware');
+const { restrictToCMS, checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
+
+router.use(requireAuth);
+router.use(restrictToCMS);
 
 /**
  * @openapi
@@ -80,7 +85,7 @@ const router = express.Router();
  *                   items:
  *                     $ref: '#/components/schemas/Permission'
  */
-router.get('/', getPermissions);
+router.get('/', checkPermission('roles.view'), getPermissions);
 
 /**
  * @openapi
@@ -110,7 +115,7 @@ router.get('/', getPermissions);
  *       404:
  *         description: Không tìm thấy quyền
  */
-router.get('/:id', getPermissionById);
+router.get('/:id', checkPermission('roles.view'), getPermissionById);
 
 /**
  * @openapi
@@ -161,7 +166,7 @@ router.get('/:id', getPermissionById);
  *       409:
  *         description: Mã quyền đã tồn tại
  */
-router.post('/', createPermission);
+router.post('/', checkPermission('roles.manage'), createPermission);
 
 /**
  * @openapi
@@ -212,7 +217,7 @@ router.post('/', createPermission);
  *       409:
  *         description: Mã quyền đã tồn tại
  */
-router.put('/:id', updatePermission);
+router.put('/:id', checkPermission('roles.manage'), updatePermission);
 
 /**
  * @openapi
@@ -233,7 +238,7 @@ router.put('/:id', updatePermission);
  *       404:
  *         description: Không tìm thấy quyền
  */
-router.delete('/:id', deletePermission);
+router.delete('/:id', checkPermission('roles.manage'), deletePermission);
 
 module.exports = router;
 

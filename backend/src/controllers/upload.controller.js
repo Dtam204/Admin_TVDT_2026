@@ -2,6 +2,8 @@ const path = require('path');
 const pool = require('../config/database').pool;
 const sizeOf = require('image-size'); // Cần cài: npm install image-size
 const { ensureTablesOnce } = require('../utils/ensureMediaTables');
+const { PDFDocument } = require('pdf-lib');
+const fs = require('fs').promises;
 
 /**
  * Xác định loại file từ mime type
@@ -42,15 +44,25 @@ exports.uploadFile = async (req, res, next) => {
     // Lấy kích thước ảnh nếu là file ảnh
     let width = null;
     let height = null;
+    let pageCount = null;
     
+    const filePath = path.join(__dirname, '../../', relativePath);
+
     if (fileType === 'image') {
       try {
-        const filePath = path.join(__dirname, '../../', relativePath);
         const dimensions = sizeOf(filePath);
         width = dimensions.width;
         height = dimensions.height;
       } catch (err) {
         // Không thể đọc kích thước, bỏ qua
+      }
+    } else if (req.file.mimetype === 'application/pdf') {
+      try {
+        const pdfBuffer = await fs.readFile(filePath);
+        const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+        pageCount = pdfDoc.getPageCount();
+      } catch (err) {
+        console.error('Error reading PDF page count:', err);
       }
     }
     
@@ -78,7 +90,10 @@ exports.uploadFile = async (req, res, next) => {
     
     return res.status(200).json({
       success: true,
-      data: rows[0],
+      data: {
+        ...rows[0],
+        pageCount
+      },
     });
   } catch (error) {
     return next(error);

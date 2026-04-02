@@ -8,7 +8,7 @@ const router = express.Router();
  * /api/dashboard/summary:
  *   get:
  *     tags:
- *       - Dashboard
+ *       - Admin Dashboard
  *     summary: Lấy số liệu tổng quan cho dashboard CMS
  *     responses:
  *       200:

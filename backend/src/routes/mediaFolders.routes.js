@@ -16,7 +16,7 @@ const router = express.Router();
  * /api/admin/media/folders:
  *   get:
  *     tags:
- *       - Media Folders
+ *       - Admin Media Folders
  *     summary: Lấy danh sách thư mục
  *     security:
  *       - bearerAuth: []
@@ -38,7 +38,7 @@ router.get('/', requireAuth, getFolders);
  * /api/admin/media/folders/tree:
  *   get:
  *     tags:
- *       - Media Folders
+ *       - Admin Media Folders
  *     summary: Lấy cây thư mục (hierarchical)
  *     security:
  *       - bearerAuth: []
@@ -53,7 +53,7 @@ router.get('/tree', requireAuth, getFolderTree);
  * /api/admin/media/folders/:id:
  *   get:
  *     tags:
- *       - Media Folders
+ *       - Admin Media Folders
  *     summary: Lấy thông tin thư mục theo ID
  *     security:
  *       - bearerAuth: []
@@ -65,7 +65,7 @@ router.get('/:id', requireAuth, getFolderById);
  * /api/admin/media/folders:
  *   post:
  *     tags:
- *       - Media Folders
+ *       - Admin Media Folders
  *     summary: Tạo thư mục mới
  *     security:
  *       - bearerAuth: []
@@ -77,7 +77,7 @@ router.post('/', requireAuth, createFolder);
  * /api/admin/media/folders/:id:
  *   put:
  *     tags:
- *       - Media Folders
+ *       - Admin Media Folders
  *     summary: Cập nhật thư mục
  *     security:
  *       - bearerAuth: []
@@ -89,7 +89,7 @@ router.put('/:id', requireAuth, updateFolder);
  * /api/admin/media/folders/:id:
  *   delete:
  *     tags:
- *       - Media Folders
+ *       - Admin Media Folders
  *     summary: Xóa thư mục
  *     security:
  *       - bearerAuth: []

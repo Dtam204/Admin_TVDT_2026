@@ -10,9 +10,12 @@ import {
   Image as ImageIcon,
   Settings,
   Info,
-  Search as SearchIcon,
   Calendar,
   Sparkles,
+  MessageCircle,
+  Trash,
+  Smartphone,
+  X,
 } from "lucide-react";
 import { adminApiCall, AdminEndpoints } from "@/lib/api/admin";
 import { Button } from "@/components/ui/button";
@@ -49,80 +52,29 @@ import { buildUrl } from "@/lib/api/base";
 import MediaLibraryPicker from "./MediaLibraryPicker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDateForInput, generateSlug } from "@/lib/date";
+import NewsCommentsManager from "./NewsCommentsManager";
 
 // Types
 
 type NewsStatus = "draft" | "pending" | "approved" | "rejected" | "published";
-type CategoryId = "product" | "company" | "tech" | string;
 
-interface NewsCategory {
-  id: CategoryId;
-  name: string | Record<'vi' | 'en' | 'ja', string>;
-  isActive?: boolean;
-}
-
-const GRADIENT_OPTIONS = [
-  {
-    value: "from-blue-600 to-cyan-600",
-    label: "Xanh dương - Cyan",
-    preview: "bg-gradient-to-r from-blue-600 to-cyan-600",
-  },
-  {
-    value: "from-purple-600 to-pink-600",
-    label: "Tím - Hồng",
-    preview: "bg-gradient-to-r from-purple-600 to-pink-600",
-  },
-  {
-    value: "from-emerald-600 to-teal-600",
-    label: "Xanh lá - Teal",
-    preview: "bg-gradient-to-r from-emerald-600 to-teal-600",
-  },
-  {
-    value: "from-orange-600 to-amber-600",
-    label: "Cam - Vàng",
-    preview: "bg-gradient-to-r from-orange-600 to-amber-600",
-  },
-  {
-    value: "from-red-600 to-rose-600",
-    label: "Đỏ - Hồng",
-    preview: "bg-gradient-to-r from-red-600 to-rose-600",
-  },
-  {
-    value: "from-indigo-600 to-purple-600",
-    label: "Indigo - Tím",
-    preview: "bg-gradient-to-r from-indigo-600 to-purple-600",
-  },
-  {
-    value: "from-cyan-600 to-blue-600",
-    label: "Cyan - Xanh dương",
-    preview: "bg-gradient-to-r from-cyan-600 to-blue-600",
-  },
-];
 
 interface NewsFormData {
+  id?: number;
   title: string | Record<'vi' | 'en' | 'ja', string>;
   excerpt: string | Record<'vi' | 'en' | 'ja', string>;
-  category: string;
-  categoryId: CategoryId | "";
   content: string | Record<'vi' | 'en' | 'ja', string>;
   status: NewsStatus;
   isFeatured: boolean;
   imageUrl?: string;
   author: string | Record<'vi' | 'en' | 'ja', string>;
   readTime: string | Record<'vi' | 'en' | 'ja', string>;
-  gradient: string;
-  link: string;
+  slug: string;
   publishedDate: string;
-  seoTitle: string | Record<'vi' | 'en' | 'ja', string>;
-  seoDescription: string | Record<'vi' | 'en' | 'ja', string>;
-  seoKeywords: string | Record<'vi' | 'en' | 'ja', string>;
 
-  // Cấu hình nâng cao cho nội dung chi tiết
-  galleryTitle?: string | Record<'vi' | 'en' | 'ja', string>;
+  // Cấu hình nội dung chi tiết
   galleryImages: string[];
   galleryPosition: "top" | "bottom";
-  showTableOfContents: boolean;
-  enableShareButtons: boolean;
   showAuthorBox: boolean;
 }
 
@@ -159,71 +111,35 @@ export default function NewsForm({
   }, [globalLocale]);
 
   const [formData, setFormData] = useState<NewsFormData>({
+    id: initialData?.id,
     title: initialData?.title || "",
     excerpt: initialData?.excerpt || "",
-    category: initialData?.category || "",
-    categoryId: initialData?.categoryId || "",
     content: initialData?.content || "",
     status: (initialData?.status as NewsStatus) || "draft",
     isFeatured: initialData?.isFeatured ?? false,
     imageUrl: initialData?.imageUrl,
     author: initialData?.author || "Thư viện TN",
     readTime: initialData?.readTime || "5 phút đọc",
-    gradient: initialData?.gradient || "from-blue-600 to-cyan-600",
-    link: initialData?.link || "",
+    slug: initialData?.slug || "",
     publishedDate:
       initialData?.publishedDate || new Date().toISOString().split("T")[0],
-    seoTitle: initialData?.seoTitle || "",
-    seoDescription: initialData?.seoDescription || "",
-    seoKeywords: initialData?.seoKeywords || "",
 
-    // Cấu hình nâng cao cho nội dung chi tiết (lấy từ initialData nếu có)
-    galleryTitle: (initialData as any)?.galleryTitle || "",
+    // Cấu hình nâng cao cho nội dung chi tiết
     galleryImages: (initialData as any)?.galleryImages || [],
     galleryPosition: (initialData as any)?.galleryPosition || "top",
-    showTableOfContents:
-      (initialData as any)?.showTableOfContents ?? true,
-    enableShareButtons:
-      (initialData as any)?.enableShareButtons ?? true,
     showAuthorBox:
       (initialData as any)?.showAuthorBox ?? true,
   });
 
   const [saving, setSaving] = useState(false);
   const [showImageDialog, setShowImageDialog] = useState(false);
-  const [categories, setCategories] = useState<NewsCategory[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(false);
   const [imageTab, setImageTab] = useState<"library" | "upload">("library");
-  const [activeTab, setActiveTab] = useState<"content" | "basic" | "seo">("content");
+  const [activeTab, setActiveTab] = useState<"content" | "settings" | "comments">("content");
   // Nếu đang edit và đã có slug từ DB, không tự động generate nữa
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(!!(isEditing && initialData?.link));
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(!!(isEditing && initialData?.slug));
   // Key để reset component ImageUpload dùng cho gallery (re-mount sau mỗi lần chọn ảnh)
   const [galleryUploadKey, setGalleryUploadKey] = useState(0);
-  // Key để reset RichTextEditor khi đổi locale
-  const [contentEditorKey, setContentEditorKey] = useState(0);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoadingCategories(true);
-        const data = await adminApiCall<{ data: any[] }>(
-          AdminEndpoints.categories.list,
-        );
-        const cats = (data?.data || data || []).map((c: any) => ({
-          id: c.code,
-          name: c.name,
-          isActive: c.isActive !== false,
-        }));
-        setCategories(cats);
-      } catch (error) {
-        // Silently fail
-      } finally {
-        setLoadingCategories(false);
-      }
-    };
-
-    fetchCategories();
-  }, []);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
 
   // Tự động generate slug từ title khi title thay đổi (chỉ khi chưa chỉnh sửa thủ công và không có slug từ DB)
   useEffect(() => {
@@ -234,13 +150,13 @@ export default function NewsForm({
     const titleText = typeof formData.title === 'string' 
       ? formData.title 
       : formData.title?.vi || '';
-    if (!slugManuallyEdited && titleText && !(isEditing && initialData?.link)) {
+    if (!slugManuallyEdited && titleText && !(isEditing && ((initialData as any)?.slug || (initialData as any)?.link))) {
       const autoSlug = generateSlug(titleText);
       if (autoSlug) {
-        setFormData(prev => ({ ...prev, link: autoSlug }));
+        setFormData(prev => ({ ...prev, slug: autoSlug }));
       }
     }
-  }, [formData.title, slugManuallyEdited, isEditing, initialData?.link]);
+  }, [formData.title, slugManuallyEdited, isEditing, (initialData as any)?.slug, (initialData as any)?.link]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,11 +166,6 @@ export default function NewsForm({
       : formData.title?.vi || '';
     if (!titleText.trim()) {
       toast.error("Vui lòng nhập tiêu đề bài viết");
-      return;
-    }
-
-    if (!formData.categoryId) {
-      toast.error("Vui lòng chọn danh mục");
       return;
     }
 
@@ -269,12 +180,9 @@ export default function NewsForm({
     try {
       setSaving(true);
       await onSave(formData);
-      // Toast và redirect được handle bởi parent component (create/page.tsx hoặc edit/page.tsx)
-      // Không show toast ở đây để tránh duplicate
     } catch (error) {
       toast.error("Có lỗi xảy ra khi lưu bài viết");
-      // Silently fail
-      throw error; // Re-throw để parent component có thể handle
+      throw error;
     } finally {
       setSaving(false);
     }
@@ -313,6 +221,14 @@ export default function NewsForm({
               />
               <Button
                 variant="outline"
+                onClick={() => setShowMobilePreview(true)}
+                className="hidden sm:flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+              >
+                <Smartphone className="w-4 h-4" />
+                Xem trước
+              </Button>
+              <Button
+                variant="outline"
                 onClick={onCancel}
                 disabled={saving}
               >
@@ -331,12 +247,13 @@ export default function NewsForm({
         </div>
       </div>
 
+
       {/* Form Content */}
       <div className="max-w-7xl mx-auto px-4 py-4">
         <form onSubmit={handleSubmit}>
           <Tabs
             value={activeTab}
-            onValueChange={(value) => setActiveTab(value as "content" | "basic" | "seo")}
+            onValueChange={(value) => setActiveTab(value as any)}
             className="w-full space-y-6"
           >
             {/* Horizontal tabs navigation */}
@@ -346,30 +263,31 @@ export default function NewsForm({
                   {[
                     {
                       value: "content",
-                      label: "Nội dung bài viết",
+                      label: "Nội dung",
                       description: "Tiêu đề, tóm tắt, nội dung",
                       icon: Info,
                     },
                     {
-                      value: "basic",
-                      label: "Thông tin cơ bản",
-                      description: "Danh mục, trạng thái, ảnh bìa, cài đặt",
+                      value: "settings",
+                      label: "Cấu hình",
+                      description: "Trạng thái, Tác giả, Ảnh bìa",
                       icon: Settings,
                     },
-                    {
-                      value: "seo",
-                      label: "SEO & hiển thị nâng cao",
-                      description: "Tối ưu SEO",
-                      icon: SearchIcon,
-                    },
+                    ...(isEditing && initialData?.id ? [{
+                      value: "comments",
+                      label: "Bình luận",
+                      description: "Quản lý phản hồi",
+                      icon: MessageCircle,
+                    }] : []),
                   ].map((tab, index) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.value;
+                    const isLast = (isEditing && initialData?.id) ? index === 2 : index === 1;
                     return (
                       <div key={tab.value} className="flex items-center flex-1">
                         <button
                           type="button"
-                          onClick={() => setActiveTab(tab.value as "content" | "basic" | "seo")}
+                          onClick={() => setActiveTab(tab.value as any)}
                           className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive
                             ? "bg-blue-50 text-blue-700 border-2 border-blue-500"
                             : "bg-gray-50 text-gray-600 border-2 border-gray-200 hover:bg-gray-100"
@@ -386,7 +304,7 @@ export default function NewsForm({
                             <div className="text-xs opacity-75">{tab.description}</div>
                           </div>
                         </button>
-                        {index < 2 && (
+                        {!isLast && (
                           <div className="flex-1 h-0.5 mx-2 bg-gray-300" />
                         )}
                       </div>
@@ -433,6 +351,7 @@ export default function NewsForm({
                           />
                         </div>
 
+{/* 
                         <div className="space-y-2">
                           <Label htmlFor="link" className="text-sm font-semibold">
                             <LinkIcon className="w-3 h-3 inline mr-1" />
@@ -440,10 +359,10 @@ export default function NewsForm({
                           </Label>
                           <Input
                             id="link"
-                            value={formData.link}
+                            value={formData.slug}
                             onChange={(e) => {
                               setSlugManuallyEdited(true);
-                              setFormData({ ...formData, link: e.target.value });
+                              setFormData({ ...formData, slug: e.target.value });
                             }}
                             placeholder="tin-tuc-slug"
                           />
@@ -451,6 +370,7 @@ export default function NewsForm({
                             Dùng tiếng Việt không dấu, cách nhau bằng dấu gạch ngang.
                           </p>
                         </div>
+*/}
                       </div>
 
                       <LocaleInput
@@ -462,23 +382,7 @@ export default function NewsForm({
                         defaultLocale={globalLocale}
                         aiProvider={aiProvider}
                       />
-                      <div className="flex items-center justify-between -mt-2">
-                        <p className="text-xs text-gray-500">
-                          Tóm tắt sẽ hiển thị trong danh sách tin tức và hỗ trợ SEO.
-                        </p>
-                        <span
-                          className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                            (typeof formData.excerpt === 'string' ? formData.excerpt : formData.excerpt?.vi || '').length > 200
-                              ? "text-red-600 bg-red-50"
-                              : (typeof formData.excerpt === 'string' ? formData.excerpt : formData.excerpt?.vi || '').length > 150
-                                ? "text-yellow-600 bg-yellow-50"
-                                : "text-gray-400 bg-gray-50"
-                          }`}
-                        >
-                          {(typeof formData.excerpt === 'string' ? formData.excerpt : formData.excerpt?.vi || '').length}/200
-                        </span>
-                      </div>
-
+                      
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <Label className="text-sm font-semibold">
@@ -503,7 +407,7 @@ export default function NewsForm({
                         </div>
                         <div className="border rounded-lg min-h-[360px]">
                           <RichTextEditor
-                            key={`content-${contentLocale}-${contentEditorKey}`}
+                            key={`content-${contentLocale}`}
                             value={typeof formData.content === 'string' 
                               ? formData.content 
                               : getLocalizedText(formData.content || { vi: "", en: "", ja: "" }, contentLocale) || ""}
@@ -521,42 +425,16 @@ export default function NewsForm({
                             setTranslateSourceLang={setTranslateSourceLang}
                           />
                         </div>
-                        <p className="text-xs text-gray-500">
-                          Sử dụng trình soạn thảo để tạo nội dung bài viết với định dạng phong
-                          phú. Nội dung sẽ được lưu riêng cho từng ngôn ngữ.
-                        </p>
                       </div>
 
-                      {/* Gallery ảnh và cấu hình vị trí hiển thị */}
+                      {/* Gallery ảnh */}
                       <div className="space-y-4 pt-4 border-t">
                         <Label className="text-sm font-semibold flex items-center gap-2">
                           <ImageIcon className="w-4 h-4 text-blue-600" />
                           Thư viện ảnh (Gallery)
                         </Label>
-                        <div className="space-y-2">
-                          <LocaleInput
-                            value={normalizeLocaleValue((formData as any).galleryTitle as any)}
-                            onChange={(value) =>
-                              setFormData((prev: any) => ({
-                                ...prev,
-                                galleryTitle: value,
-                              }))
-                            }
-                            label="Tiêu đề bộ sưu tập (tuỳ chọn)"
-                            placeholder="Nhập tiêu đề cho gallery (nếu cần)"
-                            defaultLocale={globalLocale}
-                            aiProvider={aiProvider}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          Chọn nhiều ảnh để hiển thị dạng gallery trong bài viết. Ảnh sẽ
-                          được render ở vị trí bạn chọn bên dưới (trên/giữa/dưới nội dung).
-                        </p>
 
                         <div className="border rounded-lg p-3 bg-gray-50 space-y-3">
-                          <div className="text-xs font-medium text-gray-600">
-                            Thêm ảnh vào gallery
-                          </div>
                           <ImageUpload
                             key={galleryUploadKey}
                             multiple
@@ -570,16 +448,11 @@ export default function NewsForm({
                                   ...urls,
                                 ],
                               }));
-                              // Reset lại component upload để người dùng chọn ảnh tiếp theo nhanh
                               setGalleryUploadKey((prev) => prev + 1);
                             }}
                           />
-                          <p className="text-[11px] text-gray-500">
-                            Sau khi chọn, ảnh sẽ được thêm vào danh sách bên dưới. Bạn có
-                            thể xoá từng ảnh nếu không cần.
-                          </p>
 
-                          {formData.galleryImages.length > 0 ? (
+                          {formData.galleryImages.length > 0 && (
                             <div className="flex flex-wrap gap-3 mt-2">
                               {formData.galleryImages.map((img, idx) => (
                                 <div
@@ -587,11 +460,7 @@ export default function NewsForm({
                                   className="relative w-28 h-20 rounded-md overflow-hidden bg-white border border-gray-200 shadow-sm"
                                 >
                                   <img
-                                    src={
-                                      img.startsWith("/")
-                                        ? buildUrl(img)
-                                        : img
-                                    }
+                                    src={img.startsWith("/") ? buildUrl(img) : img}
                                     alt={`Gallery ${idx + 1}`}
                                     className="w-full h-full object-cover"
                                   />
@@ -606,779 +475,201 @@ export default function NewsForm({
                                       }))
                                     }
                                     className="absolute top-1 right-1 px-1.5 py-0.5 text-[10px] bg-red-600 text-white rounded opacity-0 hover:opacity-100 transition"
-                                    title="Xoá ảnh"
                                   >
                                     Xoá
                                   </button>
                                 </div>
                               ))}
                             </div>
-                          ) : (
-                            <p className="text-xs text-gray-400 mt-1">
-                              Chưa có ảnh nào trong gallery. Chọn ảnh để thêm.
-                            </p>
                           )}
                         </div>
 
                         <div className="mt-3 space-y-2">
                           <Label className="text-sm font-semibold">
-                            Vị trí hiển thị gallery trong bài viết
+                            Vị trí hiển thị gallery
                           </Label>
-                          <div className="flex flex-wrap gap-3 text-sm text-gray-700">
-                            <label className="inline-flex items-center gap-2 cursor-pointer">
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
                               <input
                                 type="radio"
-                                name="gallery-position"
-                                value="top"
                                 checked={formData.galleryPosition === "top"}
-                                onChange={() =>
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    galleryPosition: "top",
-                                  }))
-                                }
-                                className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                onChange={() => setFormData({ ...formData, galleryPosition: "top" })}
                               />
-                              <span>Trên cùng bài viết</span>
+                              <span className="text-sm">Trên cùng</span>
                             </label>
-                            <label className="inline-flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-center gap-2 cursor-pointer">
                               <input
                                 type="radio"
-                                name="gallery-position"
-                                value="bottom"
                                 checked={formData.galleryPosition === "bottom"}
-                                onChange={() =>
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    galleryPosition: "bottom",
-                                  }))
-                                }
-                                className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                onChange={() => setFormData({ ...formData, galleryPosition: "bottom" })}
                               />
-                              <span>Cuối bài viết</span>
+                              <span className="text-sm">Dưới cùng</span>
                             </label>
                           </div>
-                          <p className="text-[11px] text-gray-500">
-                            Phần hiển thị thực tế bạn xử lý ở component trang public
-                            (chèn gallery tương ứng với vị trí đã chọn).
-                          </p>
                         </div>
                       </div>
                     </div>
                   </Card>
-                  {/* Cấu hình hiển thị chi tiết bài viết */}
-                  <Card className="border border-gray-100 shadow-sm">
-                    <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                      <h3 className="text-sm font-semibold text-gray-900">
-                        Cấu hình hiển thị chi tiết bài viết
-                      </h3>
-                      <p className="text-[11px] text-gray-500 mt-0.5">
-                        Các tuỳ chọn này chỉ ảnh hưởng tới cách hiển thị bài viết trên
-                        trang public (không ảnh hưởng dữ liệu SEO).
-                      </p>
-                    </div>
-                    <div className="p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">
-                            Hiển thị mục lục (Table of Contents)
-                          </p>
-                          <p className="text-[11px] text-gray-500">
-                            Tự động tạo mục lục từ các heading (H2, H3) trong bài viết.
-                          </p>
-                        </div>
-                        <Switch
-                          checked={formData.showTableOfContents}
-                          onCheckedChange={(checked) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              showTableOfContents: checked,
-                            }))
-                          }
-                        />
-                      </div>
 
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">
-                            Nút chia sẻ mạng xã hội
-                          </p>
-                          <p className="text-[11px] text-gray-500">
-                            Hiển thị nút chia sẻ Facebook, LinkedIn… ở đầu/cuối bài viết.
-                          </p>
-                        </div>
-                        <Switch
-                          checked={formData.enableShareButtons}
-                          onCheckedChange={(checked) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              enableShareButtons: checked,
-                            }))
-                          }
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">
-                            Hiển thị box tác giả
-                          </p>
-                          <p className="text-[11px] text-gray-500">
-                            Hiển thị thông tin tác giả, avatar tại cuối bài viết.
-                          </p>
-                        </div>
-                        <Switch
-                          checked={formData.showAuthorBox}
-                          onCheckedChange={(checked) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              showAuthorBox: checked,
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-                  </Card>
                 </section>
               </TabsContent>
 
-              <TabsContent value="basic" className="space-y-6">
-                {/* Thông tin cơ bản & Ảnh bìa */}
-                <section className="grid grid-cols-1 md:grid-cols-12 gap-5 lg:gap-6 items-start">
-                  <div className="md:col-span-6 lg:col-span-5 space-y-4 lg:space-y-5">
-                    <Card className="border border-gray-100 shadow-sm">
-                      <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                        <div className="flex flex-col gap-1">
-                          <h2 className="text-lg font-semibold text-gray-900">
-                            Thông tin cơ bản
-                          </h2>
-                          <p className="text-xs text-gray-500">
-                            Nhập thông tin cơ bản cho bài viết tin tức.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="p-4 space-y-5">
-                        {/* Nhóm phân loại */}
+              <TabsContent value="settings" className="space-y-6">
+                <section className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  <div className="md:col-span-6 space-y-6">
+                    <Card className="p-4 space-y-5">
+                      <h2 className="text-lg font-semibold">Cài đặt chung</h2>
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="categoryId" className="text-sm font-semibold">
-                            Danh mục <span className="text-red-500">*</span>
-                          </Label>
+                          <Label>Trạng thái</Label>
                           <Select
-                            value={formData.categoryId}
-                            onValueChange={(value: CategoryId) => {
-                              const selectedCategory = categories.find(
-                                (c) => c.id === value && c.isActive !== false,
-                              );
-                              const categoryName = selectedCategory?.name 
-                                ? (typeof selectedCategory.name === 'string' 
-                                    ? selectedCategory.name 
-                                    : getLocalizedText(selectedCategory.name, globalLocale))
-                                : "";
-                              setFormData({
-                                ...formData,
-                                categoryId: value,
-                                category: categoryName,
-                              });
-                            }}
-                            disabled={loadingCategories}
+                            value={formData.status}
+                            onValueChange={(val: NewsStatus) => setFormData({ ...formData, status: val })}
                           >
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={
-                                  loadingCategories ? "Đang tải..." : "Chọn danh mục"
-                                }
-                              />
-                            </SelectTrigger>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              {categories
-                                .filter((cat) => cat.isActive !== false)
-                                .map((cat) => (
-                                  <SelectItem key={cat.id} value={cat.id}>
-                                    {typeof cat.name === 'string' 
-                                      ? cat.name 
-                                      : getLocalizedText(cat.name, globalLocale)}
-                                  </SelectItem>
-                                ))}
+                              <SelectItem value="draft">Bản nháp</SelectItem>
+                              <SelectItem value="published">Xuất bản</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-
-                        {/* Nhóm trạng thái xuất bản */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-sm font-semibold">Trạng thái</Label>
-                            <Select
-                              value={formData.status}
-                              onValueChange={(value: NewsStatus) =>
-                                setFormData({ ...formData, status: value })
-                              }
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="draft">Bản nháp</SelectItem>
-                                <SelectItem value="pending">Chờ duyệt</SelectItem>
-                                <SelectItem value="approved">Đã duyệt</SelectItem>
-                                <SelectItem value="rejected">Từ chối</SelectItem>
-                                <SelectItem value="published">Xuất bản</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="publishedDate" className="text-sm font-semibold">
-                              <Calendar className="w-3 h-3 inline mr-1" />
-                              Ngày xuất bản
-                            </Label>
-                            <Input
-                              id="publishedDate"
-                              type="date"
-                              value={formatDateForInput(formData.publishedDate)}
-                              onChange={(e) =>
-                                setFormData({ ...formData, publishedDate: e.target.value })
-                              }
-                              className="w-full"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 pt-1">
-                          <Switch
-                            id="isFeatured"
-                            checked={formData.isFeatured}
-                            onCheckedChange={(checked: boolean) =>
-                              setFormData({ ...formData, isFeatured: checked })
-                            }
+                        <div className="space-y-2">
+                          <Label>Ngày xuất bản</Label>
+                          <Input
+                            type="date"
+                            value={formData.publishedDate}
+                            onChange={(e) => setFormData({ ...formData, publishedDate: e.target.value })}
                           />
-                          <Label htmlFor="isFeatured" className="text-sm font-semibold">
-                            Bài viết nổi bật
-                          </Label>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="featured"
+                          checked={formData.isFeatured}
+                          onCheckedChange={(val) => setFormData({ ...formData, isFeatured: val })}
+                        />
+                        <Label htmlFor="featured">Bài viết nổi bật</Label>
+                      </div>
+{/* 
+                      <div className="space-y-2">
+                        <Label>Đường dẫn tĩnh (Slug)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={formData.slug}
+                            onChange={(e) => {
+                              setFormData({ ...formData, slug: e.target.value });
+                              setSlugManuallyEdited(true);
+                            }}
+                            placeholder="url-bai-viet"
+                          />
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              const titleText = typeof formData.title === 'string' ? formData.title : (formData.title as any)?.vi || '';
+                              setFormData({ ...formData, slug: generateSlug(titleText) });
+                              setSlugManuallyEdited(false);
+                            }}
+                          >
+                            Tự động
+                          </Button>
+                        </div>
+                      </div>
+*/}
+                    </Card>
+
+                    <Card className="p-4 space-y-4">
+                      <h2 className="text-lg font-semibold">Thông tin hiển thị</h2>
+                      <div className="space-y-4">
+                        <LocaleInput
+                          value={normalizeLocaleValue(formData.author as any)}
+                          onChange={(val) => setFormData({ ...formData, author: val as any })}
+                          label="Tác giả"
+                          defaultLocale={globalLocale}
+                          aiProvider={aiProvider}
+                        />
+                        <LocaleInput
+                          value={normalizeLocaleValue(formData.readTime as any)}
+                          onChange={(val) => setFormData({ ...formData, readTime: val as any })}
+                          label="Thời gian đọc"
+                          defaultLocale={globalLocale}
+                          aiProvider={aiProvider}
+                        />
+                        <div className="flex items-center justify-between pt-2">
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">Hiển thị Box tác giả</p>
+                            <p className="text-[11px] text-gray-500">Hiển thị thông tin tác giả ở cuối bài.</p>
+                          </div>
+                          <Switch
+                            checked={formData.showAuthorBox}
+                            onCheckedChange={(checked) => setFormData({ ...formData, showAuthorBox: checked })}
+                          />
                         </div>
                       </div>
                     </Card>
                   </div>
 
-                  <div className="md:col-span-6 lg:col-span-7 space-y-4 lg:space-y-5">
-                    {/* Ảnh bìa */}
-                    <Card className="border border-gray-100 shadow-sm">
-                      <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                        <div className="flex items-center gap-2">
-                          <ImageIcon className="w-5 h-5 text-blue-600" />
-                          <h2 className="text-lg font-semibold text-gray-900">Ảnh bìa</h2>
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        <div className="space-y-3">
-                          <div
-                            className="w-full border-2 border-dashed border-gray-300 rounded-lg h-40 flex items-center justify-center bg-gray-50 cursor-pointer hover:border-blue-500 transition-colors"
-                            onClick={() => setShowImageDialog(true)}
-                          >
-                            {formData.imageUrl ? (
-                              <img
-                                src={
-                                  formData.imageUrl.startsWith("/")
-                                    ? buildUrl(formData.imageUrl)
-                                    : formData.imageUrl
-                                }
-                                alt="Ảnh đại diện"
-                                className="w-full h-full object-cover rounded-lg"
-                              />
-                            ) : (
-                              <div className="flex flex-col items-center gap-1 text-gray-500">
-                                <ImageIcon className="w-8 h-8 text-gray-400" />
-                                <span className="text-sm font-medium">Chọn ảnh bìa</span>
-                                <span className="text-xs text-gray-400">
-                                  Click để mở thư viện media
-                                </span>
-                              </div>
-                            )}
+                  <div className="md:col-span-6">
+                    <Card className="p-4 space-y-4">
+                      <h2 className="text-lg font-semibold">Ảnh bìa bài viết</h2>
+                      <div 
+                        className="w-full h-64 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 overflow-hidden"
+                        onClick={() => setShowImageDialog(true)}
+                      >
+                        {formData.imageUrl ? (
+                          <img src={formData.imageUrl.startsWith("/") ? buildUrl(formData.imageUrl) : formData.imageUrl} className="w-full h-full object-cover" alt="Cover" />
+                        ) : (
+                          <div className="text-center text-gray-500">
+                            <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                            <p>Nhấn để chọn ảnh bìa</p>
                           </div>
-                          {formData.imageUrl && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => setShowImageDialog(true)}
-                            >
-                              Thay đổi ảnh
-                            </Button>
-                          )}
-                          {!formData.imageUrl && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => setShowImageDialog(true)}
-                            >
-                              Chọn ảnh
-                            </Button>
-                          )}
-                          <p className="text-xs text-gray-500">
-                            Khuyến nghị: 1200x600px. Dùng ảnh rõ nét, tối ưu dung lượng (&lt; 10MB).
-                          </p>
-                        </div>
+                        )}
                       </div>
-                    </Card>
-                  </div>
-
-                  {/* Cài đặt hiển thị */}
-                  <div className="md:col-span-12 space-y-4 lg:space-y-5">
-                    <Card className="border border-gray-100 shadow-sm">
-                      <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                        <div className="flex items-center gap-2">
-                          <Settings className="w-5 h-5 text-blue-600" />
-                          <h2 className="text-lg font-semibold text-gray-900">
-                            Cài đặt hiển thị
-                          </h2>
-                        </div>
-                      </div>
-                      <div className="p-4 space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="author" className="text-sm font-semibold">
-                              <User className="w-3 h-3 inline mr-1" />
-                              Tác giả
-                            </Label>
-                            <LocaleInput
-                              value={normalizeLocaleValue(formData.author as any)}
-                              onChange={(value) =>
-                                setFormData({ ...formData, author: value as any })
-                              }
-                              label=""
-                              placeholder="Thư viện TN"
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="readTime" className="text-sm font-semibold">
-                              <Clock className="w-3 h-3 inline mr-1" />
-                              Thời gian đọc
-                            </Label>
-                            <LocaleInput
-                              value={normalizeLocaleValue(formData.readTime as any)}
-                              onChange={(value) =>
-                                setFormData({ ...formData, readTime: value as any })
-                              }
-                              label=""
-                              placeholder="5 phút đọc"
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="gradient" className="text-sm font-semibold">
-                            Màu gradient
-                          </Label>
-                          <Select
-                            value={formData.gradient}
-                            onValueChange={(value) =>
-                              setFormData({ ...formData, gradient: value })
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {GRADIENT_OPTIONS.map((grad) => (
-                                <SelectItem key={grad.value} value={grad.value}>
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className={`w-4 h-4 rounded ${grad.preview}`}
-                                    />
-                                    <span>{grad.label}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="flex-1" onClick={() => setShowImageDialog(true)}>
+                          {formData.imageUrl ? "Thay đổi ảnh" : "Chọn ảnh"}
+                        </Button>
+                        {formData.imageUrl && (
+                          <Button variant="ghost" size="icon" className="text-red-500" onClick={() => setFormData({ ...formData, imageUrl: "" })}>
+                            <Trash className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </Card>
                   </div>
                 </section>
               </TabsContent>
 
-              <TabsContent value="seo" className="space-y-6">
-                {/* Khu vực SEO & Cài đặt nâng cao */}
-                <section className="grid grid-cols-1 md:grid-cols-12 gap-5 lg:gap-6 items-start">
-                  <div className="md:col-span-7 lg:col-span-8 space-y-4 lg:space-y-5">
-                    <Card className="border border-gray-100 shadow-sm">
-                      <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
-                        <div className="flex items-center gap-2">
-                          <SearchIcon className="w-5 h-5 text-blue-600" />
-                          <h2 className="text-lg font-semibold text-gray-900">
-                            Tối ưu hóa SEO
-                          </h2>
-                        </div>
-                      </div>
-                      <div className="p-4 space-y-4">
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg p-3 shadow-sm">
-                          <div className="flex items-start gap-2">
-                            <div className="bg-blue-100 rounded-full p-1.5">
-                              <Sparkles className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs font-semibold text-blue-900 mb-1">
-                                Tối ưu hóa SEO
-                              </p>
-                              <p className="text-xs text-blue-700 leading-relaxed">
-                                Điền đầy đủ thông tin SEO để bài viết dễ dàng được tìm thấy trên
-                                Google. Nhấn "Tự động" để sử dụng tiêu đề và mô tả hiện có.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
 
-                        <div className="space-y-3">
-                          {/* Tiêu đề SEO đa ngôn ngữ */}
-                          <div className="space-y-2">
-                            <div className="flex items-center justify giữa">
-                              <Label htmlFor="seoTitle" className="text-sm font-semibold">
-                                Tiêu đề SEO
-                              </Label>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 text-xs px-2"
-                                onClick={() => {
-                                  if (formData.title) {
-                                    const titleText = typeof formData.title === 'string'
-                                      ? formData.title
-                                      : formData.title?.vi || '';
-                                    const autoTitle =
-                                      titleText.length > 60
-                                        ? titleText.substring(0, 57) + "..."
-                                        : titleText;
-                                    const currentSeo =
-                                      !formData.seoTitle || typeof formData.seoTitle === 'string'
-                                        ? { vi: "", en: "", ja: "" }
-                                        : (formData.seoTitle as any);
-                                    setFormData({
-                                      ...formData,
-                                      seoTitle: { ...currentSeo, [globalLocale]: autoTitle },
-                                    });
-                                  }
-                                }}
-                                disabled={!formData.title}
-                              >
-                                <Sparkles className="w-3 h-3 mr-1" />
-                                Tự động
-                              </Button>
-                            </div>
-                            <LocaleInput
-                              value={getLocaleValue(formData, "seoTitle")}
-                              onChange={(value) => {
-                                const updated = setLocaleValue(formData, "seoTitle", value);
-                                setFormData(updated);
-                              }}
-                              label=""
-                              placeholder={
-                                (() => {
-                                  const titleText =
-                                    typeof formData.title === "string"
-                                      ? formData.title
-                                      : formData.title?.vi || "";
-                                  return titleText
-                                    ? `Tự động: ${titleText.substring(0, 40)}...`
-                                    : "Nhập tiêu đề SEO...";
-                                })()
-                              }
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                              className="text-sm"
-                            />
-                            {(() => {
-                              const seoTitleText =
-                                typeof formData.seoTitle === "string"
-                                  ? formData.seoTitle
-                                  : getLocalizedText(
-                                      formData.seoTitle as any,
-                                      globalLocale
-                                    );
-                              return (
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs text-gray-500">
-                                    Khuyến nghị: 50-60 ký tự
-                                  </p>
-                                  <span
-                                    className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                                      seoTitleText.length > 60
-                                        ? "text-red-600 bg-red-50"
-                                        : seoTitleText.length >= 50 &&
-                                          seoTitleText.length <= 60
-                                        ? "text-green-600 bg-green-50"
-                                        : seoTitleText.length > 0
-                                        ? "text-yellow-600 bg-yellow-50"
-                                        : "text-gray-400 bg-gray-50"
-                                    }`}
-                                  >
-                                    {seoTitleText.length}/60
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                          </div>
-
-                          {/* Mô tả SEO đa ngôn ngữ */}
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label
-                                htmlFor="seoDescription"
-                                className="text-sm font-semibold"
-                              >
-                                Mô tả SEO
-                              </Label>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 text-xs px-2"
-                                onClick={() => {
-                                  if (formData.excerpt) {
-                                    const excerptText =
-                                      typeof formData.excerpt === "string"
-                                        ? formData.excerpt
-                                        : formData.excerpt?.vi || "";
-                                    const autoDesc =
-                                      excerptText.length > 160
-                                        ? excerptText.substring(0, 157) + "..."
-                                        : excerptText;
-                                    const currentSeoDesc =
-                                      !formData.seoDescription ||
-                                      typeof formData.seoDescription === "string"
-                                        ? { vi: "", en: "", ja: "" }
-                                        : (formData.seoDescription as any);
-                                    setFormData({
-                                      ...formData,
-                                      seoDescription: {
-                                        ...currentSeoDesc,
-                                        [globalLocale]: autoDesc,
-                                      },
-                                    });
-                                  }
-                                }}
-                                disabled={!formData.excerpt}
-                              >
-                                <Sparkles className="w-3 h-3 mr-1" />
-                                Tự động
-                              </Button>
-                            </div>
-                            <LocaleInput
-                              value={getLocaleValue(formData, "seoDescription")}
-                              onChange={(value) => {
-                                const updated = setLocaleValue(
-                                  formData,
-                                  "seoDescription",
-                                  value
-                                );
-                                setFormData(updated);
-                              }}
-                              label=""
-                              placeholder={
-                                (() => {
-                                  const excerptText =
-                                    typeof formData.excerpt === "string"
-                                      ? formData.excerpt
-                                      : formData.excerpt?.vi || "";
-                                  return excerptText
-                                    ? `Tự động: ${excerptText.substring(0, 60)}...`
-                                    : "Nhập mô tả SEO...";
-                                })()
-                              }
-                              multiline={true}
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                              className="text-sm"
-                            />
-                            {(() => {
-                              const seoDescText =
-                                typeof formData.seoDescription === "string"
-                                  ? formData.seoDescription
-                                  : getLocalizedText(
-                                      formData.seoDescription as any,
-                                      globalLocale
-                                    );
-                              return (
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs text-gray-500">
-                                    Khuyến nghị: 150-160 ký tự
-                                  </p>
-                                  <span
-                                    className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                                      seoDescText.length > 160
-                                        ? "text-red-600 bg-red-50"
-                                        : seoDescText.length >= 150 &&
-                                          seoDescText.length <= 160
-                                        ? "text-green-600 bg-green-50"
-                                        : seoDescText.length > 0
-                                        ? "text-yellow-600 bg-yellow-50"
-                                        : "text-gray-400 bg-gray-50"
-                                    }`}
-                                  >
-                                    {seoDescText.length}/160
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                          </div>
-
-                          {/* Từ khóa SEO đa ngôn ngữ */}
-                          <div className="space-y-2">
-                            <Label htmlFor="seoKeywords" className="text-sm font-semibold">
-                              Từ khóa SEO
-                            </Label>
-                            <LocaleInput
-                              value={getLocaleValue(formData, "seoKeywords")}
-                              onChange={(value) => {
-                                const updated = setLocaleValue(
-                                  formData,
-                                  "seoKeywords",
-                                  value
-                                );
-                                setFormData(updated);
-                              }}
-                              label=""
-                              placeholder="từ khóa 1, từ khóa 2..."
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                              className="text-sm"
-                            />
-                            <p className="text-xs text-gray-500">
-                              Phân cách bằng dấu phẩy
-                            </p>
-                          </div>
-
-                          {(formData.seoTitle || formData.seoDescription) && (
-                            <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                              <p className="text-xs font-semibold text-gray-700 mb-2">
-                                Xem trước:
-                              </p>
-                              <div className="space-y-1">
-                                <div className="text-xs text-blue-600 font-medium line-clamp-1">
-                                  {(
-                                    typeof formData.seoTitle === "string"
-                                      ? formData.seoTitle
-                                      : getLocalizedText(
-                                          formData.seoTitle as any,
-                                          globalLocale
-                                        )
-                                  ) ||
-                                    (typeof formData.title === "string"
-                                      ? formData.title
-                                      : formData.title?.vi || "") ||
-                                    "Tiêu đề bài viết"}
-                                </div>
-                                <div className="text-xs text-green-700">
-                                  {formData.link || "/news/..."}
-                                </div>
-                                <div className="text-xs text-gray-600 line-clamp-2">
-                                  {(
-                                    typeof formData.seoDescription === "string"
-                                      ? formData.seoDescription
-                                      : getLocalizedText(
-                                          formData.seoDescription as any,
-                                          globalLocale
-                                        )
-                                  ) ||
-                                    (typeof formData.excerpt === "string"
-                                      ? formData.excerpt
-                                      : formData.excerpt?.vi || "") ||
-                                    "Mô tả bài viết..."}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  </div>
-                </section>
-              </TabsContent>
+              {isEditing && formData.id && (
+                <TabsContent value="comments">
+                  <Card className="p-6">
+                    <NewsCommentsManager newsId={formData.id} />
+                  </Card>
+                </TabsContent>
+              )}
             </div>
           </Tabs>
         </form>
       </div>
 
-      {/* Image picker dialog */}
       <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
-        <DialogContent
-          className="w-full h-[80vh] flex flex-col"
-          style={{ maxWidth: "72rem" }}
-        >
+        <DialogContent className="max-w-6xl h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Chọn ảnh bìa cho bài viết</DialogTitle>
-            <DialogDescription>
-              Bạn có thể chọn ảnh từ thư viện Media hoặc tải ảnh mới từ máy tính.
-            </DialogDescription>
+            <DialogTitle>Thư viện Media</DialogTitle>
           </DialogHeader>
-
-          <div className="flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-3">
-              <div className="inline-flex rounded-xl border bg-gray-100 p-1 gap-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={imageTab === "library" ? "default" : "ghost"}
-                  className="px-4"
-                  onClick={() => setImageTab("library")}
-                >
-                  Thư viện file
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={imageTab === "upload" ? "default" : "ghost"}
-                  className="px-4"
-                  onClick={() => setImageTab("upload")}
-                >
-                  Upload từ máy
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex-1 flex flex-col mt-0 overflow-y-auto">
-              {imageTab === "library" ? (
-                <MediaLibraryPicker
-                  onSelectImage={(url) => {
-                    setFormData({
-                      ...formData,
-                      imageUrl: url,
-                    });
-                    setShowImageDialog(false);
-                  }}
-                />
-              ) : (
-                <div className="w-full">
-                  <ImageUpload
-                    currentImage={formData.imageUrl}
-                    onImageSelect={(url) => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        imageUrl: url,
-                      }));
-                      // Không đóng popup để người dùng xem thông tin ảnh
-                    }}
-                  />
-                </div>
-              )}
-            </div>
+          <div className="flex gap-2 mb-4 bg-gray-100 p-1 rounded-lg w-fit">
+            <Button size="sm" variant={imageTab === "library" ? "default" : "ghost"} onClick={() => setImageTab("library")}>Thư viện</Button>
+            <Button size="sm" variant={imageTab === "upload" ? "default" : "ghost"} onClick={() => setImageTab("upload")}>Tải lên</Button>
           </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowImageDialog(false)}
-            >
-              Đóng
-            </Button>
-          </DialogFooter>
+          <div className="flex-1 overflow-y-auto">
+            {imageTab === "library" ? (
+              <MediaLibraryPicker onSelectImage={(url) => { setFormData({ ...formData, imageUrl: url }); setShowImageDialog(false); }} />
+            ) : (
+              <ImageUpload currentImage={formData.imageUrl} onImageSelect={(url) => { setFormData({ ...formData, imageUrl: url }); }} />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

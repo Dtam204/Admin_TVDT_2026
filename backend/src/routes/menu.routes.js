@@ -15,7 +15,7 @@ const menuController = require('../controllers/menu.controller');
  * /api/admin/menus:
  *   get:
  *     summary: Lấy danh sách menu
- *     tags: [Menus]
+ *     tags: [Admin Menus]
  */
 router.get('/', menuController.getMenus);
 
@@ -24,7 +24,7 @@ router.get('/', menuController.getMenus);
  * /api/admin/menus/{id}:
  *   get:
  *     summary: Lấy chi tiết menu
- *     tags: [Menus]
+ *     tags: [Admin Menus]
  */
 router.get('/:id', menuController.getMenuById);
 
@@ -33,7 +33,7 @@ router.get('/:id', menuController.getMenuById);
  * /api/admin/menus:
  *   post:
  *     summary: Tạo menu mới
- *     tags: [Menus]
+ *     tags: [Admin Menus]
  */
 router.post('/', menuController.createMenu);
 
@@ -42,7 +42,7 @@ router.post('/', menuController.createMenu);
  * /api/admin/menus/{id}:
  *   put:
  *     summary: Cập nhật menu
- *     tags: [Menus]
+ *     tags: [Admin Menus]
  */
 router.put('/:id', menuController.updateMenu);
 
@@ -51,7 +51,7 @@ router.put('/:id', menuController.updateMenu);
  * /api/admin/menus/{id}:
  *   delete:
  *     summary: Xóa menu
- *     tags: [Menus]
+ *     tags: [Admin Menus]
  */
 router.delete('/:id', menuController.deleteMenu);
 

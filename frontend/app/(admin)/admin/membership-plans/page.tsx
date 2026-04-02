@@ -66,10 +66,10 @@ export default function MembershipPlansPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Package className="w-8 h-8" />
-            Quản lý Gói thành viên
+            Quản lý Hạng thẻ Bạn Đọc
           </h1>
           <p className="text-muted-foreground mt-1">
-            Quản lý toàn bộ gói thành viên
+            Thiết lập các cấp độ thẻ, quyền hạn truy cập (Basic, Premium, VIP) cho Bạn đọc
           </p>
         </div>
         <Link href="/admin/membership-plans/new">
@@ -111,7 +111,8 @@ export default function MembershipPlansPage() {
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
-              <TableHead>Gói thành viên</TableHead>
+              <TableHead>Tên Hạng Thẻ</TableHead>
+              <TableHead>Phân cấp (Tier)</TableHead>
               <TableHead className="text-center">Trạng thái</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
@@ -154,6 +155,11 @@ export default function MembershipPlansPage() {
                   <TableRow key={item.id}>
                     <TableCell className="font-mono text-sm">#{item.id}</TableCell>
                     <TableCell className="font-medium">{displayName}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="uppercase font-mono">
+                        {item.tier_code || 'basic'}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-center">{getStatusBadge(item.status)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">

@@ -39,12 +39,33 @@ export const AdminEndpoints = {
   news: {
     list: "/api/admin/news",
     detail: (id: number) => `/api/admin/news/${id}`,
+    create: "/api/admin/news",
+    update: (id: number) => `/api/admin/news/${id}`,
+    status: (id: number) => `/api/admin/news/${id}/status`,
+    featured: (id: number) => `/api/admin/news/${id}/featured`,
+    delete: (id: number) => `/api/admin/news/${id}`,
+  },
+  
+  // Comments
+  comments: {
+    admin: {
+      list: "/api/admin/comments",
+      status: (id: number) => `/api/admin/comments/${id}/status`,
+      reports: "/api/admin/comments/reports",
+    },
+    public: {
+      list: (objectType: string, objectId: number) => `/api/public/comments/${objectType}/${objectId}`,
+      create: "/api/public/comments",
+      update: (id: number) => `/api/public/comments/${id}`,
+      delete: (id: number) => `/api/public/comments/${id}`,
+      report: (id: number) => `/api/public/comments/${id}/report`,
+    }
   },
   
   // Categories
   categories: {
-    list: "/api/admin/categories",
-    detail: (code: string) => `/api/admin/categories/${code}`,
+    list: "/api/admin/news-categories",
+    detail: (code: string) => `/api/admin/news-categories/${code}`,
   },
   
   // Upload

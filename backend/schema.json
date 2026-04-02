@@ -1,0 +1,98 @@
+{
+  "payments": [
+    {
+      "column_name": "id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "transaction_id",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "member_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "type",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "related_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "amount",
+      "data_type": "numeric"
+    },
+    {
+      "column_name": "currency",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "payment_method",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "status",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "payment_gateway",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "gateway_response",
+      "data_type": "jsonb"
+    },
+    {
+      "column_name": "notes",
+      "data_type": "text"
+    },
+    {
+      "column_name": "paid_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone"
+    }
+  ],
+  "member_transactions": [
+    {
+      "column_name": "id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "member_id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "amount",
+      "data_type": "numeric"
+    },
+    {
+      "column_name": "transaction_type",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "description",
+      "data_type": "text"
+    },
+    {
+      "column_name": "status",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "processed_by",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    }
+  ]
+}

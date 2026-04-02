@@ -15,7 +15,7 @@ const router = express.Router();
  * /api/admin/instructors:
  *   get:
  *     tags:
- *       - Instructors
+ *       - Admin Instructors
  *     summary: Lấy danh sách instructors
  */
 router.get('/', requireAuth, getAll);
@@ -25,7 +25,7 @@ router.get('/', requireAuth, getAll);
  * /api/admin/instructors/:id:
  *   get:
  *     tags:
- *       - Instructors
+ *       - Admin Instructors
  *     summary: Lấy chi tiết instructors
  */
 router.get('/:id', requireAuth, getById);
@@ -35,7 +35,7 @@ router.get('/:id', requireAuth, getById);
  * /api/admin/instructors:
  *   post:
  *     tags:
- *       - Instructors
+ *       - Admin Instructors
  *     summary: Tạo instructors mới
  */
 router.post('/', requireAuth, create);
@@ -45,7 +45,7 @@ router.post('/', requireAuth, create);
  * /api/admin/instructors/:id:
  *   put:
  *     tags:
- *       - Instructors
+ *       - Admin Instructors
  *     summary: Cập nhật instructors
  */
 router.put('/:id', requireAuth, update);
@@ -55,7 +55,7 @@ router.put('/:id', requireAuth, update);
  * /api/admin/instructors/:id:
  *   delete:
  *     tags:
- *       - Instructors
+ *       - Admin Instructors
  *     summary: Xóa instructors
  */
 router.delete('/:id', requireAuth, remove);

@@ -4,7 +4,7 @@ const path = require('path');
 const compression = require('compression');
 const swaggerUi = require('swagger-ui-express');
 const securityMiddleware = require('./middlewares/security.middleware');
-const { apiLimiter, authLimiter, uploadLimiter, translationLimiter } = require('./middlewares/rateLimit.middleware');
+const { apiLimiter, authLimiter, uploadLimiter } = require('./middlewares/rateLimit.middleware');
 const authRoutes = require('./routes/auth.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const usersRoutes = require('./routes/users.routes');
@@ -21,204 +21,192 @@ const homepageRoutes = require('./routes/homepage.routes');
 const contactRoutes = require('./routes/contact.routes');
 const seoRoutes = require('./routes/seo.routes');
 const settingsRoutes = require('./routes/settings.routes');
-const translationRoutes = require('./routes/translation.routes');
 const healthRoutes = require('./routes/health.routes');
-// Phase 1 MVP Routes
-const booksRoutes = require('./routes/books.routes');
-const authorsRoutes = require('./routes/authors.routes');
-const bookCategoriesRoutes = require('./routes/bookCategories.routes');
-const publishersRoutes = require('./routes/publishers.routes');
-const coursesRoutes = require('./routes/courses.routes');
-const courseCategoriesRoutes = require('./routes/courseCategories.routes');
-const instructorsRoutes = require('./routes/instructors.routes');
 const membersRoutes = require('./routes/members.routes');
 const membershipPlansRoutes = require('./routes/membershipPlans.routes');
-const bookLoansRoutes = require('./routes/bookLoans.routes');
+const membershipRequestsRoutes = require('./routes/membership_requests.routes');
 const paymentsRoutes = require('./routes/payments.routes');
+const readerRoutes = require('./routes/reader.routes');
+const publicPublicationRoutes = require('./routes/public_publication.routes');
+const publicHomeRoutes = require('./routes/public_home.routes');
+const publicSearchRoutes = require('./routes/public_search.routes');
+const publicMembershipPlansRoutes = require('./routes/public_membershipPlans.routes');
+const adminPublicationRoutes = require('./routes/admin_publication.routes');
+const collectionRoutes = require('./routes/collection.routes');
+const authorRoutes = require('./routes/authors.routes');
+const publisherRoutes = require('./routes/publishers.routes');
+const courseRoutes = require('./routes/courses.routes');
+const courseCategoryRoutes = require('./routes/courseCategories.routes');
+const borrowRoutes = require('./routes/borrow.routes');
+const bookLoansRoutes = require('./routes/bookLoans.routes');
+const auditRoutes = require('./routes/audit.routes');
+const publicCommentRoutes = require('./routes/public_comment.routes');
+const adminCommentRoutes = require('./routes/admin_comment.routes');
+const publicNewsRoutes = require('./routes/public_news.routes');
+const readerActionRoutes = require('./routes/reader_action.routes');
+const memberActionsRoutes = require('./routes/member_actions.routes');
+const notificationRoutes = require('./routes/admin_notification.routes');
 const requireAuth = require('./middlewares/auth.middleware');
+const { restrictToCMS } = require('./middlewares/rbac.middleware');
 const logger = require('./middlewares/logger.middleware');
-const notFound = require('./middlewares/notFound.middleware');
-const errorHandler = require('./middlewares/error.middleware');
-const { swaggerSpec } = require('./config/swagger');
-const { testConnection, pool } = require('./config/database');
-const { ensureTablesOnce } = require('./utils/ensureMediaTables');
+const { pool } = require('./config/database');
 const fs = require('fs');
 
 const app = express();
 
-// Security middleware (helmet) - phải đặt đầu tiên
-app.use(securityMiddleware);
-
-// Compression middleware - nén response
+// Middleware cơ bản
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(compression());
-
-// CORS
-app.use(cors());
-
-// Body parser
-app.use(express.json({ limit: '10mb' })); // Giới hạn body size
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Logger
 app.use(logger);
 
-// Rate limiting cho toàn bộ API
-app.use('/api', apiLimiter);
-
-// Serve static files from uploads directory
-// Đảm bảo static files được serve trước các routes khác
-const uploadsPath = path.join(__dirname, '../uploads');
-
-// Serve static files với options tối ưu
-app.use('/uploads', express.static(uploadsPath, {
-  dotfiles: 'ignore',
-  etag: true,
-  index: false,
-  maxAge: '1d',
-  redirect: false,
-  setHeaders: (res, filePath) => {
-    // Set proper content-type headers
-    const ext = path.extname(filePath).toLowerCase();
-    if (ext === '.jpg' || ext === '.jpeg') {
-      res.setHeader('Content-Type', 'image/jpeg');
-    } else if (ext === '.png') {
-      res.setHeader('Content-Type', 'image/png');
-    } else if (ext === '.gif') {
-      res.setHeader('Content-Type', 'image/gif');
-    } else if (ext === '.webp') {
-      res.setHeader('Content-Type', 'image/webp');
-    } else if (ext === '.svg') {
-      res.setHeader('Content-Type', 'image/svg+xml');
+app.use((req, res, next) => {
+  const originalStatus = res.status;
+  res.status = function(code) {
+    if (code === 401) {
+      console.log(`[401_DETECTED] Path: ${req.url} | Method: ${req.method}`);
+      console.trace('401 Trace');
     }
-    // Enable CORS for images
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-  }
-}));
-
-// Auto-setup database on startup (only if not already initialized)
-async function autoSetupDatabase() {
-  try {
-    // Test connection first
-    await testConnection();
-    
-    // Check if database is already initialized (check for roles table)
-    const checkResult = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'roles'
-      );
-    `);
-    
-    if (!checkResult.rows[0].exists) {
-      console.log('📦 Database not initialized. Running auto-setup...');
-      console.log('   This will create all tables and seed data.\n');
-      
-      const schemaPath = path.join(__dirname, '..', 'database', 'schema.sql');
-      if (!fs.existsSync(schemaPath)) {
-        console.error('⚠️  Schema file not found:', schemaPath);
-        return;
-      }
-      
-      const schemaSQL = fs.readFileSync(schemaPath, 'utf8');
-      await pool.query(schemaSQL);
-      
-      console.log('✅ Database auto-setup completed!');
-      console.log('   All tables created and seed data inserted.\n');
-    } else {
-      // Database already initialized, just ensure media tables
-      await ensureTablesOnce();
-    }
-  } catch (error) {
-    console.error('⚠️  Database setup warning:', error.message);
-    // Don't throw - allow server to start even if setup fails
-  }
-}
-
-// Run auto-setup on startup (non-blocking)
-autoSetupDatabase();
-
-// Đảm bảo bảng media được tạo khi khởi động (fallback)
-ensureTablesOnce().then(() => {
-}).catch((err) => {
-  console.error('⚠️  Media tables setup warning:', err.message);
+    return originalStatus.apply(this, arguments);
+  };
+  next();
 });
 
-// Health check
-app.get('/', (req, res) => {
-  res.json({ status: 'Thư viện TN API is running' });
+// Cấu hình static folder cho uploads
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Swagger Documentation (Lazy loaded to optimize startup)
+app.use('/api-docs', (req, res, next) => {
+  const { swaggerSpec } = require('./config/swagger');
+  req.swaggerSpec = swaggerSpec;
+  next();
+}, swaggerUi.serve, (req, res) => {
+  res.send(swaggerUi.generateHTML(req.swaggerSpec));
 });
 
-// Health check route
-app.use('/api', healthRoutes);
+/**
+ * Middleware: RE-ROUTING VÀ PATCH CHO FRONTEND
+ * Giải quyết triệt để 404 cho các endpoint cũ/sai casing
+ */
+app.use((req, res, next) => {
+  const oldUrl = req.url;
+  
+  // 1. Phân biệt Case cho Publication -> /api/public/publications/
+  if (req.url.match(/\/api\/publication/i)) {
+    req.url = req.url.replace(/\/api\/publication/i, '/api/public/publications');
+  }
+  
+  // 2. Patch cho Collections trong Publications (nếu frontend vẫn gọi đường dẫn cũ)
+  if (req.url === '/api/admin/publications/collections') {
+    req.url = '/api/admin/collections';
+  }
 
-// Swagger UI - Chỉ bật trên development hoặc yêu cầu xác thực trên production
-if (process.env.NODE_ENV !== 'production') {
-  // Development: Swagger không cần auth
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-} else {
-  // Production: Swagger yêu cầu Bearer token (giống admin routes)
-  app.use('/api-docs', requireAuth, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-}
+  // 3. Patch cho upload-pdf cũ
+  if (req.url.includes('/publications/upload-pdf')) {
+    req.url = '/api/admin/upload/pdf'; 
+  }
 
-// RESTful routes
-// Auth routes with strict rate limiting
-app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+  // 4. Patch cho /api/Home cũ của .NET sang /api/public/home
+  if (req.url.match(/^\/api\/Home\//i)) {
+    req.url = req.url.replace(/^\/api\/Home\//i, '/api/public/home/');
+  }
 
-// Admin protected routes
-app.use('/api/admin/users', requireAuth, usersRoutes);
-app.use('/api/admin/roles', requireAuth, rolesRoutes);
-app.use('/api/admin/permissions', requireAuth, permissionsRoutes);
-app.use('/api/admin/news', requireAuth, newsRoutes);
-app.use('/api/admin/categories', requireAuth, newsCategoriesRoutes);
-app.use('/api/admin/menus', requireAuth, menuRoutes);
-// Upload routes with upload rate limiting
-app.use('/api/admin/upload', uploadLimiter, uploadRoutes);
-app.use('/api/admin/media/folders', requireAuth, mediaFoldersRoutes);
-app.use('/api/admin/media/files', requireAuth, mediaFilesRoutes);
-// Testimonials routes
-app.use('/api/admin/testimonials', requireAuth, testimonialsRoutes);
-// Homepage routes
-app.use('/api/admin/homepage', requireAuth, homepageRoutes);
-// Contact routes
-app.use('/api/admin/contact', requireAuth, contactRoutes);
-// SEO routes
-app.use('/api/admin/seo', requireAuth, seoRoutes);
-// Settings routes
-app.use('/api/admin/settings', requireAuth, settingsRoutes);
-// Translation routes with translation rate limiting (AI API costs)
-app.use('/api/admin/translate', translationLimiter, translationRoutes);
+  // 5. Patch cho Media (Folders/Files) từ /media/folders sang /media-folders
+  if (req.url.match(/\/api\/admin\/media\/folders/i)) {
+    req.url = req.url.replace(/\/api\/admin\/media\/folders/i, '/api/admin/media-folders');
+  }
+  if (req.url.match(/\/api\/admin\/media\/files/i)) {
+    req.url = req.url.replace(/\/api\/admin\/media\/files/i, '/api/admin/media-files');
+  }
 
-// ============================================================================
-// Phase 1 MVP Routes (Library & Courses System)
-// ============================================================================
-// Books Module
-app.use('/api/admin/books', requireAuth, booksRoutes);
-app.use('/api/admin/authors', requireAuth, authorsRoutes);
-app.use('/api/admin/book-categories', requireAuth, bookCategoriesRoutes);
-app.use('/api/admin/publishers', requireAuth, publishersRoutes);
-app.use('/api/admin/book-loans', requireAuth, bookLoansRoutes);
+  if (oldUrl !== req.url) {
+    console.log(`[Reroute] ${oldUrl} -> ${req.url}`);
+  }
+  next();
+});
 
-// Courses Module
-app.use('/api/admin/courses', requireAuth, coursesRoutes);
-app.use('/api/admin/course-categories', requireAuth, courseCategoriesRoutes);
-app.use('/api/admin/instructors', requireAuth, instructorsRoutes);
+// Public Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/public/publications', publicPublicationRoutes);
+app.use('/api/public/home', publicHomeRoutes);
+app.use('/api/public/search', publicSearchRoutes);
+app.use('/api/public/comments', publicCommentRoutes);
+app.use('/api/public/news', publicNewsRoutes);
+app.use('/api/public/membership-plans', publicMembershipPlansRoutes);
+app.use('/api/health', healthRoutes);
 
-// Members Module
-app.use('/api/admin/members', requireAuth, membersRoutes);
-app.use('/api/admin/membership-plans', requireAuth, membershipPlansRoutes);
+// Protected Admin Routes Group
+const adminRouter = express.Router();
 
-// Payments Module
-app.use('/api/admin/payments', requireAuth, paymentsRoutes);
+// Middleware bảo mật cho toàn bộ group admin
+adminRouter.use(requireAuth);
+adminRouter.use(restrictToCMS);
 
-// 404 & error handlers
-app.use(notFound);
-app.use(errorHandler);
+// Gắn các route chức năng
+adminRouter.use('/publications', adminPublicationRoutes);
+adminRouter.use('/dashboard', dashboardRoutes);
+adminRouter.use('/users', usersRoutes);
+adminRouter.use('/roles', rolesRoutes);
+adminRouter.use('/permissions', permissionsRoutes);
+adminRouter.use('/news', newsRoutes);
+adminRouter.use('/news-categories', newsCategoriesRoutes);
+adminRouter.use('/menu', menuRoutes);
+adminRouter.use('/upload', uploadRoutes); 
+adminRouter.use('/collections', collectionRoutes);
+adminRouter.use('/media-folders', mediaFoldersRoutes);
+adminRouter.use('/media-files', mediaFilesRoutes);
+adminRouter.use('/testimonials', testimonialsRoutes);
+adminRouter.use('/homepage', homepageRoutes);
+adminRouter.use('/contact', contactRoutes);
+adminRouter.use('/seo', seoRoutes);
+adminRouter.use('/settings', settingsRoutes);
+adminRouter.use('/members', membersRoutes);
+adminRouter.use('/membership-plans', membershipPlansRoutes);
+adminRouter.use('/membership-requests', membershipRequestsRoutes);
+adminRouter.use('/payments', paymentsRoutes);
+adminRouter.use('/authors', authorRoutes);
+adminRouter.use('/publishers', publisherRoutes);
+adminRouter.use('/courses', courseRoutes);
+adminRouter.use('/course-categories', courseCategoryRoutes);
+adminRouter.use('/audit-logs', auditRoutes);
+adminRouter.use('/comments', adminCommentRoutes);
+adminRouter.use('/member-actions', memberActionsRoutes);
+adminRouter.use('/borrow', borrowRoutes);
+adminRouter.use('/book-loans', bookLoansRoutes);
+adminRouter.use('/notifications', notificationRoutes);
+
+// Mount Admin Router
+app.use('/api/admin', adminRouter);
+console.log('✅ Admin Router mounted at /api/admin');
+app.use('/api/reader', readerRoutes);
+app.use('/api/reader/actions', readerActionRoutes);
+
+// Error handling middlware
+app.use((err, req, res, next) => {
+  const statusCode = err.status || 500;
+  const isDev = process.env.NODE_ENV === 'development';
+
+  console.error(`[Global Error] ${req.method} ${req.url}`);
+  console.error('Message:', err.message);
+  if (isDev) {
+    console.error('Stack:', err.stack);
+  }
+
+  res.status(statusCode).json({
+    success: false,
+    message: isDev ? err.message : 'Đã có lỗi hệ thống xảy ra. Vui lòng thử lại sau hoặc liên hệ Admin.',
+    error_code: err.code || 'INTERNAL_SERVER_ERROR',
+    status: statusCode,
+    timestamp: new Date().toISOString(),
+    path: req.url,
+    stack: isDev ? err.stack : undefined
+  });
+});
 
 module.exports = app;
-
-
-
-

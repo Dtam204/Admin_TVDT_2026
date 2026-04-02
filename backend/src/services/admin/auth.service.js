@@ -51,6 +51,12 @@ async function authenticateAdmin({ email, password }) {
       return null;
     }
 
+    // [SECURITY] Chặn vai trò 'user' (Bạn đọc) đăng nhập vào luồng Admin CMS
+    if (user.role_code === 'user') {
+      console.log(`[AUTH] Blocked login attempt for Reader account to CMS: ${email}`);
+      return null;
+    }
+
     // Compare password with bcrypt hash
     const isPasswordValid = await bcrypt.compare(password, user.password).catch(() => false);
 

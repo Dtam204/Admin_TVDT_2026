@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
+    "bcryptjs": "^3.0.3",
     "date-fns": "^2.30.0",
     "framer-motion": "^12.23.25",
     "tailwindcss": "^4.1.18"

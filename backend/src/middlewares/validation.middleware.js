@@ -62,7 +62,7 @@ const schemas = {
     title: Joi.alternatives().try(
       Joi.string(),
       Joi.object({
-        vi: Joi.string(),
+        vi: Joi.string().required(),
         en: Joi.string().allow(''),
         ja: Joi.string().allow(''),
       })
@@ -71,7 +71,7 @@ const schemas = {
     content: Joi.alternatives().try(
       Joi.string(),
       Joi.object({
-        vi: Joi.string(),
+        vi: Joi.string().required(),
         en: Joi.string().allow(''),
         ja: Joi.string().allow(''),
       })
@@ -84,10 +84,29 @@ const schemas = {
         ja: Joi.string().allow(''),
       })
     ).optional(),
-    category_id: Joi.number().integer().positive().optional(),
-    status: Joi.string().valid('draft', 'pending', 'approved', 'published', 'rejected').default('draft'),
-    published_at: Joi.date().iso().optional(),
-    featured_image: Joi.string().uri().allow('').optional(),
+    author: Joi.alternatives().try(
+      Joi.string().allow(''),
+      Joi.object({
+        vi: Joi.string().allow(''),
+        en: Joi.string().allow(''),
+        ja: Joi.string().allow(''),
+      })
+    ).optional(),
+    readTime: Joi.alternatives().try(
+      Joi.string().allow(''),
+      Joi.object({
+        vi: Joi.string().allow(''),
+        en: Joi.string().allow(''),
+        ja: Joi.string().allow(''),
+      })
+    ).optional(),
+    imageUrl: Joi.string().allow('').optional(),
+    status: Joi.string().valid('draft', 'published', 'archived', 'pending', 'approved', 'rejected').default('draft'),
+    isFeatured: Joi.boolean().default(false),
+    publishedDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    galleryImages: Joi.array().items(Joi.string()).optional(),
+    galleryPosition: Joi.string().valid('top', 'bottom').optional(),
+    showAuthorBox: Joi.boolean().optional(),
   }),
 
   // User create/update

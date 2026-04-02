@@ -1,7 +1,8 @@
-const app = require('./src/app');
+const { port } = require('./src/config/env');
+const app = require('./src/app.js');
 const { testConnection } = require('./src/config/database');
 
-const PORT = process.env.PORT || 5000;
+const PORT = port;
 
 // Start server after database connection is ready
 async function startServer() {
@@ -17,10 +18,18 @@ async function startServer() {
     }
     
     // Start the server
-    app.listen(PORT, () => {
+    const { ensureTablesOnce } = require('./src/utils/ensureMediaTables');
+    app.listen(PORT, async () => {
       console.log(`✅ Backend server started on port ${PORT}`);
       console.log(`   API: http://localhost:${PORT}/api`);
       console.log(`   Health: http://localhost:${PORT}/api/health`);
+      
+      try {
+        await ensureTablesOnce();
+        console.log('✅ Media tables initialization checked');
+      } catch (err) {
+        console.error('❌ Failed to initialize media tables:', err.message);
+      }
     });
     
     // Handle server errors

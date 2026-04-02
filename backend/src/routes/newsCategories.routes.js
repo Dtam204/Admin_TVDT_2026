@@ -11,37 +11,10 @@ const router = express.Router();
 
 /**
  * @openapi
- * components:
- *   schemas:
- *     NewsCategory:
- *       type: object
- *       properties:
- *         code:
- *           type: string
- *           example: tech
- *         name:
- *           type: string
- *           example: Tin công nghệ
- *         description:
- *           type: string
- *           example: Tin tức về công nghệ, xu hướng
- *         isActive:
- *           type: boolean
- *           example: true
- *         createdAt:
- *           type: string
- *           format: date-time
- *         updatedAt:
- *           type: string
- *           format: date-time
- */
-
-/**
- * @openapi
  * /api/admin/categories:
  *   get:
  *     tags:
- *       - News Categories
+ *       - Admin News Categories
  *     summary: Danh sách danh mục tin tức
  *     responses:
  *       200:
@@ -65,7 +38,7 @@ router.get('/', getCategories);
  * /api/admin/categories/{code}:
  *   get:
  *     tags:
- *       - News Categories
+ *       - Admin News Categories
  *     summary: Chi tiết danh mục
  *     parameters:
  *       - in: path
@@ -86,7 +59,7 @@ router.get('/:code', getCategoryByCode);
  * /api/admin/categories:
  *   post:
  *     tags:
- *       - News Categories
+ *       - Admin News Categories
  *     summary: Tạo danh mục tin tức
  *     requestBody:
  *       required: true
@@ -107,7 +80,7 @@ router.post('/', createCategory);
  * /api/admin/categories/{code}:
  *   put:
  *     tags:
- *       - News Categories
+ *       - Admin News Categories
  *     summary: Cập nhật danh mục tin tức
  *     parameters:
  *       - in: path
@@ -134,7 +107,7 @@ router.put('/:code', updateCategory);
  * /api/admin/categories/{code}:
  *   delete:
  *     tags:
- *       - News Categories
+ *       - Admin News Categories
  *     summary: Xóa danh mục tin tức
  *     parameters:
  *       - in: path

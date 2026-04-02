@@ -27,6 +27,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/components/ui/utils";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { adminApiCall, AdminEndpoints, apiCall } from "@/lib/api/admin";
@@ -347,7 +356,7 @@ export default function AdminRolesPage() {
   const handleDelete = async (role: Role) => {
     if (
       !window.confirm(
-        `Bạn có chắc chắn muốn xóa role "${role.name}"? Các user đang dùng role này sẽ bị ảnh hưởng.`,
+        `Bạn có chắc chắn muốn xóa role "${role.name}"? Các cán bộ đang dùng role này sẽ bị ảnh hưởng.`,
       )
     ) {
       return;
@@ -408,34 +417,50 @@ export default function AdminRolesPage() {
   };
 
   return (
-    <div className="space-y-6 w-full">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl text-gray-900">Phân quyền người dùng</h1>
-          <p className="text-gray-500 mt-1">
-            Quản lý các vai trò (roles), gán quyền chi tiết cho từng role.
-          </p>
-        </div>
+    <div className="w-full pb-8 space-y-0 text-slate-900 bg-slate-50/30 min-h-screen">
+      {/* ── RICH COMPACT HEADER (SYNC WITH ALL ADMIN PAGES) ── */}
+      <div className="bg-gradient-to-br from-indigo-900 via-slate-950 to-black px-6 py-5 md:px-10 md:py-6 2xl:py-10 shadow-xl relative overflow-hidden flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 border-b border-white/10">
+        {/* Subtle Decorative Background Elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-[80px]" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/10 rounded-full -ml-24 -mb-24 blur-[80px]" />
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-              onClick={openCreateDialog}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Thêm role
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingRole ? "Chỉnh sửa role" : "Thêm role mới"}
-              </DialogTitle>
-              <DialogDescription>
-                Thiết lập mã role, tên hiển thị và trạng thái hoạt động.
-              </DialogDescription>
-            </DialogHeader>
+        {/* LEFT SECTION: BRAND & ACTION */}
+        <div className="relative z-10 flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl">
+              <ShieldCheck className="w-8 h-8 lg:w-9 lg:h-9 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl lg:text-2xl 2xl:text-4xl font-black text-white tracking-tight">Phân quyền & Vai trò</h1>
+              <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-2 mt-1 opacity-60">
+                <KeyRound className="w-3.5 h-3.5 text-yellow-400" />
+                QUẢN TRỊ ĐẶC QUYỀN HỆ THỐNG
+              </p>
+            </div>
+          </div>
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                className="bg-white hover:bg-slate-100 text-indigo-950 font-black px-6 py-4 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all text-[11px] gap-2 h-10 w-fit border-none"
+                onClick={openCreateDialog}
+              >
+                <Plus className="w-4 h-4 stroke-[3px]" />
+                Thêm vai trò mới
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-3xl border-none shadow-2xl bg-white p-0 overflow-hidden sm:max-w-[500px]">
+              <DialogHeader className="bg-gradient-to-br from-indigo-700 to-black p-8 text-white text-left relative">
+                 <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <ShieldCheck className="w-24 h-24" />
+                 </div>
+                 <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-2">
+                   {editingRole ? "Cập nhật Vai trò" : "Khởi tạo Vai trò"}
+                 </DialogTitle>
+                 <DialogDescription className="text-indigo-100 text-xs font-medium mt-1 opacity-70 uppercase tracking-widest leading-relaxed">
+                   Thiết lập mã định danh và mô tả quyền hạn
+                 </DialogDescription>
+              </DialogHeader>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -538,155 +563,168 @@ export default function AdminRolesPage() {
         </Dialog>
       </div>
 
-      <Card className="border-0 shadow-lg w-full">
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle>Danh sách roles</CardTitle>
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        {/* RIGHT SECTION: STATISTICS (COMPACT) */}
+        <div className="relative z-10 flex flex-wrap xl:flex-nowrap items-center gap-3">
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl flex items-center gap-3 transition-all hover:bg-white/10 min-w-[150px]">
+             <div className="p-2 bg-yellow-500/20 rounded-lg">
+                <KeyRound className="w-5 h-5 text-yellow-300" />
+             </div>
+             <div>
+                <p className="text-[7px] text-yellow-300 uppercase font-black tracking-widest leading-none mb-1">TOTAL ROLES</p>
+                <div className="flex items-baseline gap-1">
+                   <span className="text-lg lg:text-xl font-black text-white">{roles.length}</span>
+                   <span className="text-[8px] text-yellow-500 font-bold uppercase">Nhóm</span>
+                </div>
+             </div>
+          </div>
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl flex items-center gap-3 transition-all hover:bg-white/10 min-w-[150px]">
+             <div className="p-2 bg-emerald-500/20 rounded-lg">
+                <CheckCircle2 className="w-5 h-5 text-emerald-300" />
+             </div>
+             <div>
+                <p className="text-[7px] text-emerald-300 uppercase font-black tracking-widest leading-none mb-1">DATA NODES</p>
+                <div className="flex items-baseline gap-1">
+                   <span className="text-lg lg:text-xl font-black text-white">{roles.filter(r => r.isActive).length}</span>
+                   <span className="text-[8px] text-emerald-500 font-bold uppercase">Units</span>
+                </div>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-6 space-y-4 pt-6">
+        {/* Toolbar */}
+        <div className="flex items-center gap-4 group">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
             <Input
-              placeholder="Tìm theo mã hoặc tên role..."
-              className="pl-9 bg-gray-50 border-0"
+              placeholder="Tìm kiếm vai trò theo tên, mã định danh hoặc mô tả..."
+              className="pl-10 h-11 border-2 border-slate-100 bg-white focus:bg-white text-[11px] rounded-xl transition-all shadow-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full table-auto text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 border-b border-gray-100">
-                  <th className="py-3 px-4 font-medium">Role</th>
-                  <th className="py-3 px-4 font-medium">Mô tả</th>
-                  <th className="py-3 px-4 font-medium">Trạng thái</th>
-                  <th className="py-3 px-4 font-medium">Mặc định</th>
-                  <th className="py-3 px-4 font-medium text-right">Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="py-6 text-center text-gray-500 text-sm"
-                    >
-                      Đang tải danh sách roles...
-                    </td>
-                  </tr>
-                )}
+        </div>
 
-                {!loading &&
-                  filteredRoles.map((role) => (
-                    <tr
-                      key={role.id}
-                      className="border-b border-gray-50 hover:bg-gray-50"
+        {/* Content Table */}
+        <div className="bg-white rounded-2xl border-2 border-slate-200 shadow-xl overflow-hidden">
+          <Table className="border-collapse">
+            <TableHeader className="bg-slate-50 border-b-2 border-slate-200">
+              <TableRow className="hover:bg-transparent h-11">
+                <TableHead className="px-6 font-black text-slate-800 uppercase text-[10px] tracking-wider w-[240px]">Nhóm vai trò</TableHead>
+                <TableHead className="font-black text-slate-800 uppercase text-[10px] tracking-wider">Phạm vi & Mô tả</TableHead>
+                <TableHead className="text-center font-black text-slate-800 uppercase text-[10px] tracking-wider">Trình trạng</TableHead>
+                <TableHead className="text-center font-black text-slate-800 uppercase text-[10px] tracking-wider">Mặc định</TableHead>
+                <TableHead className="text-right font-black text-slate-800 pr-8 uppercase text-[10px] tracking-wider">Nghiệp vụ</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-slate-100">
+                {loading ? (
+                    <TableRow>
+                    <TableCell colSpan={5} className="text-center py-20">
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                            <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Scanning Protocols...</span>
+                        </div>
+                    </TableCell>
+                    </TableRow>
+                ) : filteredRoles.length === 0 ? (
+                    <TableRow>
+                    <TableCell colSpan={5} className="text-center py-32">
+                        <ShieldCheck className="w-16 h-16 mx-auto mb-3 text-slate-100" />
+                        <span className="text-sm font-bold text-slate-300 uppercase tracking-widest">No Roles Configured</span>
+                    </TableCell>
+                    </TableRow>
+                ) : filteredRoles.map((role) => (
+                    <TableRow
+                        key={role.id}
+                        className="group hover:bg-slate-50/80 transition-all h-20 border-slate-100"
                     >
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              variant="outline"
-                              className="bg-blue-50 border-blue-200 text-blue-700"
+                        <TableCell className="px-6">
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                    <Badge className="bg-indigo-50 border-indigo-200 text-indigo-700 font-black text-[10px] uppercase tracking-tighter shadow-sm">
+                                        {role.name}
+                                    </Badge>
+                                </div>
+                                <div className="text-[9px] text-slate-400 font-bold font-mono mt-1 uppercase tracking-widest">
+                                    Code: {role.code}
+                                </div>
+                            </div>
+                        </TableCell>
+                        <TableCell className="text-slate-500 text-[11px] font-medium leading-relaxed max-w-[400px]">
+                            {role.description || (
+                                <span className="text-slate-300 italic">Chưa cấu bản mô tả nghiệp vụ cho vai trò này...</span>
+                            )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={cn(
+                                    "rounded-full h-8 px-4 text-[9px] font-black uppercase tracking-widest transition-all",
+                                    role.isActive 
+                                    ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" 
+                                    : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                )}
+                                onClick={() => void toggleActive(role)}
                             >
-                              <ShieldCheck className="w-3 h-3 mr-1" />
-                              {role.name}
-                            </Badge>
-                            <span className="text-xs text-gray-500">
-                              ({role.code})
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-gray-700 max-w-md">
-                        {role.description || (
-                          <span className="text-gray-400 italic">
-                            Chưa có mô tả
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={
-                            role.isActive
-                              ? "border-green-200 bg-green-50 text-green-700"
-                              : "border-gray-200 bg-gray-50 text-gray-600"
-                          }
-                          onClick={() => void toggleActive(role)}
-                        >
-                          <span
-                            className={`w-2 h-2 rounded-full mr-2 ${
-                              role.isActive ? "bg-green-500" : "bg-gray-400"
-                            }`}
-                          />
-                          {role.isActive ? "Đang hoạt động" : "Tạm khóa"}
-                        </Button>
-                      </td>
-                      <td className="py-3 px-4">
-                        {role.isDefault ? (
-                          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3 mr-1" />
-                            Mặc định
-                          </Badge>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-gray-600 hover:text-emerald-700 hover:bg-emerald-50"
-                            onClick={() => void setAsDefault(role)}
-                          >
-                            Đặt mặc định
-                          </Button>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex items-center gap-1 border-indigo-200 bg-indigo-50 text-indigo-700"
-                            onClick={() => void openPermissionsDialog(role)}
-                          >
-                            <KeyRound className="w-3 h-3" />
-                            <span className="text-xs">Gán quyền</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(role)}
-                            className="h-8 w-8"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => void handleDelete(role)}
-                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-
-                {!loading && filteredRoles.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="py-10 text-center text-gray-500"
-                    >
-                      Không tìm thấy role phù hợp
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                                <div className={cn("w-1.5 h-1.5 rounded-full mr-2", role.isActive ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-400")} />
+                                {role.isActive ? "Active" : "Disabled"}
+                            </Button>
+                        </TableCell>
+                        <TableCell className="text-center">
+                            {role.isDefault ? (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 rounded-lg text-[9px] font-black text-amber-600 border border-amber-200 uppercase tracking-widest">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    Default
+                                </div>
+                            ) : (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 font-black text-[9px] uppercase tracking-widest rounded-lg h-8"
+                                    onClick={() => void setAsDefault(role)}
+                                >
+                                    Set Default
+                                </Button>
+                            )}
+                        </TableCell>
+                        <TableCell className="text-right pr-6 py-2">
+                           <div className="flex justify-end gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="flex items-center gap-2 h-8 px-3 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100 transition-all font-black text-[9px] uppercase tracking-widest"
+                                    onClick={() => void openPermissionsDialog(role)}
+                                >
+                                    <KeyRound className="w-3.5 h-3.5" />
+                                    Gán quyền
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openEditDialog(role)}
+                                    className="h-8 w-8 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-all"
+                                >
+                                    <Edit className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => void handleDelete(role)}
+                                    className="h-8 w-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                           </div>
+                        </TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
 
       {/* Dialog gán quyền cho role */}
       <Dialog

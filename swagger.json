@@ -1,0 +1,7076 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "EBookLibAPI",
+    "description": "API thư viện điện tử",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/Admin/cleanup-tokens": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Xóa token hết hạn thủ công (Admin only)",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Admin/cleanup-reset-tokens": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Xóa reset password tokens hết hạn",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Admin/cleanup-refresh-tokens": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Xóa refresh tokens hết hạn",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Borrow/register": {
+      "post": {
+        "tags": [
+          "Borrow"
+        ],
+        "summary": "Đăng ký mượn sách",
+        "requestBody": {
+          "description": "IdBanDoc: id Bạn đọc, IdXepGia: id Xếp giá, Ghi chú",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowRegistrationRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowRegistrationRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowRegistrationRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorrowRegistrationDtoApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Borrow/approve": {
+      "post": {
+        "tags": [
+          "Borrow"
+        ],
+        "summary": "Duyệt yêu cầu mượn (chỉ tài khoản Admin/Thủ thư)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowApprovalRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowApprovalRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowApprovalRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorrowDetailDtoApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Borrow/reader/{idBanDoc}": {
+      "get": {
+        "tags": [
+          "Borrow"
+        ],
+        "summary": "Lấy thông tin mượn sách của bạn đọc",
+        "parameters": [
+          {
+            "name": "idBanDoc",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReaderBorrowInfoDtoApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Borrow/requests": {
+      "post": {
+        "tags": [
+          "Borrow"
+        ],
+        "summary": "Lấy danh sách yêu cầu mượn",
+        "requestBody": {
+          "description": "IdBanDoc: id Bạn đọc, TrangThai: Trạng thái (1_Chờ duyệt, 2_Đã duyệt, 3_Từ chối, else_Không xác định)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowRegistrationSearch"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowRegistrationSearch"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowRegistrationSearch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorrowRegistrationDtoPagedResultApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Borrow/history": {
+      "post": {
+        "tags": [
+          "Borrow"
+        ],
+        "summary": "Lấy lịch sử mượn trả",
+        "requestBody": {
+          "description": "IdBanDoc: id Bạn đọc, TrangThai: Trạng thái (1_Chờ duyệt, 2_Đã duyệt, 3_Từ chối, else_Không xác định)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowRegistrationSearch"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowRegistrationSearch"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrowRegistrationSearch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorrowDetailDtoPagedResultApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Collection/list": {
+      "post": {
+        "tags": [
+          "Collection"
+        ],
+        "summary": "Lấy danh sách bộ sưu tập (phân trang, tìm kiếm)",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectionQueryFilter"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectionQueryFilter"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollectionQueryFilter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionDtoPagedResultApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionDtoPagedResultApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionDtoPagedResultApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Collection/publications": {
+      "post": {
+        "tags": [
+          "Collection"
+        ],
+        "summary": "Lấy danh sách ấn phẩm thuộc bộ sưu tập (phân trang)",
+        "requestBody": {
+          "description": "IdBoSuuTap: id Bộ sưu tập, SapXepTheo: NgayTao/NhanDe/TacGia/NamSanXuat",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationInCollectionFilter"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationInCollectionFilter"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationInCollectionFilter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationInCollectionDtoApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationInCollectionDtoApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationInCollectionDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/FeaturedPublication/top": {
+      "get": {
+        "tags": [
+          "FeaturedPublication"
+        ],
+        "summary": "Lấy 1 ấn phẩm đề cử nổi bật (ưu tiên thứ tự nhỏ nhất).\r\nHiển thị Nhan đề, Tác giả.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturedTopDtoApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturedTopDtoApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturedTopDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/FeaturedPublication/list": {
+      "get": {
+        "tags": [
+          "FeaturedPublication"
+        ],
+        "summary": "Danh sách ấn phẩm được đề cử.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturedPublicationItemDtoListApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturedPublicationItemDtoListApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturedPublicationItemDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/FeaturedPublication/{anPhamId}/pages": {
+      "get": {
+        "tags": [
+          "FeaturedPublication"
+        ],
+        "summary": "Lấy danh sách trang (mục lục) của ấn phẩm.\r\nDùng để render sidebar/breadcrumb trang.",
+        "parameters": [
+          {
+            "name": "anPhamId",
+            "in": "path",
+            "description": "id Ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturedPublicationChapterDtoListApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturedPublicationChapterDtoListApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturedPublicationChapterDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/FeaturedPublication/{anPhamId}/pages/{page}": {
+      "get": {
+        "tags": [
+          "FeaturedPublication"
+        ],
+        "summary": "Lấy nội dung trang cụ thể của ấn phẩm.\r\nTrả về nội dung, tổng ký tự, từ và ước tính phút đọc của trang.",
+        "parameters": [
+          {
+            "name": "anPhamId",
+            "in": "path",
+            "description": "id Ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationPageContentDtoApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationPageContentDtoApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationPageContentDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/FeaturedPublication/progress": {
+      "post": {
+        "tags": [
+          "FeaturedPublication"
+        ],
+        "summary": "Cập nhật tiến trình bạn đọc ấn phẩm đề cử",
+        "requestBody": {
+          "description": "id Ấn phẩm, page",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProgressRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProgressRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProgressRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "FeaturedPublication"
+        ],
+        "summary": "Lấy tiến trình đọc của bạn đọc: return số trang của ấn phẩm đề cử",
+        "parameters": [
+          {
+            "name": "anPhamId",
+            "in": "query",
+            "description": "id Ấn phẩm",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Int32ApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Int32ApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Int32ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Home/get-suggest-books": {
+      "get": {
+        "tags": [
+          "Home"
+        ],
+        "summary": "Lấy danh sách ấn phẩm được đề xuất cho người dùng",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Home/get-updated-books": {
+      "get": {
+        "tags": [
+          "Home"
+        ],
+        "summary": "Lấy danh sách ấn phẩm mới cập nhật",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Home/get-most-viewed-books-of-the-week": {
+      "get": {
+        "tags": [
+          "Home"
+        ],
+        "summary": "Ấn phẩm được xem nhiều nhất trong tuần",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Home/get-most-borrowed-documents": {
+      "get": {
+        "tags": [
+          "Home"
+        ],
+        "summary": "Ấn phẩm được mượn nhiều nhất",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopBorrowMostPublicationDtoListApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopBorrowMostPublicationDtoListApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopBorrowMostPublicationDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Home/get-top-favorite": {
+      "get": {
+        "tags": [
+          "Home"
+        ],
+        "summary": "Danh sách ấn phẩm nội bật",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Home/get-top-recommend": {
+      "get": {
+        "tags": [
+          "Home"
+        ],
+        "summary": "Danh sách ấn phẩm đề cử (banner)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopPublicationDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/News/list": {
+      "post": {
+        "tags": [
+          "News"
+        ],
+        "summary": "Lấy danh sách tin tức",
+        "requestBody": {
+          "description": "SapXepTheo: NgayDang, NhomTinTuc; ThuTu: ASC, DESC",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewsFilterRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewsFilterRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewsFilterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsDtoPagedResultApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/News/{id}": {
+      "get": {
+        "tags": [
+          "News"
+        ],
+        "summary": "Lấy tin tức chi tiết",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id Tin tức",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsDetailDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "News"
+        ],
+        "summary": "Cập nhật bình luận",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id Bình luận",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Nội dung cmt",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "News"
+        ],
+        "summary": "Xóa bình luận",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id Bình luận",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/News": {
+      "get": {
+        "tags": [
+          "News"
+        ],
+        "summary": "Lấy danh sách cmt của bài tin",
+        "parameters": [
+          {
+            "name": "tinTucId",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "News"
+        ],
+        "summary": "Thêm mới comment",
+        "requestBody": {
+          "description": "TinTucId: id Tin tức, ParentId: Id bình luận cha (null nết là root), ReplyToId: trả lời cmt - id của comment trả lời",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/News/{parentId}/replies": {
+      "get": {
+        "tags": [
+          "News"
+        ],
+        "summary": "Lấy danh sách trả lời cho một bình luận",
+        "parameters": [
+          {
+            "name": "parentId",
+            "in": "path",
+            "description": "id comment",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 5
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/News/react": {
+      "post": {
+        "tags": [
+          "News"
+        ],
+        "summary": "Thích/Không thích comment",
+        "requestBody": {
+          "description": "CommentId: Bình luận Id, LoaiReact:0 unlike, 1 like, 2 dislike",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReactRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReactRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReactRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/News/report": {
+      "post": {
+        "tags": [
+          "News"
+        ],
+        "summary": "Báo cáo comment không phù hợp",
+        "requestBody": {
+          "description": "CommentId: id bình luận, 1=Spam | 2=Ngôn từ xúc phạm | 3=Thông tin sai | 4=Khác",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Notification/list": {
+      "post": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Lấy  danh sách thông báo của người dùng",
+        "requestBody": {
+          "description": "IncludeRead: 0 - Không bao gồm tb đã đọc, 1 - Bao gồm tb đã đọc",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationDtoRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationDtoRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationDtoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDtoPagedResultApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Notification/{id}": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Lấy chi tiết thông báo của người dùng",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id Thông báo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDtoApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Publication/search": {
+      "post": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Tìm kiếm ấn phẩm (cơ bản và nâng cao)",
+        "requestBody": {
+          "description": "Tìm kiếm theo Nhan đề, Tác giả, Năm xuất bản, Dạng tài liệu v.v.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationSearchRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationSearchRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationSearchRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Publication/categories": {
+      "get": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Lấy danh mục tìm kiếm",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationCategoriesApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Publication/{id}/favorite": {
+      "post": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Quan tâm ấn phẩm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id Ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Bỏ quan tâm ấn phẩm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id Ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Publication/{id}": {
+      "get": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Lấy thông tin chi tiết ấn phẩm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "displayMode",
+            "in": "query",
+            "description": "Hiển thị đơn giản, ISBD: DonGian, ISBD",
+            "schema": {
+              "type": "string",
+              "default": "DonGian"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationDetailDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Publication/{id}/copies": {
+      "get": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Lấy danh sách bản sao của ấn phẩm (đăng ký cá biệt)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationCopyDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Publication/{id}/related": {
+      "get": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Lấy danh sách tài liệu liên quan (cùng bộ sưu tập, chủ đề, tác giả v.v.)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Giớ hạn",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatedPublicationDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Publication/{id}/download": {
+      "get": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Tải xuống ấn phẩm (file số hóa)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Publication/{id}/download-stats": {
+      "get": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Lấy thống kê download của ấn phẩm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadStatsDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Publication/{id}/can-download": {
+      "get": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Kiểm tra quyền download ấn phẩm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Publication/barcode-search": {
+      "get": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Tìm kiếm ấn phẩm theo qr/barcode",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "key: ISDN, ISSN, Mã số biểu ghi, Nhan đề, Tác giả v.v",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarcodeSearchResultDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Publication/read-file": {
+      "post": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Đọc tệp tin số hóa (PDF → ảnh), phân trang theo trang sách.",
+        "description": "- `idAnPham`: id Ấn phẩm: test eg with 9b567a59-b0a4-460b-90ca-d41850294bdb\r\n- `pageIndex`: trang sách muốn xem (1-based)  \r\n- `pageSize`: số trang trả về mỗi lần (mặc định 1, tối đa 10)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadFileRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadFileRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadFileRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadFileResponseDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Publication/{id}/bookmarks": {
+      "get": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Lấy danh sách chương (BookMark) của một ấn phẩm.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id Ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookMarkDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Publication/bookmarks/detail/{idBookMark}": {
+      "get": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Click vào chương → trả về thông tin chương + ảnh trang đầu chương.\r\nClient dùng `StartPage` để biết trang hiện tại rồi gọi tiếp /read-file.",
+        "parameters": [
+          {
+            "name": "idBookMark",
+            "in": "path",
+            "description": "id bookmark: lấy từ api /bookmarks",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookMarkDetailDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Publication/{id}/pages": {
+      "get": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Lấy danh sách trang (mục lục) của ấn phẩm.\r\nDùng để render sidebar/breadcrumb trang.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id Ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturedPublicationChapterDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Publication/{id}/pages/{page}": {
+      "get": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Lấy nội dung trang cụ thể của ấn phẩm.\r\nTrả về nội dung, tổng ký tự, từ và ước tính phút đọc của trang.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id Ấn phẩm",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationPageContentDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Publication/rate": {
+      "post": {
+        "tags": [
+          "Publication"
+        ],
+        "summary": "Đánh giá ấn phẩm — cập nhật lượt bình chọn, tổng số điểm và điểm trung bình.",
+        "requestBody": {
+          "description": "IdAnPham + Point (1–5)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatingRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatingRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatingRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingResultDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Reader/{id}": {
+      "get": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Lấy thông tin bạn đọc theo ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id Bạn đọc",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReaderDtoApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Reader/card/{cardNumber}": {
+      "get": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Lấy thông tin bạn đọc theo số thẻ",
+        "parameters": [
+          {
+            "name": "cardNumber",
+            "in": "path",
+            "description": "Số thẻ bạn đọc",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReaderDtoApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Reader/login": {
+      "post": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Đăng nhập bạn đọc",
+        "requestBody": {
+          "description": "SoThe, MatKhau",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReaderLoginRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReaderLoginRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReaderLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReaderLoginResponseApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Reader/refresh-token": {
+      "post": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Làm mới access token bằng refresh token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReaderLoginResponseApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Reader/logout": {
+      "post": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Đăng xuất (thu hồi refresh token)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Reader/logout-all": {
+      "post": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Đăng xuất tất cả thiết bị (thu hồi tất cả refresh token)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Reader/change-password": {
+      "post": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Đổi mật khẩu",
+        "requestBody": {
+          "description": "id Bạn đọc, mật khẩu mới, cũ, xác nhận mật khẩu",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Reader/renew-card": {
+      "patch": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Gia hạn thẻ bạn đọc",
+        "requestBody": {
+          "description": "Id: id Bạn đọc,SoThangGiaHan: Số tháng gia hạn",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenewCardRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenewCardRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenewCardRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReaderDtoApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Reader/{readerId}/digital-borrow-history": {
+      "get": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Lấy lịch sử mượn tài liệu số",
+        "parameters": [
+          {
+            "name": "readerId",
+            "in": "path",
+            "description": "id Bạn đọc",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageIndex",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorrowHistoryDtoPagedResultApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Reader/{readerId}/physical-borrow-history": {
+      "get": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Lấy lịch sử mượn tài liệu giấy",
+        "parameters": [
+          {
+            "name": "readerId",
+            "in": "path",
+            "description": "id Bạn đọc",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageIndex",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorrowHistoryDtoPagedResultApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Reader/borrow/{borrowId}/renewal-history": {
+      "get": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Lấy lịch sử gia hạn của một lần mượn",
+        "parameters": [
+          {
+            "name": "borrowId",
+            "in": "path",
+            "description": "Id mượn trả",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenewalHistoryDtoListApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Reader/forgot-password": {
+      "post": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Quên mật khẩu - Gửi mã xác thực về email",
+        "requestBody": {
+          "description": "SoThe: Số thẻ bạn đọc, Email: Mail bạn đọc",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Reader/verify-reset-code": {
+      "post": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Xác thực mã reset password",
+        "requestBody": {
+          "description": "Email: Mail bạn đọc, Code: mã xác thực",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyResetCodeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyResetCodeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyResetCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Reader/reset-password": {
+      "post": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Reset mật khẩu với mã xác thực",
+        "requestBody": {
+          "description": "Email, Code: Mã xác thực, Mật khẩu mới, cũ",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Reader/profile": {
+      "put": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Cập nhật thông tin cá nhân",
+        "requestBody": {
+          "description": "Id: id Bạn đọc",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReaderProfileRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReaderProfileRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReaderProfileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateReaderProfileResponseApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Reader/validate-email": {
+      "get": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Kiểm tra email có tồn tại không (dùng khi đăng ký hoặc cập nhật)",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "excludeReaderId",
+            "in": "query",
+            "description": "id Bạn đọc",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Reader/validate-phone": {
+      "get": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Kiểm tra số điện thoại có tồn tại không (dùng khi đăng ký hoặc cập nhật)",
+        "parameters": [
+          {
+            "name": "phone",
+            "in": "query",
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "excludeReaderId",
+            "in": "query",
+            "description": "id Bạn đọc",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Reader/profile/me": {
+      "get": {
+        "tags": [
+          "Reader"
+        ],
+        "summary": "Lấy thông tin profile của user đang đăng nhập",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReaderDtoApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token không hợp lệ hoặc đã hết hạn"
+          },
+          "403": {
+            "description": "Forbidden - Không có quyền truy cập tài nguyên này"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Resource/list": {
+      "post": {
+        "tags": [
+          "Resource"
+        ],
+        "summary": "Lấy danh sách tài nguyên",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Resource/list-tab": {
+      "post": {
+        "tags": [
+          "Resource"
+        ],
+        "summary": "Lấy danh sách tab header (các biểu tượng yêu thích, trending v.v. ở dashboard)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceDtoListApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Resource/trending": {
+      "post": {
+        "tags": [
+          "Resource"
+        ],
+        "summary": "Lấy danh sách tài nguyên theo top trending trong api/resource/list-tab",
+        "description": "- `alias`: Value từ resource truyền vào ví dụ: trending , rating, view, favorite\r\n- `orderby`: Sắp xếp theo: Id (null), NhanDe, TacGia, NamSanXuat, NhaXuatBan",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceFilterDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceFilterDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceFilterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceDetailDtoPagedResultApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Resource/alias": {
+      "post": {
+        "tags": [
+          "Resource"
+        ],
+        "summary": "Lấy danh sách tài nguyên theo alias từ api/list/resource",
+        "description": "- `alias`: Value từ resource truyền vào ví dụ: print-single, print-sound\r\n- `orderby`: Sắp xếp theo: Id (Mặc định null), NhanDe, TacGia, NamSanXuat, NhaXuatBan",
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceFilterDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceFilterDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceFilterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceDetailDtoPagedResultApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Users/me": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDtoApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDtoApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Users": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSearch"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSearch"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSearch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/WeatherForecast": {
+      "get": {
+        "tags": [
+          "WeatherForecast"
+        ],
+        "operationId": "GetWeatherForecast",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeatherForecast"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeatherForecast"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WeatherForecast"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BarcodeSearchResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "maSoBieuGhi": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhanDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "namXuatBan": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhaXuatBan": {
+            "type": "string",
+            "nullable": true
+          },
+          "urlAnhDaiDien": {
+            "type": "string",
+            "nullable": true
+          },
+          "loaiTaiLieu": {
+            "type": "string",
+            "nullable": true
+          },
+          "matchedCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "matchedField": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BarcodeSearchResultDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/BarcodeSearchResultDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BookMarkDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "tieuDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tuTrang": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "denTrang": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "sapXep": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "startPage": {
+            "type": "integer",
+            "description": "Page số 1 của chương (= TU_TRANG)",
+            "format": "int32",
+            "nullable": true
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PageImageDto"
+            },
+            "description": "Danh sách ảnh của trang đầu chương",
+            "nullable": true
+          },
+          "texts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PageTextDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BookMarkDetailDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/BookMarkDetailDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BookMarkDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "tieuDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tuTrang": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "denTrang": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "sapXep": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "idTepTinSoHoa": {
+            "type": "string",
+            "nullable": true
+          },
+          "tepTinSoHoa": {
+            "type": "string",
+            "nullable": true
+          },
+          "idAnPham": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BookMarkDtoListApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookMarkDto"
+            },
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BooleanApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "boolean"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowApprovalRequestDto": {
+        "type": "object",
+        "properties": {
+          "idYeuCauMuon": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "idMuonTra": {
+            "type": "string",
+            "nullable": true
+          },
+          "idBanDoc": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenBanDoc": {
+            "type": "string",
+            "nullable": true
+          },
+          "soThe": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "soDienThoai": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngayHetHan": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "idAnPham": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenAnPham": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "maDKCB": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngayDangKy": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ngayMuon": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ngayTra": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ngayTraDuKien": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "phiMuon": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "trangThai": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenTrangThai": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngoaiHanNgach": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "idXepGiaDetail": {
+            "type": "string",
+            "nullable": true
+          },
+          "ghiChu": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowDetailDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/BorrowDetailDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowDetailDtoPagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BorrowDetailDto"
+            },
+            "nullable": true
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowDetailDtoPagedResultApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/BorrowDetailDtoPagedResult"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowHistoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "idBanDoc": {
+            "type": "string",
+            "nullable": true
+          },
+          "idAnPham": {
+            "type": "string",
+            "nullable": true
+          },
+          "idXepGiaAnPhamDetail": {
+            "type": "string",
+            "nullable": true
+          },
+          "idKho": {
+            "type": "string",
+            "nullable": true
+          },
+          "idChinhSachLuuThong": {
+            "type": "string",
+            "nullable": true
+          },
+          "loai": {
+            "type": "string",
+            "nullable": true
+          },
+          "maDkcb": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngayMuon": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ngayTraDuKien": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ngayTraThucTe": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "phiMuon": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "giaHanSoLan": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "giaHanSoLanSuDung": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "giaHanSoNgay": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "giaHanNgay": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "quaHanSoNgay": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "quaHanSoTien": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "quaHanTongSoTien": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "ngayTra": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ghiChu": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowHistoryDtoPagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BorrowHistoryDto"
+            },
+            "nullable": true
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowHistoryDtoPagedResultApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/BorrowHistoryDtoPagedResult"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowRegistrationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "idBanDoc": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenBanDoc": {
+            "type": "string",
+            "nullable": true
+          },
+          "soThe": {
+            "type": "string",
+            "nullable": true
+          },
+          "idXepGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "maDKCB": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenAnPham": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngayDangKy": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ngayTraDuKien": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "phiMuon": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "trangThai": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenTrangThai": {
+            "type": "string",
+            "nullable": true
+          },
+          "maDangKyCaBiet": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngayTao": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowRegistrationDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/BorrowRegistrationDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowRegistrationDtoPagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BorrowRegistrationDto"
+            },
+            "nullable": true
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowRegistrationDtoPagedResultApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/BorrowRegistrationDtoPagedResult"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowRegistrationRequestDto": {
+        "type": "object",
+        "properties": {
+          "idBanDoc": {
+            "type": "string",
+            "nullable": true
+          },
+          "idXepGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngayDangKy": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "maDangKyCaBiet": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BorrowRegistrationSearch": {
+        "type": "object",
+        "properties": {
+          "idBanDoc": {
+            "type": "string",
+            "nullable": true
+          },
+          "trangThai": {
+            "type": "string",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "matKhauCu": {
+            "type": "string",
+            "nullable": true
+          },
+          "matKhauMoi": {
+            "type": "string",
+            "nullable": true
+          },
+          "xacNhanMkMoi": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CollectionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileAnh": {
+            "type": "string",
+            "nullable": true
+          },
+          "idCha": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenBoSuuTap": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenBoCha": {
+            "type": "string",
+            "nullable": true
+          },
+          "noiDung": {
+            "type": "string",
+            "nullable": true
+          },
+          "trangChu": {
+            "type": "string",
+            "nullable": true
+          },
+          "trangThai": {
+            "type": "string",
+            "nullable": true
+          },
+          "thuTu": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "ngayTao": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "nguoiTao": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CollectionDtoPagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CollectionDto"
+            },
+            "nullable": true
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CollectionDtoPagedResultApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/CollectionDtoPagedResult"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CollectionQueryFilter": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "nullable": true
+          },
+          "trangThai": {
+            "type": "string",
+            "nullable": true
+          },
+          "trangChu": {
+            "type": "string",
+            "nullable": true
+          },
+          "idCha": {
+            "type": "string",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CommentRequest": {
+        "required": [
+          "noiDung",
+          "tinTucId"
+        ],
+        "type": "object",
+        "properties": {
+          "tinTucId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "replyToId": {
+            "type": "string",
+            "nullable": true
+          },
+          "noiDung": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CommentUpdateRequest": {
+        "required": [
+          "noiDung"
+        ],
+        "type": "object",
+        "properties": {
+          "noiDung": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DownloadStatsDto": {
+        "type": "object",
+        "properties": {
+          "idAnPham": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenAnPham": {
+            "type": "string",
+            "nullable": true
+          },
+          "tongLuotTai": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "luotTaiThang": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ngayTaiGanNhat": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DownloadStatsDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/DownloadStatsDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FeaturedPublicationChapterDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "trang": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "tieuDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "moTa": {
+            "type": "string",
+            "nullable": true
+          },
+          "soKyTu": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "soTu": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "uocTinhPhutDoc": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FeaturedPublicationChapterDtoListApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeaturedPublicationChapterDto"
+            },
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FeaturedPublicationItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhanDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FeaturedPublicationItemDtoListApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeaturedPublicationItemDto"
+            },
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FeaturedTopDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhanDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "idAnPham": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FeaturedTopDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/FeaturedTopDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FileNewsInfo": {
+        "type": "object",
+        "properties": {
+          "TEN": {
+            "type": "string",
+            "nullable": true
+          },
+          "DUONG_DAN": {
+            "type": "string",
+            "nullable": true
+          },
+          "DUNG_LUONG": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "properties": {
+          "soThe": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Int32ApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewsDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "tieuDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "anhDaiDien": {
+            "type": "string",
+            "nullable": true
+          },
+          "moTa": {
+            "type": "string",
+            "nullable": true
+          },
+          "luotXem": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "ngayDang": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "tenNhomTinTuc": {
+            "type": "string",
+            "nullable": true
+          },
+          "noiDung": {
+            "type": "string",
+            "nullable": true
+          },
+          "tepDinhKem": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileNewsInfo"
+            },
+            "nullable": true
+          },
+          "danhSachTinLienQuan": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewsDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewsDetailDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/NewsDetailDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewsDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "tieuDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "anhDaiDien": {
+            "type": "string",
+            "nullable": true
+          },
+          "moTa": {
+            "type": "string",
+            "nullable": true
+          },
+          "luotXem": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "ngayDang": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewsDtoPagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewsDto"
+            },
+            "nullable": true
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewsDtoPagedResultApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/NewsDtoPagedResult"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewsFilterRequest": {
+        "type": "object",
+        "properties": {
+          "tuKhoa": {
+            "type": "string",
+            "nullable": true
+          },
+          "sapXepTheo": {
+            "type": "string",
+            "nullable": true
+          },
+          "thuTu": {
+            "type": "string",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotificationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotificationDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/NotificationDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotificationDtoPagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationDto"
+            },
+            "nullable": true
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotificationDtoPagedResultApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/NotificationDtoPagedResult"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotificationDtoRequest": {
+        "type": "object",
+        "properties": {
+          "includeRead": {
+            "type": "string",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ObjectApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PageImageDto": {
+        "type": "object",
+        "properties": {
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "base64Image": {
+            "type": "string",
+            "nullable": true
+          },
+          "contentType": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PageTextDto": {
+        "type": "object",
+        "properties": {
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "fullText": {
+            "type": "string",
+            "nullable": true
+          },
+          "contentType": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationCategories": {
+        "type": "object",
+        "properties": {
+          "fieldKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "fieldType": {
+            "type": "string",
+            "nullable": true
+          },
+          "placeholder": {
+            "type": "string",
+            "nullable": true
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SelectListItem"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationCategoriesApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/PublicationCategories"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationCopyDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "idXepGiaAnPham": {
+            "type": "string",
+            "nullable": true
+          },
+          "idThuVien": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenThuVien": {
+            "type": "string",
+            "nullable": true
+          },
+          "idKho": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenKho": {
+            "type": "string",
+            "nullable": true
+          },
+          "dkcb": {
+            "type": "string",
+            "nullable": true
+          },
+          "maDKCB": {
+            "type": "string",
+            "nullable": true
+          },
+          "soTien": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "giaSach": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngayBoSung": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "idNguonBoSung": {
+            "type": "string",
+            "nullable": true
+          },
+          "cd": {
+            "type": "string",
+            "nullable": true
+          },
+          "isKhiemThi": {
+            "type": "string",
+            "nullable": true
+          },
+          "ghiChu": {
+            "type": "string",
+            "nullable": true
+          },
+          "thuTu": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationCopyDtoListApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicationCopyDto"
+            },
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "urlAnhDaiDien": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhanDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "loaiTaiLieu": {
+            "type": "string",
+            "nullable": true
+          },
+          "donGia": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "tyGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "luotXem": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "luotTai": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "luotBinhChon": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "diemBinhChon": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "trangThai": {
+            "type": "string",
+            "nullable": true
+          },
+          "soLuongBanSao": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "soLuongYeuThich": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "tongSoTrang": {
+            "type": "string",
+            "nullable": true
+          },
+          "quanTam": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngayTao": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "namXuatBan": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhaXuatBan": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngonNgu": {
+            "type": "string",
+            "nullable": true
+          },
+          "chuyenNganhDaoTao": {
+            "type": "string",
+            "nullable": true
+          },
+          "chuyenDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tuKhoa": {
+            "type": "string",
+            "nullable": true
+          },
+          "dangTaiLieu": {
+            "type": "string",
+            "nullable": true
+          },
+          "searchScore": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "highlightedContent": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "isbdDisplay": {
+            "type": "string",
+            "nullable": true
+          },
+          "leaderInput": {
+            "type": "string",
+            "nullable": true
+          },
+          "idKhungBienMuc": {
+            "type": "string",
+            "nullable": true
+          },
+          "maSoBieuGhi": {
+            "type": "string",
+            "nullable": true
+          },
+          "idBoSuuTap": {
+            "type": "string",
+            "nullable": true
+          },
+          "hanCheXemTrang": {
+            "type": "string",
+            "nullable": true
+          },
+          "tuTrang": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "denTrang": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "bienMuc": {
+            "type": "string",
+            "nullable": true
+          },
+          "isFullText": {
+            "type": "string",
+            "nullable": true
+          },
+          "danhSachTruongTin": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicationDetailFieldDto"
+            },
+            "nullable": true
+          },
+          "danhSachBanSao": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicationCopyDto"
+            },
+            "nullable": true
+          },
+          "danhSachTaiLieuLienQuan": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RelatedPublicationDto"
+            },
+            "nullable": true
+          },
+          "trailerInfo": {
+            "$ref": "#/components/schemas/PublicationTrailerDto"
+          },
+          "danhSachTepTinSoHoa": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicationDigitalFileDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationDetailDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/PublicationDetailDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationDetailFieldDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "idTruongTin": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhan": {
+            "type": "string",
+            "nullable": true
+          },
+          "loai": {
+            "type": "string",
+            "nullable": true
+          },
+          "giaTri": {
+            "type": "string",
+            "nullable": true
+          },
+          "maTruongTin": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenTruongTin": {
+            "type": "string",
+            "nullable": true
+          },
+          "ma": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenGiaTri": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationDigitalFileDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "tepTinSoHoa": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "thuTu": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "luotXem": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "luotTai": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "urlAnhDaiDien": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhanDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "loaiTaiLieu": {
+            "type": "string",
+            "nullable": true
+          },
+          "donGia": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "tyGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "luotXem": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "luotTai": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "luotBinhChon": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "diemBinhChon": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "trangThai": {
+            "type": "string",
+            "nullable": true
+          },
+          "soLuongBanSao": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "soLuongYeuThich": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "tongSoTrang": {
+            "type": "string",
+            "nullable": true
+          },
+          "quanTam": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngayTao": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "namXuatBan": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhaXuatBan": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngonNgu": {
+            "type": "string",
+            "nullable": true
+          },
+          "chuyenNganhDaoTao": {
+            "type": "string",
+            "nullable": true
+          },
+          "chuyenDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tuKhoa": {
+            "type": "string",
+            "nullable": true
+          },
+          "dangTaiLieu": {
+            "type": "string",
+            "nullable": true
+          },
+          "searchScore": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "highlightedContent": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationDtoListApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicationDto"
+            },
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationInCollectionDetailsDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "urlAnhDaiDien": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhanDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "namXuatBan": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhaXuatBan": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationInCollectionDetailsDtoPagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicationInCollectionDetailsDto"
+            },
+            "nullable": true
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationInCollectionDto": {
+        "type": "object",
+        "properties": {
+          "idBoSuuTap": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenBoSuuTap": {
+            "type": "string",
+            "nullable": true
+          },
+          "publications": {
+            "$ref": "#/components/schemas/PublicationInCollectionDetailsDtoPagedResult"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationInCollectionDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/PublicationInCollectionDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationInCollectionFilter": {
+        "type": "object",
+        "properties": {
+          "idBoSuuTap": {
+            "type": "string",
+            "nullable": true
+          },
+          "sapXepTheo": {
+            "type": "string",
+            "nullable": true
+          },
+          "keyword": {
+            "type": "string",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationPageContentDto": {
+        "type": "object",
+        "properties": {
+          "bmAnPhamDeCuId": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhanDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "trangHienTai": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tongSoTrang": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "noiDung": {
+            "type": "string",
+            "nullable": true
+          },
+          "kyTuTrang": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "soTuTrang": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "uocTinhPhutDoc": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationPageContentDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/PublicationPageContentDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationSearchRequestDto": {
+        "type": "object",
+        "properties": {
+          "nhanDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "namXuatBan": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "namXuatBanTu": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "namXuatBanDen": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "chuyenNganhDaoTao": {
+            "type": "string",
+            "nullable": true
+          },
+          "danhSachDangTaiLieu": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "nhaXuatBan": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngonNgu": {
+            "type": "string",
+            "nullable": true
+          },
+          "tuKhoa": {
+            "type": "string",
+            "nullable": true
+          },
+          "dangKyCaBiet": {
+            "type": "string",
+            "nullable": true
+          },
+          "idThuVien": {
+            "type": "string",
+            "nullable": true
+          },
+          "idKho": {
+            "type": "string",
+            "nullable": true
+          },
+          "sapXepTheo": {
+            "type": "string",
+            "nullable": true
+          },
+          "thuTu": {
+            "type": "string",
+            "nullable": true
+          },
+          "hienThi": {
+            "type": "string",
+            "nullable": true
+          },
+          "gioiHanKetQua": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isFullTextSearch": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tuKhoaToanVan": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicationTrailerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "tepTinTrailer": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "thuTu": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "luotXem": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "luotTai": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "tongSoTrang": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "fileSize": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "width": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "height": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "danhSachTrangXemTruoc": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrailerPageDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RatingRequestDto": {
+        "required": [
+          "idAnPham"
+        ],
+        "type": "object",
+        "properties": {
+          "idAnPham": {
+            "type": "string",
+            "nullable": true
+          },
+          "point": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RatingResultDto": {
+        "required": [
+          "idAnPham"
+        ],
+        "type": "object",
+        "properties": {
+          "idAnPham": {
+            "type": "string",
+            "nullable": true
+          },
+          "luotBinhChon": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tongSoBinhChon": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "diemBinhChon": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RatingResultDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/RatingResultDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReactRequest": {
+        "required": [
+          "commentId"
+        ],
+        "type": "object",
+        "properties": {
+          "commentId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "loaiReact": {
+            "maximum": 2,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReadFileRequestDto": {
+        "type": "object",
+        "properties": {
+          "idAnPham": {
+            "type": "string",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReadFileResponseDto": {
+        "type": "object",
+        "properties": {
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasNext": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PageImageDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReadFileResponseDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/ReadFileResponseDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReaderBorrowInfoDto": {
+        "type": "object",
+        "properties": {
+          "idBanDoc": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenBanDoc": {
+            "type": "string",
+            "nullable": true
+          },
+          "soThe": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngayHetHan": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "isHetHan": {
+            "type": "boolean"
+          },
+          "hanNgachMuonVe": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "soSachDangMuon": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "soSachConDuocMuon": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "danhSachDangMuon": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BorrowDetailDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReaderBorrowInfoDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/ReaderBorrowInfoDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReaderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "soThe": {
+            "type": "string",
+            "nullable": true
+          },
+          "idNhomBanDoc": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngayHieuLuc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ngayHetHan": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "trangThai": {
+            "type": "string",
+            "nullable": true
+          },
+          "hoVaTen": {
+            "type": "string",
+            "nullable": true
+          },
+          "diaChi": {
+            "type": "string",
+            "nullable": true
+          },
+          "dienThoai": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "soTien": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "doTuoi": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReaderDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/ReaderDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReaderLoginRequest": {
+        "type": "object",
+        "properties": {
+          "soThe": {
+            "type": "string",
+            "nullable": true
+          },
+          "matKhau": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReaderLoginResponse": {
+        "type": "object",
+        "properties": {
+          "reader": {
+            "$ref": "#/components/schemas/ReaderDto"
+          },
+          "accessToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "refreshToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "accessTokenExpiry": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refreshTokenExpiry": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReaderLoginResponseApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/ReaderLoginResponse"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RefreshTokenRequest": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RelatedPublicationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "urlAnhDaiDien": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhanDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "trangThai": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RelatedPublicationDtoListApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RelatedPublicationDto"
+            },
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RenewCardRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "soThangGiaHan": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RenewalHistoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "idDangKyMuonTra": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngayGiaHan": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "giaHanTu": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "giaHanDen": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "nguoiTao": {
+            "type": "string",
+            "nullable": true
+          },
+          "thuTu": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RenewalHistoryDtoListApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RenewalHistoryDto"
+            },
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReportRequest": {
+        "required": [
+          "commentId",
+          "lyDo"
+        ],
+        "type": "object",
+        "properties": {
+          "commentId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "lyDo": {
+            "maximum": 4,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "moTa": {
+            "maxLength": 500,
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "matKhauMoi": {
+            "type": "string",
+            "nullable": true
+          },
+          "xacNhanMkMoi": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResourceDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "anhDaiDien": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhanDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhaXuatBan": {
+            "type": "string",
+            "nullable": true
+          },
+          "trang": {
+            "type": "string",
+            "nullable": true
+          },
+          "namXuatBan": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResourceDetailDtoPagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceDetailDto"
+            },
+            "nullable": true
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResourceDetailDtoPagedResultApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/ResourceDetailDtoPagedResult"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResourceDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "router": {
+            "type": "string",
+            "nullable": true
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResourceDtoListApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceDto"
+            },
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResourceFilterDto": {
+        "type": "object",
+        "properties": {
+          "alias": {
+            "type": "string",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "orderBy": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SelectListItem": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "text": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TopBorrowMostPublicationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "anhDaiDien": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhanDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhaXuatBan": {
+            "type": "string",
+            "nullable": true
+          },
+          "trang": {
+            "type": "string",
+            "nullable": true
+          },
+          "soLuotMuon": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TopBorrowMostPublicationDtoListApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopBorrowMostPublicationDto"
+            },
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TopPublicationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "anhDaiDien": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhanDe": {
+            "type": "string",
+            "nullable": true
+          },
+          "tacGia": {
+            "type": "string",
+            "nullable": true
+          },
+          "nhaXuatBan": {
+            "type": "string",
+            "nullable": true
+          },
+          "trang": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TopPublicationDtoListApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopPublicationDto"
+            },
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrailerPageDto": {
+        "type": "object",
+        "properties": {
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageImageBase64": {
+            "type": "string",
+            "nullable": true
+          },
+          "pageText": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateProgressRequestDto": {
+        "type": "object",
+        "properties": {
+          "idAnPham": {
+            "type": "string",
+            "nullable": true
+          },
+          "trang": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateReaderProfileRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "hoVaTen": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "dienThoai": {
+            "type": "string",
+            "nullable": true
+          },
+          "diaChi": {
+            "type": "string",
+            "nullable": true
+          },
+          "ngaySinh": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateReaderProfileResponse": {
+        "type": "object",
+        "properties": {
+          "reader": {
+            "$ref": "#/components/schemas/ReaderDto"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateReaderProfileResponseApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/UpdateReaderProfileResponse"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenDangNhap": {
+            "type": "string",
+            "nullable": true
+          },
+          "hoTen": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserDtoApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "errorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/UserDto"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserSearch": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "nullable": true
+          },
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyResetCodeRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WeatherForecast": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "temperatureC": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "temperatureF": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "Nhập JWT token vào đây. Ví dụ: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "scheme": "Bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

@@ -4,6 +4,7 @@
  */
 
 const { pool } = require('../config/database');
+const { generateTransactionId } = require('../utils/id_helper');
 
 // ============================================================================
 // CRUD OPERATIONS
@@ -12,44 +13,52 @@ const { pool } = require('../config/database');
 // GET /api/admin/payments
 exports.getAll = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search, status } = req.query;
+    const { page = 1, limit = 20, search, type } = req.query;
     const offset = (page - 1) * limit;
 
-    let query = `SELECT * FROM payments WHERE 1=1`;
+    let query = `
+      SELECT p.*, p.notes as description, m.full_name as member_name, m.card_number
+      FROM payments p
+      LEFT JOIN members m ON p.member_id = m.id
+      WHERE 1=1`;
     const params = [];
     let paramIndex = 1;
 
     if (search) {
-      query += ` AND (slug ILIKE $${paramIndex} OR name::text ILIKE $${paramIndex})`;
+      query += ` AND (m.full_name ILIKE $${paramIndex} OR m.card_number ILIKE $${paramIndex} OR p.notes ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
 
-    if (status && status !== 'undefined') {
-      query += ` AND status = $${paramIndex}`;
-      params.push(status);
+    if (type && type !== 'all') {
+      query += ` AND p.type = $${paramIndex}`;
+      params.push(type);
       paramIndex++;
     }
 
-    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    query += ` ORDER BY p.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(parseInt(limit), offset);
 
     const { rows } = await pool.query(query, params);
 
     // Get total count with same filters
-    let countQuery = 'SELECT COUNT(*) as total FROM payments WHERE 1=1';
+    let countQuery = `
+      SELECT COUNT(*) as total 
+      FROM payments p
+      LEFT JOIN members m ON p.member_id = m.id
+      WHERE 1=1`;
     const countParams = [];
     let countParamIndex = 1;
 
     if (search) {
-      countQuery += ` AND (slug ILIKE $${countParamIndex} OR name::text ILIKE $${countParamIndex})`;
+      countQuery += ` AND (m.full_name ILIKE $${countParamIndex} OR m.card_number ILIKE $${countParamIndex} OR p.notes ILIKE $${countParamIndex})`;
       countParams.push(`%${search}%`);
       countParamIndex++;
     }
 
-    if (status && status !== 'undefined') {
-      countQuery += ` AND status = $${countParamIndex}`;
-      countParams.push(status);
+    if (type && type !== 'all') {
+      countQuery += ` AND p.type = $${countParamIndex}`;
+      countParams.push(type);
       countParamIndex++;
     }
 
@@ -74,7 +83,7 @@ exports.getAll = async (req, res, next) => {
 exports.getById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { rows } = await pool.query('SELECT * FROM payments WHERE id = $1', [id]);
+    const { rows } = await pool.query('SELECT *, notes as description FROM payments WHERE id = $1', [id]);
 
     if (rows.length === 0) {
       return res.status(404).json({
@@ -99,6 +108,19 @@ exports.create = async (req, res, next) => {
     await client.query('BEGIN');
 
     const data = req.body;
+    
+    // Map description to notes for DB compatibility
+    if (data.description !== undefined) {
+      data.notes = data.description;
+      delete data.description;
+    }
+
+    // Auto-generate transaction_id if missing
+    if (!data.transaction_id) {
+      const typeCode = (data.type || 'PAY').toString().substring(0, 3).toUpperCase();
+      data.transaction_id = generateTransactionId(typeCode);
+    }
+
     const fields = Object.keys(data).join(', ');
     const values = Object.keys(data).map((_, i) => `$${i + 1}`).join(', ');
     const params = Object.values(data);
@@ -132,6 +154,12 @@ exports.update = async (req, res, next) => {
     const { id } = req.params;
     const data = req.body;
 
+    // Map description to notes for DB compatibility
+    if (data.description !== undefined) {
+      data.notes = data.description;
+      delete data.description;
+    }
+
     // Check if exists
     const { rows: existing } = await client.query('SELECT * FROM payments WHERE id = $1', [id]);
     if (existing.length === 0) {
@@ -164,7 +192,7 @@ exports.update = async (req, res, next) => {
 
     await client.query('COMMIT');
 
-    const { rows } = await client.query('SELECT * FROM payments WHERE id = $1', [id]);
+    const { rows } = await client.query('SELECT *, notes as description FROM payments WHERE id = $1', [id]);
 
     return res.json({
       success: true,

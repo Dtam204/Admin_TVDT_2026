@@ -14,50 +14,97 @@ const router = express.Router();
  * @openapi
  * /api/admin/book-loans:
  *   get:
- *     tags:
- *       - BookLoans
- *     summary: Lấy danh sách bookloans
+ *     tags: [Admin BookLoans]
+ *     summary: Lấy danh sách phiếu mượn trả
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: 'integer', default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: 'integer', default: 10 }
+ *       - in: query
+ *         name: status
+ *         schema: { type: 'string', enum: ['borrowed', 'returned', 'overdue', 'lost', 'all'] }
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data: { type: 'array', items: { $ref: '#/components/schemas/BookLoan' } }
+ *                     pagination: { $ref: '#/components/schemas/Pagination' }
+ *   post:
+ *     tags: [Admin BookLoans]
+ *     summary: Tạo phiếu mượn mới
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/BookLoan' }
+ *     responses:
+ *       201:
+ *         description: Created
  */
 router.get('/', requireAuth, getAll);
 
 /**
  * @openapi
- * /api/admin/book-loans/:id:
+ * /api/admin/book-loans/{id}:
  *   get:
- *     tags:
- *       - BookLoans
- *     summary: Lấy chi tiết bookloans
+ *     tags: [Admin BookLoans]
+ *     summary: Lấy chi tiết phiếu mượn
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: 'integer' }
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/BookLoan' }
+ *   put:
+ *     tags: [Admin BookLoans]
+ *     summary: Cập nhật phiếu mượn
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: 'integer' }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/BookLoan' }
+ *     responses:
+ *       200:
+ *         description: Updated
+ *   delete:
+ *     tags: [Admin BookLoans]
+ *     summary: Xóa phiếu mượn
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: 'integer' }
+ *     responses:
+ *       200:
+ *         description: Deleted
  */
 router.get('/:id', requireAuth, getById);
-
-/**
- * @openapi
- * /api/admin/book-loans:
- *   post:
- *     tags:
- *       - BookLoans
- *     summary: Tạo bookloans mới
- */
 router.post('/', requireAuth, create);
-
-/**
- * @openapi
- * /api/admin/book-loans/:id:
- *   put:
- *     tags:
- *       - BookLoans
- *     summary: Cập nhật bookloans
- */
 router.put('/:id', requireAuth, update);
-
-/**
- * @openapi
- * /api/admin/book-loans/:id:
- *   delete:
- *     tags:
- *       - BookLoans
- *     summary: Xóa bookloans
- */
 router.delete('/:id', requireAuth, remove);
 
 module.exports = router;

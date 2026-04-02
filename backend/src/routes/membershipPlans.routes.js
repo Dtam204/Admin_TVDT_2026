@@ -15,7 +15,7 @@ const router = express.Router();
  * /api/admin/membership-plans:
  *   get:
  *     tags:
- *       - MembershipPlans
+ *       - Admin MembershipPlans
  *     summary: Lấy danh sách membershipplans
  */
 router.get('/', requireAuth, getAll);
@@ -25,7 +25,7 @@ router.get('/', requireAuth, getAll);
  * /api/admin/membership-plans/:id:
  *   get:
  *     tags:
- *       - MembershipPlans
+ *       - Admin MembershipPlans
  *     summary: Lấy chi tiết membershipplans
  */
 router.get('/:id', requireAuth, getById);
@@ -35,8 +35,30 @@ router.get('/:id', requireAuth, getById);
  * /api/admin/membership-plans:
  *   post:
  *     tags:
- *       - MembershipPlans
- *     summary: Tạo membershipplans mới
+ *       - Admin MembershipPlans
+ *     summary: Tạo gói hội viên mới
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, price, duration_days]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Gói VIP 1 Năm"
+ *               price:
+ *                 type: number
+ *                 example: 500000
+ *               duration_days:
+ *                 type: integer
+ *                 example: 365
+ *               description:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Tạo thành công
  */
 router.post('/', requireAuth, create);
 
@@ -45,7 +67,7 @@ router.post('/', requireAuth, create);
  * /api/admin/membership-plans/:id:
  *   put:
  *     tags:
- *       - MembershipPlans
+ *       - Admin MembershipPlans
  *     summary: Cập nhật membershipplans
  */
 router.put('/:id', requireAuth, update);
@@ -55,7 +77,7 @@ router.put('/:id', requireAuth, update);
  * /api/admin/membership-plans/:id:
  *   delete:
  *     tags:
- *       - MembershipPlans
+ *       - Admin MembershipPlans
  *     summary: Xóa membershipplans
  */
 router.delete('/:id', requireAuth, remove);

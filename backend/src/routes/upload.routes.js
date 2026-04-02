@@ -1,27 +1,23 @@
 const express = require('express');
-const { uploadImage, uploadFile, uploadFiles, deleteImage } = require('../controllers/upload.controller');
-const { uploadSingle, uploadMultiple, uploadNewsSingle, handleUploadError } = require('../middlewares/upload.middleware');
+const router = express.Router();
+const { uploadPdf, handleUploadError } = require('../middlewares/upload.middleware');
 const requireAuth = require('../middlewares/auth.middleware');
 
-const router = express.Router();
-
 /**
- * @openapi
- * /api/admin/upload/image:
+ * @swagger
+ * /api/admin/upload/pdf:
  *   post:
- *     tags:
- *       - Upload
- *     summary: Upload một file ảnh
+ *     summary: Upload file PDF lên server (Disk Storage)
+ *     tags: [Admin Upload]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
- *       required: true
  *       content:
  *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
- *               image:
+ *               file:
  *                 type: string
  *                 format: binary
  *     responses:
@@ -32,79 +28,61 @@ const router = express.Router();
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 success: { type: boolean }
  *                 data:
  *                   type: object
  *                   properties:
- *                     url:
- *                       type: string
- *                       example: /uploads/news/image-1234567890.jpg
- *                     filename:
- *                       type: string
- *                     originalName:
- *                       type: string
- *                     size:
- *                       type: integer
- *                     mimetype:
- *                       type: string
- *       400:
- *         description: Lỗi upload
+ *                     url: { type: string }
+ *                     originalName: { type: string }
+ *                     size: { type: number }
  */
-router.post(
-  '/image',
-  requireAuth,
-  uploadNewsSingle,
-  handleUploadError,
-  uploadImage
-);
 
-/**
- * @openapi
- * /api/admin/upload/image/:filename:
- *   delete:
- *     tags:
- *       - Upload
- *     summary: Xóa file ảnh
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: filename
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Xóa thành công
- *       404:
- *         description: File không tồn tại
- */
-router.delete('/image/:filename', requireAuth, deleteImage);
+router.post('/pdf', 
+  uploadPdf.single('file'), 
+  handleUploadError, 
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn file PDF để upload.' });
+    }
 
-/**
- * POST /api/admin/upload/file
- * Upload một file (hỗ trợ nhiều loại: image, document, video, audio)
- */
-router.post(
-  '/file',
-  requireAuth,
-  uploadSingle,
-  handleUploadError,
-  uploadFile
-);
+    const fileUrl = `/uploads/pdfs/${req.file.filename}`;
+    res.status(200).json({
+      success: true,
+      data: { url: fileUrl, filename: req.file.filename }
+    });
+});
 
-/**
- * POST /api/admin/upload/files
- * Upload nhiều file cùng lúc
- */
-router.post(
-  '/files',
-  requireAuth,
-  uploadMultiple,
+// Alias cho /pdf để tương thích với uploadFile client helper
+router.post('/file', 
+  uploadPdf.single('file'), 
+  handleUploadError, 
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn file để upload.' });
+    }
+
+    const fileUrl = `/uploads/pdfs/${req.file.filename}`;
+    res.status(200).json({
+      success: true,
+      data: { url: fileUrl, filename: req.file.filename }
+    });
+});
+
+// Route upload ảnh (Thumbnail/Cover)
+const { uploadMedia } = require('../middlewares/upload.middleware');
+router.post('/image',
+  uploadMedia.single('file'),
   handleUploadError,
-  uploadFiles
-);
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn ảnh để upload.' });
+    }
+
+    const fileUrl = `/uploads/media/${req.file.filename}`;
+    res.status(200).json({
+      success: true,
+      data: { url: fileUrl, filename: req.file.filename }
+    });
+});
 
 module.exports = router;

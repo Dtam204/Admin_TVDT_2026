@@ -98,15 +98,37 @@ exports.create = async (req, res, next) => {
   try {
     await client.query('BEGIN');
 
-    const data = req.body;
-    const fields = Object.keys(data).join(', ');
-    const values = Object.keys(data).map((_, i) => `$${i + 1}`).join(', ');
-    const params = Object.values(data);
+    const { 
+      name, 
+      slug, 
+      description, 
+      address, 
+      phone, 
+      email, 
+      website, 
+      status 
+    } = req.body;
 
-    const { rows } = await client.query(
-      `INSERT INTO publishers (${fields}) VALUES (${values}) RETURNING *`,
-      params
-    );
+    const nameJson = typeof name === 'object' ? name : { vi: name };
+    const descJson = typeof description === 'object' ? description : { vi: description || "" };
+
+    const query = `
+      INSERT INTO publishers (
+        name, slug, description, address, phone, email, website, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *
+    `;
+    const params = [
+      JSON.stringify(nameJson),
+      slug,
+      JSON.stringify(descJson),
+      address || null,
+      phone || null,
+      email || null,
+      website || null,
+      status || 'active'
+    ];
+
+    const { rows } = await client.query(query, params);
 
     await client.query('COMMIT');
 
@@ -147,10 +169,25 @@ exports.update = async (req, res, next) => {
     const params = [];
     let paramIndex = 1;
 
-    Object.keys(data).forEach(key => {
-      if (data[key] !== undefined) {
-        updateFields.push(`${key} = $${paramIndex++}`);
-        params.push(data[key]);
+    const fieldsToHandle = ['slug', 'address', 'phone', 'email', 'website', 'logo_url', 'status'];
+    
+    // Xử lý name (JSONB)
+    if (data.name !== undefined) {
+      updateFields.push(`name = $${paramIndex++}`);
+      params.push(JSON.stringify(typeof data.name === 'object' ? data.name : { vi: data.name }));
+    }
+
+    // Xử lý description (JSONB)
+    if (data.description !== undefined) {
+      updateFields.push(`description = $${paramIndex++}`);
+      params.push(JSON.stringify(typeof data.description === 'object' ? data.description : { vi: data.description || "" }));
+    }
+
+    // Xử lý các trường thông thường
+    fieldsToHandle.forEach(field => {
+      if (data[field] !== undefined) {
+        updateFields.push(`${field} = $${paramIndex++}`);
+        params.push(data[field]);
       }
     });
 

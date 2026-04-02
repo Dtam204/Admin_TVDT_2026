@@ -49,6 +49,9 @@ interface GeneralSettings {
   announcement_cta_text: string | Record<Locale, string>;
   announcement_cta_link: string;
   announcement_reappear_hours: number;
+  library_fine_per_day: number;
+  library_default_loan_days: number;
+  library_max_books_per_user: number;
 }
 
 export default function AdminSettingsPage() {
@@ -86,6 +89,9 @@ export default function AdminSettingsPage() {
     announcement_cta_text: { vi: '', en: '', ja: '' },
     announcement_cta_link: '',
     announcement_reappear_hours: 1,
+    library_fine_per_day: 5000,
+    library_default_loan_days: 14,
+    library_max_books_per_user: 5,
   });
 
   useEffect(() => {
@@ -121,6 +127,9 @@ export default function AdminSettingsPage() {
         announcement_cta_text: migrateObjectToLocale(settings.announcement_cta_text?.value || ''),
         announcement_cta_link: settings.announcement_cta_link?.value || '',
         announcement_reappear_hours: parseInt(settings.announcement_reappear_hours?.value || '1', 10),
+        library_fine_per_day: parseInt(settings.library_fine_per_day?.value || '5000', 10),
+        library_default_loan_days: parseInt(settings.library_default_loan_days?.value || '14', 10),
+        library_max_books_per_user: parseInt(settings.library_max_books_per_user?.value || '5', 10),
       });
     } catch (error: any) {
       // Silently fail
@@ -159,6 +168,9 @@ export default function AdminSettingsPage() {
         announcement_cta_text: typeof generalSettings.announcement_cta_text === 'string' ? generalSettings.announcement_cta_text : JSON.stringify(generalSettings.announcement_cta_text),
         announcement_cta_link: generalSettings.announcement_cta_link,
         announcement_reappear_hours: generalSettings.announcement_reappear_hours.toString(),
+        library_fine_per_day: generalSettings.library_fine_per_day.toString(),
+        library_default_loan_days: generalSettings.library_default_loan_days.toString(),
+        library_max_books_per_user: generalSettings.library_max_books_per_user.toString(),
       };
       
       await updateSettings(settingsToSave);
@@ -276,6 +288,7 @@ export default function AdminSettingsPage() {
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList>
           <TabsTrigger value="general">Tổng quan</TabsTrigger>
+          <TabsTrigger value="library">Chính sách Thư viện</TabsTrigger>
           {/* <TabsTrigger value="seo">SEO & Domain</TabsTrigger> */}
           {/* <TabsTrigger value="notifications">Thông báo</TabsTrigger> */}
           {/* <TabsTrigger value="security">Bảo mật</TabsTrigger> */}
@@ -446,6 +459,7 @@ export default function AdminSettingsPage() {
                     </div>
                   </div>
 
+{/* 
                   <div className="space-y-4 pt-4 border-t">
                     <Label className="text-base font-semibold">SEO & Xác minh</Label>
                     <div className="space-y-2">
@@ -463,6 +477,7 @@ export default function AdminSettingsPage() {
                       </p>
                     </div>
                   </div>
+*/}
 
                   <div className="space-y-4 pt-4 border-t">
                     <Label className="text-base font-semibold">API Keys cho Dịch thuật AI</Label>
@@ -506,6 +521,7 @@ export default function AdminSettingsPage() {
                     </div>
                   </div>
 
+{/* 
                   <div className="space-y-4 pt-4 border-t">
                     <Label className="text-base font-semibold">Announcement Bar (Thanh thông báo)</Label>
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
@@ -605,11 +621,12 @@ export default function AdminSettingsPage() {
                       )}
                     </div>
                   </div>
+*/}
 
+{/* 
                   <div className="space-y-4 pt-4 border-t">
                     <Label className="text-base font-semibold">Quản lý Footer Links</Label>
                     
-                    {/* Quick Links */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <Label className="text-sm font-medium">Liên kết nhanh</Label>
@@ -670,7 +687,6 @@ export default function AdminSettingsPage() {
                       </div>
                     </div>
 
-                    {/* Solutions */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <Label className="text-sm font-medium">Dịch vụ</Label>
@@ -731,6 +747,7 @@ export default function AdminSettingsPage() {
                       </div>
                     </div>
                   </div>
+*/}
 
                   {/* <div className="flex items-center justify-between border rounded-lg p-4 bg-gray-50">
                     <div>
@@ -746,6 +763,81 @@ export default function AdminSettingsPage() {
                   </div> */}
                 </>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="library">
+          <Card className="border-0 shadow-lg rounded-[2rem] overflow-hidden">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-bold flex items-center gap-3 text-indigo-600">
+                    <Database className="w-7 h-7" /> Quy định mượn trả
+                  </CardTitle>
+                  <p className="text-slate-500 mt-1 font-medium italic">Thiết lập các tham số cơ bản cho nghiệp vụ lưu thông thư viện</p>
+                </div>
+                <Button
+                  onClick={handleSaveGeneral}
+                  disabled={saving}
+                  className="bg-indigo-600 hover:bg-indigo-700 h-12 px-8 rounded-xl font-bold shadow-lg shadow-indigo-100"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? 'Đang lưu...' : 'Lưu quy định'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-8 space-y-10">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div className="space-y-4">
+                     <div className="flex items-center gap-2 mb-2">
+                        <Label className="text-sm font-black uppercase tracking-wider text-slate-400">Tiền phạt quá hạn (VNĐ/Ngày)</Label>
+                     </div>
+                     <Input 
+                        type="number"
+                        value={generalSettings.library_fine_per_day}
+                        onChange={e => setGeneralSettings({ ...generalSettings, library_fine_per_day: parseInt(e.target.value) || 0 })}
+                        className="h-14 bg-slate-50 border-none rounded-2xl font-black text-xl text-rose-600 px-6"
+                     />
+                     <p className="text-xs text-slate-400 font-medium italic">Số tiền hội viên phải nộp cho mỗi ngày trả sách muộn sau thời hạn.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                     <div className="flex items-center gap-2 mb-2">
+                        <Label className="text-sm font-black uppercase tracking-wider text-slate-400">Thời hạn mượn mặc định (Ngày)</Label>
+                     </div>
+                     <Input 
+                        type="number"
+                        value={generalSettings.library_default_loan_days}
+                        onChange={e => setGeneralSettings({ ...generalSettings, library_default_loan_days: parseInt(e.target.value) || 0 })}
+                        className="h-14 bg-slate-50 border-none rounded-2xl font-black text-xl text-indigo-600 px-6"
+                     />
+                     <p className="text-xs text-slate-400 font-medium italic">Số ngày tối đa được mượn sách nếu không có thiết lập riêng cho từng đầu sách.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                     <div className="flex items-center gap-2 mb-2">
+                        <Label className="text-sm font-black uppercase tracking-wider text-slate-400">Số sách tối đa được mượn cùng lúc</Label>
+                     </div>
+                     <Input 
+                        type="number"
+                        value={generalSettings.library_max_books_per_user}
+                        onChange={e => setGeneralSettings({ ...generalSettings, library_max_books_per_user: parseInt(e.target.value) || 0 })}
+                        className="h-14 bg-slate-50 border-none rounded-2xl font-black text-xl text-amber-600 px-6"
+                     />
+                     <p className="text-xs text-slate-400 font-medium italic">Giới hạn số lượng ấn phẩm mượn đồng thời của một hội viên.</p>
+                  </div>
+               </div>
+
+               <div className="p-6 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                  <h4 className="font-bold text-slate-800 flex items-center gap-2 mb-2">
+                     <Bell className="w-4 h-4 text-amber-500" /> Lưu ý quan trọng
+                  </h4>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                     Các thay đổi về quy định mượn trả sẽ chỉ áp dụng cho các lượt mượn sách <strong>mới</strong>. 
+                     Các phiếu mượn đang diễn ra sẽ vẫn giữ nguyên quy định tại thời điểm khởi tạo để đảm bảo tính minh bạch.
+                  </p>
+               </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -953,8 +1045,8 @@ export default function AdminSettingsPage() {
                 <Label htmlFor="apiBaseUrl">API base URL</Label>
                 <Input
                   id="apiBaseUrl"
-                  defaultValue="http://localhost:4000"
-                  placeholder="http://localhost:4000"
+                  defaultValue="http://localhost:5000"
+                  placeholder="http://localhost:5000"
                 />
               </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Save, Home, Sparkles, Users, Briefcase, ShieldCheck, MessageSquare, CheckCircle2, ArrowRight, Play, CheckCircle, LineChart, Code, Database, Cloud, BarChart3, FileCheck, Plus, Edit, Trash2, ChevronUp, ChevronDown, Star, Link as LinkIcon, Image as ImageIcon, Languages, Bot, Loader2 } from "lucide-react";
+import { Save, Home, Sparkles, Users, Briefcase, ShieldCheck, MessageSquare, CheckCircle2, ArrowRight, Play, CheckCircle, LineChart, Code, Database, Cloud, BarChart3, FileCheck, Plus, Edit, Trash2, ChevronUp, ChevronDown, Star, Link as LinkIcon, Image as ImageIcon, Languages, Bot, Loader2, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +34,7 @@ import { LocaleInput } from "@/components/admin/LocaleInput";
 import { getLocaleValue, setLocaleValue } from "@/lib/utils/locale-admin";
 import { getLocalizedText } from "@/lib/utils/i18n";
 
-const BLOCK_TYPES = ['hero', 'aboutCompany', 'features', 'solutions', 'trusts', 'testimonials', 'consult'] as const;
+const BLOCK_TYPES = ['RECOMMEND', 'SUGGEST', 'UPDATED', 'MOST_VIEWED', 'MOST_BORROWED', 'FAVORITE'] as const;
 type BlockType = typeof BLOCK_TYPES[number];
 
 const ICON_OPTIONS = [
@@ -63,24 +63,22 @@ interface HomepageBlock {
 
 export default function AdminHomepagePage() {
   const [blocks, setBlocks] = useState<Record<BlockType, HomepageBlock>>({
-    hero: { sectionType: 'hero', data: {}, isActive: true },
-    aboutCompany: { sectionType: 'aboutCompany', data: {}, isActive: true },
-    features: { sectionType: 'features', data: {}, isActive: true },
-    solutions: { sectionType: 'solutions', data: {}, isActive: true },
-    trusts: { sectionType: 'trusts', data: {}, isActive: true },
-    testimonials: { sectionType: 'testimonials', data: {}, isActive: true },
-    consult: { sectionType: 'consult', data: {}, isActive: true },
+    RECOMMEND: { sectionType: 'RECOMMEND', data: {}, isActive: true },
+    SUGGEST: { sectionType: 'SUGGEST', data: {}, isActive: true },
+    UPDATED: { sectionType: 'UPDATED', data: {}, isActive: true },
+    MOST_VIEWED: { sectionType: 'MOST_VIEWED', data: {}, isActive: true },
+    MOST_BORROWED: { sectionType: 'MOST_BORROWED', data: {}, isActive: true },
+    FAVORITE: { sectionType: 'FAVORITE', data: {}, isActive: true },
   });
   const [loading, setLoading] = useState<Record<BlockType, boolean>>({
-    hero: false,
-    aboutCompany: false,
-    features: false,
-    solutions: false,
-    trusts: false,
-    testimonials: false,
-    consult: false,
+    RECOMMEND: false,
+    SUGGEST: false,
+    UPDATED: false,
+    MOST_VIEWED: false,
+    MOST_BORROWED: false,
+    FAVORITE: false,
   });
-  const [activeTab, setActiveTab] = useState<BlockType>('hero');
+  const [activeTab, setActiveTab] = useState<BlockType>('RECOMMEND');
   const [globalLocale, setGlobalLocale] = useState<'vi' | 'en' | 'ja'>('vi');
   const [aiProvider, setAiProvider] = useState<'openai' | 'gemini'>('openai');
   const [translatingAll, setTranslatingAll] = useState(false);
@@ -99,13 +97,12 @@ export default function AdminHomepagePage() {
   const [secondaryLinkTab, setSecondaryLinkTab] = useState<"url" | "media">("url");
 
   const tabsConfig = [
-    { value: 'hero' as BlockType, label: 'Hero Banner', icon: Home, description: 'Banner đầu trang..' },
-    { value: 'aboutCompany' as BlockType, label: 'Giới thiệu', icon: Users, description: 'Giới thiệu..' },
-    { value: 'features' as BlockType, label: 'Tính năng', icon: Sparkles, description: 'Tính năng nổi bật' },
-    { value: 'solutions' as BlockType, label: 'Giải pháp', icon: Briefcase, description: 'Chuyên nghiệp' },
-    { value: 'trusts' as BlockType, label: 'Độ tin cậy', icon: ShieldCheck, description: 'Thể hiện độ tin cậy' },
-    { value: 'testimonials' as BlockType, label: 'Khách hàng', icon: Star, description: 'Đánh giá từ khách hàng' },
-    { value: 'consult' as BlockType, label: 'Tư vấn', icon: MessageSquare, description: 'Kêu gọi tư vấn' },
+    { value: 'RECOMMEND' as BlockType, label: 'Banner Đề cử', icon: Home, description: 'Băng rôn nổi bật trang chủ' },
+    { value: 'SUGGEST' as BlockType, label: 'Sách Gợi ý', icon: Sparkles, description: 'Sách ngẫu nhiên cho bạn đọc' },
+    { value: 'UPDATED' as BlockType, label: 'Mới cập nhật', icon: Play, description: 'Danh sách sách vừa nhập' },
+    { value: 'MOST_VIEWED' as BlockType, label: 'Xem nhiều nhất', icon: LineChart, description: 'Được quan tâm nhiều nhất' },
+    { value: 'MOST_BORROWED' as BlockType, label: 'Mượn nhiều nhất', icon: Briefcase, description: 'Thống kê mượn trả' },
+    { value: 'FAVORITE' as BlockType, label: 'Sách Nổi bật', icon: Star, description: 'Bộ sưu tập tiêu biểu' },
   ];
 
   useEffect(() => {
@@ -114,13 +111,12 @@ export default function AdminHomepagePage() {
 
   // Collapse state for config blocks (default: all hidden)
   const [collapsedBlocks, setCollapsedBlocks] = useState<Record<string, boolean>>({
-    hero: true,
-    aboutCompany: true,
-    features: true,
-    solutions: true,
-    trusts: true,
-    testimonials: true,
-    consult: true,
+    RECOMMEND: false,
+    SUGGEST: false,
+    UPDATED: false,
+    MOST_VIEWED: false,
+    MOST_BORROWED: false,
+    FAVORITE: false,
   });
 
   const toggleBlock = (blockKey: string) => {
@@ -138,61 +134,13 @@ export default function AdminHomepagePage() {
             AdminEndpoints.homepage.block(blockType),
           );
           if (data?.data) {
-            // Migration: Convert old block1/2/3 structure to blocks array for features
-            if (blockType === 'features' && data.data.data) {
-              const featuresData = data.data.data as any;
-              // Check if we have old structure (block1, block2, block3) but no blocks array
-              if ((featuresData.block1 || featuresData.block2 || featuresData.block3) && !featuresData.blocks) {
-                const blocks: any[] = [];
-                if (featuresData.block1) {
-                  blocks.push({
-                    type: 'type1',
-                    image: featuresData.block1.image || '',
-                    text: featuresData.block1.text || '',
-                    list: featuresData.block1.list || [],
-                    button: featuresData.block1.button || { text: '', link: '' },
-                    items: [],
-                  });
-                }
-                if (featuresData.block2) {
-                  blocks.push({
-                    type: 'type2',
-                    image: featuresData.block2.image || '',
-                    text: '',
-                    list: [],
-                    button: featuresData.block2.button || { text: '', link: '' },
-                    items: featuresData.block2.items || [],
-                  });
-                }
-                if (featuresData.block3) {
-                  blocks.push({
-                    type: 'type2',
-                    image: featuresData.block3.image || '',
-                    text: '',
-                    list: [],
-                    button: featuresData.block3.button || { text: '', link: '' },
-                    items: featuresData.block3.items || [],
-                  });
-                }
-                featuresData.blocks = blocks;
-                // Save migrated data
-                await adminApiCall(AdminEndpoints.homepage.block(blockType), {
-                  method: "PUT",
-                  body: JSON.stringify({
-                    data: featuresData,
-                    isActive: data.data.isActive,
-                  }),
-                });
-              }
-            }
             setBlocks(prev => ({
               ...prev,
               [blockType]: data.data!,
             }));
           }
         } catch (error) {
-          // Block might not exist yet, that's okay
-          // Block not found - use defaults
+          // Block might not exist yet
         }
       }
     } catch (error: any) {
@@ -858,2398 +806,255 @@ export default function AdminHomepagePage() {
           const block = blocks[blockType];
 
           return (
-            <TabsContent key={blockType} value={blockType} className="space-y-0">
-              <Tabs defaultValue="config" className="w-full">
-                <TabsList>
-                  <TabsTrigger value="config">Cấu hình</TabsTrigger>
-                  <TabsTrigger value="preview">Preview</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="config" className="space-y-4 mt-4">
-                  {/* Tab Controls - Locale Selector và Translate Button */}
-                  <Card className="mb-4">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between flex-wrap gap-4">
-                        <div className="flex items-center gap-4">
-                          {/* Locale Selector cho tab này */}
-                          <div className="flex items-center gap-2">
-                            <Languages className="h-4 w-4 text-gray-500" />
-                            <Label className="text-sm text-gray-600 whitespace-nowrap">Hiển thị:</Label>
-                            <Select value={globalLocale} onValueChange={(value: 'vi' | 'en' | 'ja') => setGlobalLocale(value)}>
-                              <SelectTrigger className="w-[150px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="vi">🇻🇳 Tiếng Việt</SelectItem>
-                                <SelectItem value="en">🇬🇧 English</SelectItem>
-                                <SelectItem value="ja">🇯🇵 日本語</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        
-                        {/* Translate Controls - Source Language Selector và Button */}
+            <TabsContent key={blockType} value={blockType} className="space-y-6">
+              <Card className="border-none shadow-none bg-transparent">
+                <CardContent className="p-0 space-y-6">
+                  {/* Language Selection Bar */}
+                  <Card className="bg-white/50 backdrop-blur-sm border-blue-100">
+                    <CardContent className="flex items-center justify-between p-4 flex-wrap gap-4">
+                      <div className="flex items-center gap-6">
                         <div className="flex items-center gap-2">
-                          {/* Source Language Selector cho dịch */}
-                          <div className="flex items-center gap-2">
-                            <Label className="text-sm text-gray-600 whitespace-nowrap">Dịch từ:</Label>
-                            <Select value={translateSourceLang} onValueChange={(value: 'vi' | 'en' | 'ja') => setTranslateSourceLang(value)}>
-                              <SelectTrigger className="w-[150px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="vi">🇻🇳 Tiếng Việt</SelectItem>
-                                <SelectItem value="en">🇬🇧 English</SelectItem>
-                                <SelectItem value="ja">🇯🇵 日本語</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          {/* Translate Button cho tab này */}
-                          <Button
-                            onClick={handleTranslateAll}
-                            disabled={translatingAll}
-                            variant="outline"
-                            className="gap-2"
-                          >
-                            {translatingAll ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                <span>Đang dịch...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="h-4 w-4" />
-                                <span>Dịch khối này</span>
-                              </>
-                            )}
-                          </Button>
+                          <Languages className="h-4 w-4 text-blue-600" />
+                          <Label className="text-sm font-bold text-gray-700">Ngôn ngữ:</Label>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="p-0">
-                      <div
-                        className="flex items-center justify-between w-full px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors rounded-t-lg"
-                        onClick={() => toggleBlock(blockType)}
-                      >
-                        <div className="flex-1">
-                          <CardTitle className="flex items-center gap-3 text-lg font-semibold text-gray-900 mb-1">
-                            {collapsedBlocks[blockType] ? (
-                              <ChevronDown className="h-5 w-5 text-gray-500" />
-                            ) : (
-                              <ChevronUp className="h-5 w-5 text-gray-500" />
-                            )}
-                            {tabConfig?.label}
-                          </CardTitle>
-                          <p className="text-sm text-gray-600 ml-8">{tabConfig?.description}</p>
-                        </div>
+                        <Select value={globalLocale} onValueChange={(v: any) => setGlobalLocale(v)}>
+                          <SelectTrigger className="w-[150px] bg-white"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="vi">🇻🇳 Tiếng Việt</SelectItem>
+                            <SelectItem value="en">🇬🇧 English</SelectItem>
+                            <SelectItem value="ja">🇯🇵 日本語</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <Button
-                          onClick={(e) => { e.stopPropagation(); handleSaveBlock(blockType); }}
-                          disabled={loading[blockType]}
+                          onClick={handleTranslateAll}
+                          disabled={translatingAll}
+                          variant="outline"
                           size="sm"
+                          className="text-blue-600 border-blue-200"
                         >
-                          <Save className="h-4 w-4 mr-2" />
-                          {loading[blockType] ? "Đang lưu..." : "Lưu"}
+                          {translatingAll ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />}
+                          AI Translate
                         </Button>
                       </div>
-                    </CardHeader>
-                    {!collapsedBlocks[blockType] && (
-                      <CardContent className="space-y-4 px-6 py-4">
-                        {/* Render form based on block type */}
-                        {blockType === 'hero' && (
-                          <>
-                            <LocaleInput
-                              value={getLocaleValue(blocks['hero']?.data, 'title.line1')}
-                              onChange={(value) => updateLocaleValue('hero', 'title.line1', value)}
-                              label="Tiêu đề dòng 1"
-                              placeholder="Chuyển đổi số "
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                            <LocaleInput
-                              value={getLocaleValue(blocks['hero']?.data, 'title.line2')}
-                              onChange={(value) => updateLocaleValue('hero', 'title.line2', value)}
-                              label="Tiêu đề dòng 2"
-                              placeholder="Thông minh "
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                            <LocaleInput
-                              value={getLocaleValue(blocks['hero']?.data, 'title.line3')}
-                              onChange={(value) => updateLocaleValue('hero', 'title.line3', value)}
-                              label="Tiêu đề dòng 3"
-                              placeholder="Cho doanh nghiệp"
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                            <LocaleInput
-                              value={getLocaleValue(blocks['hero']?.data, 'description')}
-                              onChange={(value) => updateLocaleValue('hero', 'description', value)}
-                              label="Mô tả"
-                              placeholder="Thư viện TN đồng hành..."
-                              multiline={true}
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                            <LocaleInput
-                              value={getLocaleValue(blocks['hero']?.data, 'primaryButton.text')}
-                              onChange={(value) => updateLocaleValue('hero', 'primaryButton.text', value)}
-                              label="Nút chính - Text"
-                              placeholder="Khám phá giải pháp"
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                            <div>
-                              <Label className="mb-2">Nút chính - Link</Label>
-                              <Input
-                                value={getBlockData('hero', 'primaryButton.link')}
-                                onChange={(e) => updateBlockData('hero', 'primaryButton.link', e.target.value)}
-                                placeholder="/solutions"
-                              />
-                            </div>
-                            <LocaleInput
-                              value={getLocaleValue(blocks['hero']?.data, 'secondaryButton.text')}
-                              onChange={(value) => updateLocaleValue('hero', 'secondaryButton.text', value)}
-                              label="Nút phụ - Text"
-                              placeholder="Xem video"
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                            <div>
-                              <Label className="mb-2">Nút phụ - Link</Label>
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50">
-                                  <div className="flex flex-col">
-                                    <Label className="text-sm font-medium">
-                                      {getBlockData('hero', 'secondaryButton.type', 'link') === 'video'
-                                        ? 'Video/Media (Mở popup)'
-                                        : 'Nhập link (Redirect)'}
-                                    </Label>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      {getBlockData('hero', 'secondaryButton.type', 'link') === 'video'
-                                        ? 'Video sẽ mở trong popup khi click'
-                                        : 'Link sẽ redirect đến trang đích khi click'}
-                                    </p>
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <span className={`text-sm ${getBlockData('hero', 'secondaryButton.type', 'link') === 'link' ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
-                                      Link
-                                    </span>
-                                    <Switch
-                                      checked={getBlockData('hero', 'secondaryButton.type', 'link') === 'video'}
-                                      onCheckedChange={(checked) => {
-                                        updateBlockData('hero', 'secondaryButton.type', checked ? 'video' : 'link');
-                                      }}
-                                    />
-                                    <span className={`text-sm ${getBlockData('hero', 'secondaryButton.type', 'link') === 'video' ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
-                                      Video
-                                    </span>
-                                  </div>
-                                </div>
-                                {getBlockData('hero', 'secondaryButton.type', 'link') === 'link' && (
-                                  <Input
-                                    value={getBlockData('hero', 'secondaryButton.link')}
-                                    onChange={(e) => updateBlockData('hero', 'secondaryButton.link', e.target.value)}
-                                    placeholder="/page hoặc https://example.com/..."
-                                  />
-                                )}
-
-                                {getBlockData('hero', 'secondaryButton.type', 'link') === 'video' && (
-                                  <div className="flex gap-2">
-                                    <Input
-                                      value={getBlockData('hero', 'secondaryButton.link')}
-                                      onChange={(e) => updateBlockData('hero', 'secondaryButton.link', e.target.value)}
-                                      placeholder="/video hoặc https://youtube.com/..."
-                                      className="flex-1"
-                                    />
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setSecondaryLinkTab("media");
-                                        setShowSecondaryLinkDialog(true);
-                                      }}
-                                      title="Chọn video từ Media Library"
-                                    >
-                                      <ImageIcon className="w-4 h-4 mr-2" />
-                                      Chọn Media
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div>
-                              <Label className="mb-2">Hình ảnh Hero</Label>
-                              <ImageUpload
-                                currentImage={getBlockData('hero', 'heroImage')}
-                                onImageSelect={(url: string) => updateBlockData('hero', 'heroImage', url)}
-                              />
-                            </div>
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                <Label className="mb-2">Partners (Logo đối tác)</Label>
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    const partners = getBlockData('hero', 'partners', []) as string[];
-                                    updateBlockData('hero', 'partners', [...partners, '']);
-                                  }}
-                                >
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Thêm partner
-                                </Button>
-                              </div>
-                              <div className="grid grid-cols-6 gap-4">
-                                {(getBlockData('hero', 'partners', []) as string[]).map((partner, idx) => (
-                                  <div key={idx} className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                      <Label className="mb-2 text-sm">Partner {idx + 1}</Label>
-                                      <Button
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={() => {
-                                          const partners = getBlockData('hero', 'partners', []) as string[];
-                                          updateBlockData('hero', 'partners', partners.filter((_, i) => i !== idx));
-                                        }}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                    <ImageUpload
-                                      currentImage={partner}
-                                      onImageSelect={(url: string) => {
-                                        const partners = getBlockData('hero', 'partners', []) as string[];
-                                        const newPartners = [...partners];
-                                        newPartners[idx] = url;
-                                        updateBlockData('hero', 'partners', newPartners);
-                                      }}
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <Label className="mb-2">Kích hoạt</Label>
-                              <Switch
-                                checked={block.isActive}
-                                onCheckedChange={(checked) => setBlocks(prev => ({
-                                  ...prev,
-                                  [blockType]: { ...prev[blockType], isActive: checked }
-                                }))}
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {blockType === 'consult' && (
-                          <>
-                            <LocaleInput
-                              value={getLocaleValue(blocks['consult']?.data, 'title')}
-                              onChange={(value) => updateLocaleValue('consult', 'title', value)}
-                              label="Tiêu đề"
-                              placeholder="Miễn phí tư vấn"
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                            <LocaleInput
-                              value={getLocaleValue(blocks['consult']?.data, 'description')}
-                              onChange={(value) => updateLocaleValue('consult', 'description', value)}
-                              label="Mô tả"
-                              placeholder="Mô tả..."
-                              multiline={true}
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                            <LocaleInput
-                              value={getLocaleValue(blocks['consult']?.data, 'buttons.primary.text')}
-                              onChange={(value) => updateLocaleValue('consult', 'buttons.primary.text', value)}
-                              label="Nút chính - Text"
-                              placeholder="Tư vấn miễn phí ngay"
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                            <div>
-                              <Label className="mb-2">Nút chính - Link</Label>
-                              <Input
-                                value={getBlockData('consult', 'buttons.primary.link')}
-                                onChange={(e) => updateBlockData('consult', 'buttons.primary.link', e.target.value)}
-                                placeholder="/contact"
-                              />
-                            </div>
-                            <LocaleInput
-                              value={getLocaleValue(blocks['consult']?.data, 'buttons.secondary.text')}
-                              onChange={(value) => updateLocaleValue('consult', 'buttons.secondary.text', value)}
-                              label="Nút phụ - Text"
-                              placeholder="Xem case studies"
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                            <div>
-                              <Label className="mb-2">Nút phụ - Link</Label>
-                              <Input
-                                value={getBlockData('consult', 'buttons.secondary.link')}
-                                onChange={(e) => updateBlockData('consult', 'buttons.secondary.link', e.target.value)}
-                                placeholder="/solutions"
-                              />
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <Label className="mb-2">Kích hoạt</Label>
-                              <Switch
-                                checked={block.isActive}
-                                onCheckedChange={(checked) => setBlocks(prev => ({
-                                  ...prev,
-                                  [blockType]: { ...prev[blockType], isActive: checked }
-                                }))}
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {blockType === 'aboutCompany' && (
-                          <>
-                            <div className="space-y-4">
-                              <h3 className="font-semibold text-lg">Tiêu đề</h3>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <LocaleInput
-                                    value={getLocaleValue(blocks['aboutCompany']?.data, 'title.part1')}
-                                    onChange={(value) => updateLocaleValue('aboutCompany', 'title.part1', value)}
-                                    label="Phần 1"
-                                    placeholder="Chuyển đổi số "
-                                    defaultLocale={globalLocale}
-                                    aiProvider={aiProvider}
-                                  />
-                                </div>
-                                <div>
-                                  <LocaleInput
-                                    value={getLocaleValue(blocks['aboutCompany']?.data, 'title.highlight1')}
-                                    onChange={(value) => updateLocaleValue('aboutCompany', 'title.highlight1', value)}
-                                    label="Highlight 1"
-                                    placeholder="không bắt đầu từ phần mềm"
-                                    defaultLocale={globalLocale}
-                                    aiProvider={aiProvider}
-                                  />
-                                </div>
-                                <div>
-                                  <LocaleInput
-                                    value={getLocaleValue(blocks['aboutCompany']?.data, 'title.part2')}
-                                    onChange={(value) => updateLocaleValue('aboutCompany', 'title.part2', value)}
-                                    label="Phần 2"
-                                    placeholder=" mà "
-                                    defaultLocale={globalLocale}
-                                    aiProvider={aiProvider}
-                                  />
-                                </div>
-                                <div>
-                                  <LocaleInput
-                                    value={getLocaleValue(blocks['aboutCompany']?.data, 'title.highlight2')}
-                                    onChange={(value) => updateLocaleValue('aboutCompany', 'title.highlight2', value)}
-                                    label="Highlight 2"
-                                    placeholder="từ hiệu quả thực tế"
-                                    defaultLocale={globalLocale}
-                                    aiProvider={aiProvider}
-                                  />
-                                </div>
-                                <div className="md:col-span-2">
-                                  <LocaleInput
-                                    value={getLocaleValue(blocks['aboutCompany']?.data, 'title.part3')}
-                                    onChange={(value) => updateLocaleValue('aboutCompany', 'title.part3', value)}
-                                    label="Phần 3"
-                                    placeholder=" của doanh nghiệp."
-                                    defaultLocale={globalLocale}
-                                    aiProvider={aiProvider}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <div>
-                              <LocaleInput
-                                value={getLocaleValue(blocks['aboutCompany']?.data, 'description')}
-                                onChange={(value) => updateLocaleValue('aboutCompany', 'description', value)}
-                                label="Mô tả"
-                                placeholder="Mô tả..."
-                                multiline={true}
-                                defaultLocale={globalLocale}
-                                aiProvider={aiProvider}
-                              />
-                            </div>
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-lg">Slides</h3>
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    const slides = getBlockData('aboutCompany', 'slides', []) as any[];
-                                    addArrayItem('aboutCompany', 'slides', {
-                                      title: '',
-                                      description: '',
-                                      buttonText: '',
-                                      buttonLink: '',
-                                      image: '',
-                                    });
-                                    setEditingSlideIndex(slides.length);
-                                  }}
-                                >
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Thêm slide
-                                </Button>
-                              </div>
-                              <div className="grid grid-cols-3 gap-4">
-                                {(() => {
-                                  const slides = getBlockData('aboutCompany', 'slides', []);
-                                  return Array.isArray(slides) ? slides.map((slide: any, idx: number) => (
-                                  <Card key={idx}>
-                                    <CardHeader>
-                                      <div className="flex items-center justify-between">
-                                        <CardTitle className="text-base">Slide {idx + 1}</CardTitle>
-                                        <div className="flex gap-2">
-                                          <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => moveArrayItem('aboutCompany', 'slides', idx, 'up')}
-                                            disabled={idx === 0}
-                                          >
-                                            <ChevronUp className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => moveArrayItem('aboutCompany', 'slides', idx, 'down')}
-                                            disabled={(() => {
-                                              const slides = getBlockData('aboutCompany', 'slides', []);
-                                              return !Array.isArray(slides) || idx === slides.length - 1;
-                                            })()}
-                                          >
-                                            <ChevronDown className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => setEditingSlideIndex(idx)}
-                                          >
-                                            <Edit className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => removeArrayItem('aboutCompany', 'slides', idx)}
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <div className="space-y-2">
-                                        <p className="font-medium text-sm">{getLocalizedText(slide.title, globalLocale) || 'Chưa có tiêu đề'}</p>
-                                        <p className="text-xs text-gray-600 line-clamp-2">{getLocalizedText(slide.description, globalLocale) || 'Chưa có mô tả'}</p>
-                                        {slide.image && (
-                                          <img src={slide.image} alt={getLocalizedText(slide.title, globalLocale) || 'Slide'} className="w-full h-24 object-cover rounded" />
-                                        )}
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                )) : null;
-                                })()}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <Label className="mb-2">Kích hoạt</Label>
-                              <Switch
-                                checked={block.isActive}
-                                onCheckedChange={(checked) => setBlocks(prev => ({
-                                  ...prev,
-                                  [blockType]: { ...prev[blockType], isActive: checked }
-                                }))}
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {blockType === 'features' && (
-                          <>
-                            <div className="space-y-4">
-                              <h3 className="font-semibold text-lg">Header</h3>
-                              <div>
-                                <LocaleInput
-                                  value={getLocaleValue(blocks['features']?.data, 'header.sub')}
-                                  onChange={(value) => updateLocaleValue('features', 'header.sub', value)}
-                                  label="Sub Title"
-                                  placeholder="GIỚI THIỆU SFB"
-                                  defaultLocale={globalLocale}
-                                  aiProvider={aiProvider}
-                                />
-                              </div>
-                              <div>
-                                <LocaleInput
-                                  value={getLocaleValue(blocks['features']?.data, 'header.title')}
-                                  onChange={(value) => updateLocaleValue('features', 'header.title', value)}
-                                  label="Tiêu đề"
-                                  placeholder="Chúng tôi là ai?"
-                                  defaultLocale={globalLocale}
-                                  aiProvider={aiProvider}
-                                />
-                              </div>
-                              <div>
-                                <LocaleInput
-                                  value={getLocaleValue(blocks['features']?.data, 'header.description')}
-                                  onChange={(value) => updateLocaleValue('features', 'header.description', value)}
-                                  label="Mô tả"
-                                  placeholder="Mô tả..."
-                                  multiline={true}
-                                  defaultLocale={globalLocale}
-                                  aiProvider={aiProvider}
-                                />
-                              </div>
-                            </div>
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-lg">Blocks</h3>
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    const blocks = getBlockData('features', 'blocks', []) as any[];
-                                    addArrayItem('features', 'blocks', {
-                                      type: 'type1', // type1: có text + list, type2: có items
-                                      image: '',
-                                      imageSide: 'left', // 'left' hoặc 'right'
-                                      text: '',
-                                      list: [],
-                                      button: { text: '', link: '' },
-                                      items: [],
-                                    });
-                                    setEditingFeatureBlockIndex(blocks.length);
-                                  }}
-                                >
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Thêm block
-                                </Button>
-                              </div>
-                              <div className="grid grid-cols-3 gap-4">
-                                {(getBlockData('features', 'blocks', []) as any[]).map((featureBlock: any, idx: number) => (
-                                  <Card key={idx}>
-                                    <CardHeader>
-                                      <div className="flex items-center justify-between">
-                                        <CardTitle className="text-base text-sm">Block {idx + 1}</CardTitle>
-                                        <div className="flex gap-1">
-                                          <Button
-                                            variant="outline"
-                                            size="icon"
-                                            className="h-7 w-7"
-                                            onClick={() => moveArrayItem('features', 'blocks', idx, 'up')}
-                                            disabled={idx === 0}
-                                          >
-                                            <ChevronUp className="h-3 w-3" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="icon"
-                                            className="h-7 w-7"
-                                            onClick={() => moveArrayItem('features', 'blocks', idx, 'down')}
-                                            disabled={idx === (getBlockData('features', 'blocks', []) as any[]).length - 1}
-                                          >
-                                            <ChevronDown className="h-3 w-3" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="icon"
-                                            className="h-7 w-7"
-                                            onClick={() => setEditingFeatureBlockIndex(idx)}
-                                          >
-                                            <Edit className="h-3 w-3" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="icon"
-                                            className="h-7 w-7"
-                                            onClick={() => removeArrayItem('features', 'blocks', idx)}
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <div className="space-y-2">
-                                        <p className="font-medium text-xs">{featureBlock.type === 'type1' ? 'Type 1' : 'Type 2'}</p>
-                                        {featureBlock.image && (
-                                          <div className="w-full aspect-video overflow-hidden rounded border border-gray-200">
-                                            <img src={featureBlock.image} alt="Block" className="w-full h-full object-cover" />
-                                          </div>
-                                        )}
-                                        {featureBlock.text && (
-                                          <p className="text-xs text-gray-600 line-clamp-2">
-                                            {getLocalizedText(featureBlock.text, globalLocale) || 'Chưa có nội dung'}
-                                          </p>
-                                        )}
-                                        {featureBlock.items && featureBlock.items.length > 0 && (
-                                          <p className="text-xs text-gray-600">{featureBlock.items.length} items</p>
-                                        )}
-                                        {featureBlock.list && featureBlock.list.length > 0 && (
-                                          <p className="text-xs text-gray-600">{featureBlock.list.length} list items</p>
-                                        )}
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <Label className="mb-2">Kích hoạt</Label>
-                              <Switch
-                                checked={block.isActive}
-                                onCheckedChange={(checked) => setBlocks(prev => ({
-                                  ...prev,
-                                  [blockType]: { ...prev[blockType], isActive: checked }
-                                }))}
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {blockType === 'solutions' && (
-                          <>
-                            <div className="space-y-4">
-                              <h3 className="font-semibold text-lg">Header</h3>
-                              <div>
-                                <LocaleInput
-                                  value={getLocaleValue(blocks['solutions']?.data, 'subHeader')}
-                                  onChange={(value) => updateLocaleValue('solutions', 'subHeader', value)}
-                                  label="Sub Header"
-                                  placeholder="GIẢI PHÁP CHUYÊN NGHIỆP"
-                                  defaultLocale={globalLocale}
-                                  aiProvider={aiProvider}
-                                />
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <LocaleInput
-                                    value={getLocaleValue(blocks['solutions']?.data, 'title.part1')}
-                                    onChange={(value) => updateLocaleValue('solutions', 'title.part1', value)}
-                                    label="Tiêu đề phần 1"
-                                    placeholder="Giải pháp phần mềm"
-                                    defaultLocale={globalLocale}
-                                    aiProvider={aiProvider}
-                                  />
-                                </div>
-                                <div>
-                                  <LocaleInput
-                                    value={getLocaleValue(blocks['solutions']?.data, 'title.part2')}
-                                    onChange={(value) => updateLocaleValue('solutions', 'title.part2', value)}
-                                    label="Tiêu đề phần 2"
-                                    placeholder="đóng gói cho nhiều lĩnh vực"
-                                    defaultLocale={globalLocale}
-                                    aiProvider={aiProvider}
-                                  />
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <Label className="mb-2">Domains (Lĩnh vực)</Label>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      const domains = getBlockData('solutions', 'domains', []) as any[];
-                                      updateBlockData('solutions', 'domains', [...domains, { vi: '', en: '', ja: '' }]);
-                                    }}
-                                  >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Thêm
-                                  </Button>
-                                </div>
-                                {(getBlockData('solutions', 'domains', []) as any[]).map((domain, idx) => (
-                                  <div key={idx} className="flex gap-2">
-                                    <div className="flex-1">
-                                      <LocaleInput
-                                        value={getLocaleValue(domain, '')}
-                                        onChange={(value) => {
-                                          const domains = getBlockData('solutions', 'domains', []) as any[];
-                                          const newDomains = [...domains];
-                                          newDomains[idx] = value;
-                                          updateBlockData('solutions', 'domains', newDomains);
-                                        }}
-                                        label={`Lĩnh vực ${idx + 1}`}
-                                        placeholder="Lĩnh vực..."
-                                      defaultLocale={globalLocale}
-                                      aiProvider={aiProvider}
-                                    />
-                                    </div>
-                                    <Button
-                                      variant="outline"
-                                      size="icon"
-                                      className="mt-6"
-                                      onClick={() => {
-                                        const domains = getBlockData('solutions', 'domains', []) as any[];
-                                        updateBlockData('solutions', 'domains', domains.filter((_, i) => i !== idx));
-                                      }}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-lg">Solution Items</h3>
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    const items = getBlockData('solutions', 'items', []) as any[];
-                                    addArrayItem('solutions', 'items', {
-                                      id: items.length + 1,
-                                      iconName: 'Code',
-                                      title: '',
-                                      description: '',
-                                      benefits: [],
-                                      buttonText: '',
-                                      buttonLink: '',
-                                      iconGradient: 'from-cyan-400 to-blue-600',
-                                    });
-                                    setEditingSolutionIndex(items.length);
-                                  }}
-                                >
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Thêm solution
-                                </Button>
-                              </div>
-                              {(getBlockData('solutions', 'items', []) as any[]).map((item: any, idx: number) => (
-                                <Card key={idx}>
-                                  <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                      <CardTitle className="text-base">Solution {idx + 1}</CardTitle>
-                                      <div className="flex gap-2">
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          onClick={() => moveArrayItem('solutions', 'items', idx, 'up')}
-                                          disabled={idx === 0}
-                                        >
-                                          <ChevronUp className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          onClick={() => moveArrayItem('solutions', 'items', idx, 'down')}
-                                          disabled={idx === (getBlockData('solutions', 'items', []) as any[]).length - 1}
-                                        >
-                                          <ChevronDown className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          onClick={() => setEditingSolutionIndex(idx)}
-                                        >
-                                          <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          onClick={() => removeArrayItem('solutions', 'items', idx)}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <div className="space-y-2">
-                                      <p className="font-medium">{getLocalizedText(item.title, globalLocale) || 'Chưa có tiêu đề'}</p>
-                                      <p className="text-sm text-gray-600 line-clamp-2">{getLocalizedText(item.description, globalLocale) || 'Chưa có mô tả'}</p>
-                                      <div className="flex flex-wrap gap-1">
-                                        {(item.benefits || []).slice(0, 3).map((b: any, bidx: number) => (
-                                          <Badge key={bidx} variant="secondary">
-                                            {getLocalizedText(b, globalLocale)}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              ))}
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <Label className="mb-2">Kích hoạt</Label>
-                              <Switch
-                                checked={block.isActive}
-                                onCheckedChange={(checked) => setBlocks(prev => ({
-                                  ...prev,
-                                  [blockType]: { ...prev[blockType], isActive: checked }
-                                }))}
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {blockType === 'trusts' && (
-                          <>
-                            <div className="space-y-4">
-                              <h3 className="font-semibold text-lg">Header</h3>
-                              <div>
-                                <LocaleInput
-                                  value={getLocaleValue(blocks['trusts']?.data, 'subHeader')}
-                                  onChange={(value) => updateLocaleValue('trusts', 'subHeader', value)}
-                                  label="Sub Header"
-                                  placeholder="THƯ VIỆN TN"
-                                  defaultLocale={globalLocale}
-                                  aiProvider={aiProvider}
-                                />
-                              </div>
-                              <div>
-                                <LocaleInput
-                                  value={getLocaleValue(blocks['trusts']?.data, 'title')}
-                                  onChange={(value) => updateLocaleValue('trusts', 'title', value)}
-                                  label="Tiêu đề"
-                                  placeholder="Độ tin cậy của Thư viện TN"
-                                  defaultLocale={globalLocale}
-                                  aiProvider={aiProvider}
-                                />
-                              </div>
-                              <div>
-                                <LocaleInput
-                                  value={getLocaleValue(blocks['trusts']?.data, 'description')}
-                                  onChange={(value) => updateLocaleValue('trusts', 'description', value)}
-                                  label="Mô tả"
-                                  placeholder="Mô tả..."
-                                  multiline={true}
-                                  defaultLocale={globalLocale}
-                                  aiProvider={aiProvider}
-                                />
-                              </div>
-                              <div>
-                                <Label className="mb-2">Hình ảnh</Label>
-                                <ImageUpload
-                                  currentImage={getBlockData('trusts', 'image')}
-                                  onImageSelect={(url: string) => updateBlockData('trusts', 'image', url)}
-                                />
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <LocaleInput
-                                    value={getLocaleValue(blocks['trusts']?.data, 'button.text')}
-                                    onChange={(value) => updateLocaleValue('trusts', 'button.text', value)}
-                                    label="Nút - Text"
-                                    placeholder="Tìm hiểu thêm"
-                                    defaultLocale={globalLocale}
-                                    aiProvider={aiProvider}
-                                  />
-                                </div>
-                                <div>
-                                  <Label className="mb-2">Nút - Link</Label>
-                                  <Input
-                                    value={getBlockData('trusts', 'button.link')}
-                                    onChange={(e) => updateBlockData('trusts', 'button.link', e.target.value)}
-                                    placeholder="/about"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-lg">Features</h3>
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    const features = getBlockData('trusts', 'features', []) as any[];
-                                    addArrayItem('trusts', 'features', {
-                                      iconName: 'BarChart3',
-                                      title: '',
-                                      description: '',
-                                    });
-                                    setEditingTrustFeatureIndex(features.length);
-                                  }}
-                                >
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Thêm feature
-                                </Button>
-                              </div>
-                              {(getBlockData('trusts', 'features', []) as any[]).map((feature: any, idx: number) => (
-                                <Card key={idx}>
-                                  <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                      <CardTitle className="text-base">Feature {idx + 1}</CardTitle>
-                                      <div className="flex gap-2">
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          onClick={() => moveArrayItem('trusts', 'features', idx, 'up')}
-                                          disabled={idx === 0}
-                                        >
-                                          <ChevronUp className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          onClick={() => moveArrayItem('trusts', 'features', idx, 'down')}
-                                          disabled={idx === (getBlockData('trusts', 'features', []) as any[]).length - 1}
-                                        >
-                                          <ChevronDown className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          onClick={() => setEditingTrustFeatureIndex(idx)}
-                                        >
-                                          <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="icon"
-                                          onClick={() => removeArrayItem('trusts', 'features', idx)}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <div className="space-y-2">
-                                      <p className="font-medium">{getLocalizedText(feature.title, globalLocale) || 'Chưa có tiêu đề'}</p>
-                                      <p className="text-sm text-gray-600 line-clamp-2">{getLocalizedText(feature.description, globalLocale) || 'Chưa có mô tả'}</p>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              ))}
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <Label className="mb-2">Kích hoạt</Label>
-                              <Switch
-                                checked={block.isActive}
-                                onCheckedChange={(checked) => setBlocks(prev => ({
-                                  ...prev,
-                                  [blockType]: { ...prev[blockType], isActive: checked }
-                                }))}
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {blockType === 'testimonials' && (
-                          <>
-                            <div>
-                              <LocaleInput
-                                value={getLocaleValue(blocks['testimonials']?.data, 'title')}
-                                onChange={(value) => updateLocaleValue('testimonials', 'title', value)}
-                                label="Tiêu đề"
-                                placeholder="Khách hàng nói về Thư viện TN?"
-                                defaultLocale={globalLocale}
-                                aiProvider={aiProvider}
-                              />
-                            </div>
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-lg">Reviews (Đánh giá)</h3>
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    const reviews = getBlockData('testimonials', 'reviews', []) as any[];
-                                    addArrayItem('testimonials', 'reviews', {
-                                      id: reviews.length + 1,
-                                      quote: '',
-                                      author: '',
-                                      rating: 5,
-                                    });
-                                    setEditingTestimonialIndex(reviews.length);
-                                  }}
-                                >
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Thêm review
-                                </Button>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                {(getBlockData('testimonials', 'reviews', []) as any[]).map((review: any, idx: number) => (
-                                  <Card key={idx}>
-                                    <CardHeader>
-                                      <div className="flex items-center justify-between">
-                                        <CardTitle className="text-base">Review {idx + 1}</CardTitle>
-                                        <div className="flex gap-2">
-                                          <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => moveArrayItem('testimonials', 'reviews', idx, 'up')}
-                                            disabled={idx === 0}
-                                          >
-                                            <ChevronUp className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => moveArrayItem('testimonials', 'reviews', idx, 'down')}
-                                            disabled={idx === (getBlockData('testimonials', 'reviews', []) as any[]).length - 1}
-                                          >
-                                            <ChevronDown className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => setEditingTestimonialIndex(idx)}
-                                          >
-                                            <Edit className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => removeArrayItem('testimonials', 'reviews', idx)}
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <div className="space-y-2">
-                                        <p className="font-medium text-sm">
-                                          {getLocalizedText(review.author as any, globalLocale) || 'Chưa có tác giả'}
-                                        </p>
-                                        <p className="text-xs text-gray-600 line-clamp-2">
-                                          {getLocalizedText(review.quote as any, globalLocale) || 'Chưa có nội dung'}
-                                        </p>
-                                        <div className="flex gap-1">
-                                          {[...Array(review.rating || 5)].map((_, i) => (
-                                            <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                          ))}
-                                        </div>
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <Label className="mb-2">Kích hoạt</Label>
-                              <Switch
-                                checked={block.isActive}
-                                onCheckedChange={(checked) => setBlocks(prev => ({
-                                  ...prev,
-                                  [blockType]: { ...prev[blockType], isActive: checked }
-                                }))}
-                              />
-                            </div>
-                          </>
-                        )}
-                      </CardContent>
-                    )}
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="preview" className="mt-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Preview - {tabConfig?.label}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {blockType === 'hero' && (
-                        <div className="relative overflow-hidden rounded-lg bg-[#F4FAFE] min-h-[600px] p-8">
-                          {/* Background blobs */}
-                          <div className="absolute inset-0 pointer-events-none">
-                            <div className="absolute top-20 left-10 w-72 h-72 bg-[#006FB3]/20 rounded-full blur-3xl opacity-30" />
-                            <div className="absolute top-40 right-10 w-72 h-72 bg-[#0088D9]/20 rounded-full blur-3xl opacity-30" />
-                          </div>
-
-                          <div className="grid lg:grid-cols-2 gap-8 items-center relative z-10">
-                            <div className="space-y-6">
-                              <h1 className="text-[#0F172A] font-bold text-4xl md:text-5xl lg:text-[56px] leading-tight">
-                                {getBlockData('hero', 'title.line1', 'Chuyển đổi số ')}
-                                <br />
-                                {getBlockData('hero', 'title.line2', 'Thông minh ')}
-                                <br />
-                                {getBlockData('hero', 'title.line3', 'Cho doanh nghiệp')}
-                              </h1>
-                              <p className="text-[#0F172A] text-base md:text-lg max-w-[486px]">
-                                {getBlockData('hero', 'description', 'Mô tả...')}
-                              </p>
-                              <div className="flex flex-col sm:flex-row gap-4">
-                                <a
-                                  href={getBlockData('hero', 'primaryButton.link', '#')}
-                                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold"
-                                  style={{
-                                    background: "linear-gradient(73deg, #1D8FCF 32.85%, #2EABE2 82.8%)",
-                                  }}
-                                >
-                                  {getBlockData('hero', 'primaryButton.text', 'Khám phá giải pháp')}
-                                  <ArrowRight size={20} />
-                                </a>
-                                <a
-                                  href={getBlockData('hero', 'secondaryButton.link', '#')}
-                                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-[#1D8FCF] text-[#1D8FCF] font-semibold hover:bg-[#1D8FCF] hover:text-white transition-colors"
-                                >
-                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#006FB3] to-[#0088D9] flex items-center justify-center">
-                                    <Play size={14} className="text-white ml-0.5" />
-                                  </div>
-                                  {getBlockData('hero', 'secondaryButton.text', 'Xem video')}
-                                </a>
-                              </div>
-                            </div>
-                            <div className="relative">
-                              {getBlockData('hero', 'heroImage') && (
-                                <div className="relative rounded-3xl border-8 border-white shadow-2xl overflow-hidden">
-                                  <img
-                                    src={getBlockData('hero', 'heroImage')}
-                                    alt="Hero"
-                                    className="w-full h-auto"
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = 'none';
-                                    }}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          {(getBlockData('hero', 'partners', []) as string[]).length > 0 && (
-                            <div className="mt-8 pt-8 border-t border-gray-200">
-                              <p className="text-sm text-gray-600 mb-4 text-center">Đối tác</p>
-                              <div className="flex flex-wrap gap-4 justify-center">
-                                {(getBlockData('hero', 'partners', []) as string[]).map((partner, idx) => (
-                                  <div key={idx} className="h-16 w-auto">
-                                    <img
-                                      src={partner}
-                                      alt={`Partner ${idx + 1}`}
-                                      className="h-full w-auto object-contain opacity-60 hover:opacity-100 transition-opacity"
-                                      onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                      }}
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {blockType === 'aboutCompany' && (
-                        <div className="bg-white py-12 rounded-lg">
-                          <div className="text-center mb-12">
-                            <h2 className="text-3xl md:text-5xl font-bold text-[#0F172A] leading-tight mb-6">
-                              {getBlockData('aboutCompany', 'title.part1', 'Chuyển đổi số ')}
-                              <span className="text-[#1D8FCF]">{getBlockData('aboutCompany', 'title.highlight1', 'không bắt đầu từ phần mềm')}</span>
-                              {getBlockData('aboutCompany', 'title.part2', ' mà ')}
-                              <span className="text-[#1D8FCF]">{getBlockData('aboutCompany', 'title.highlight2', 'từ hiệu quả thực tế')}</span>
-                              {getBlockData('aboutCompany', 'title.part3', ' của doanh nghiệp.')}
-                            </h2>
-                            <p className="text-gray-600 text-lg max-w-3xl mx-auto">
-                              {getBlockData('aboutCompany', 'description', 'Mô tả...')}
-                            </p>
-                          </div>
-                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {(() => {
-                              const slides = getBlockData('aboutCompany', 'slides', []);
-                              return Array.isArray(slides) ? slides.slice(0, 3).map((slide: any, idx: number) => (
-                              <div key={idx} className="bg-white rounded-3xl p-6 border-2 border-gray-100 shadow-lg">
-                                {slide.image && (
-                                  <div className="mb-4 rounded-lg overflow-hidden" style={{ height: '200px' }}>
-                                    <img src={slide.image} alt={slide.title} className="w-full h-full object-cover" />
-                                  </div>
-                                )}
-                                <h3 className="font-semibold text-lg mb-2">{getLocalizedText(slide.title, globalLocale) || 'Tiêu đề'}</h3>
-                                <p className="text-sm text-gray-600 mb-4 line-clamp-3">{getLocalizedText(slide.description, globalLocale) || 'Mô tả...'}</p>
-                                <a
-                                  href={slide.buttonLink || '#'}
-                                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold"
-                                  style={{
-                                    background: "linear-gradient(73deg, #1D8FCF 32.85%, #2EABE2 82.8%)",
-                                  }}
-                                >
-                                  {slide.buttonText || 'Xem thêm'}
-                                </a>
-                              </div>
-                            )) : null;
-                            })()}
-                          </div>
-                        </div>
-                      )}
-
-                      {blockType === 'features' && (
-                        <div className="bg-gradient-to-b from-white to-[#F1F9FD] py-12 rounded-lg">
-                          <div className="text-center mb-12">
-                            <p className="text-[15px] font-medium uppercase text-[#1D8FCF] mb-4">
-                              {getBlockData('features', 'header.sub', 'GIỚI THIỆU THƯ VIỆN TN')}
-                            </p>
-                            <h2 className="text-[34px] sm:text-[44px] lg:text-[56px] font-bold text-[#0F172A] mb-4">
-                              {getBlockData('features', 'header.title', 'Chúng tôi là ai?')}
-                            </h2>
-                            <p className="mx-auto max-w-3xl text-[16px] text-[#0F172A]">
-                              {getBlockData('features', 'header.description', 'Mô tả...')}
-                            </p>
-                          </div>
-                          <div className="space-y-8">
-                            {/* Render blocks from array */}
-                            {(getBlockData('features', 'blocks', []) as any[]).map((featureBlock: any, blockIdx: number) => {
-                              const imageSide = featureBlock.imageSide || 'left';
-                              const imageElement = featureBlock.image ? (
-                                <div>
-                                  <img
-                                    src={featureBlock.image}
-                                    alt="Feature"
-                                    className="w-full rounded-2xl border-4 border-white shadow-lg"
-                                  />
-                                </div>
-                              ) : null;
-
-                              if (featureBlock.type === 'type1') {
-                                return (
-                                  <div key={blockIdx} className="grid lg:grid-cols-2 gap-8 items-center">
-                                    {imageSide === 'left' && imageElement}
-                                    <div className={imageSide === 'right' ? 'order-1' : ''}>
-                                      <div className="bg-white rounded-2xl p-6 shadow-lg">
-                                        {featureBlock.text && (
-                                          <p className="text-slate-700 mb-4">{featureBlock.text}</p>
-                                        )}
-                                        <div className="space-y-2 mb-4">
-                                          {((featureBlock.list || []) as any[]).map((item, idx) => (
-                                            <div key={idx} className="flex items-center gap-2">
-                                              <CheckCircle className="h-5 w-5 text-sky-500 flex-shrink-0" />
-                                              <span className="font-medium">{getLocalizedText(item, globalLocale)}</span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                        {featureBlock.button?.text && (
-                                          <a
-                                            href={featureBlock.button.link || '#'}
-                                            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-white text-sm font-semibold"
-                                            style={{
-                                              background: "linear-gradient(73deg, #1D8FCF 32.85%, #2EABE2 82.8%)",
-                                            }}
-                                          >
-                                            {featureBlock.button.text}
-                                            <ArrowRight className="h-4 w-4" />
-                                          </a>
-                                        )}
-                                      </div>
-                                    </div>
-                                    {imageSide === 'right' && <div className="order-2">{imageElement}</div>}
-                                  </div>
-                                );
-                              } else if (featureBlock.type === 'type2') {
-                                return (
-                                  <div key={blockIdx} className="grid lg:grid-cols-2 gap-8 items-center">
-                                    {imageSide === 'left' && imageElement}
-                                    <div className={imageSide === 'right' ? 'order-1' : ''}>
-                                      <div className="bg-white rounded-2xl p-6 shadow-lg">
-                                        <div className="space-y-4 mb-4">
-                                          {((featureBlock.items || []) as any[]).map((item: any, idx: number) => (
-                                            <div key={idx} className="flex items-start gap-3">
-                                              <CheckCircle className="h-5 w-5 text-sky-500 flex-shrink-0 mt-0.5" />
-                                              <div>
-                                                <h3 className="font-semibold text-base mb-1">{getLocalizedText(item.title, globalLocale) || 'Tiêu đề'}</h3>
-                                                <p className="text-slate-600 text-sm">{getLocalizedText(item.text, globalLocale) || 'Nội dung...'}</p>
-                                              </div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                        {featureBlock.button?.text && (
-                                          <a
-                                            href={featureBlock.button.link || '#'}
-                                            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-white text-sm font-semibold"
-                                            style={{
-                                              background: "linear-gradient(73deg, #1D8FCF 32.85%, #2EABE2 82.8%)",
-                                            }}
-                                          >
-                                            {featureBlock.button.text}
-                                            <ArrowRight className="h-4 w-4" />
-                                          </a>
-                                        )}
-                                      </div>
-                                    </div>
-                                    {imageSide === 'right' && <div className="order-2">{imageElement}</div>}
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })}
-                            {/* Fallback: Show old block1/2/3 if blocks array is empty */}
-                            {(!getBlockData('features', 'blocks', []) || (getBlockData('features', 'blocks', []) as any[]).length === 0) && (
-                              <>
-                                {getBlockData('features', 'block1.image') && (
-                                  <div className="grid lg:grid-cols-2 gap-8 items-center">
-                                    <div>
-                                      <img
-                                        src={getBlockData('features', 'block1.image')}
-                                        alt="Feature"
-                                        className="w-full rounded-2xl border-4 border-white shadow-lg"
-                                      />
-                                    </div>
-                                    <div>
-                                      <p className="text-slate-700 mb-4">{getBlockData('features', 'block1.text', 'Nội dung...')}</p>
-                                      <div className="space-y-2 mb-4">
-                                        {(getBlockData('features', 'block1.list', []) as any[]).map((item, idx) => (
-                                          <div key={idx} className="flex items-center gap-2">
-                                            <CheckCircle className="h-5 w-5 text-sky-500" />
-                                            <span className="font-medium">{getLocalizedText(item, globalLocale)}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                      <a
-                                        href={getBlockData('features', 'block1.button.link', '#')}
-                                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-white text-sm font-semibold"
-                                        style={{
-                                          background: "linear-gradient(73deg, #1D8FCF 32.85%, #2EABE2 82.8%)",
-                                        }}
-                                      >
-                                        {getBlockData('features', 'block1.button.text', 'Tìm hiểu thêm')}
-                                        <ArrowRight className="h-4 w-4" />
-                                      </a>
-                                    </div>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {blockType === 'solutions' && (
-                        <div
-                          className="py-12 rounded-lg"
-                          style={{
-                            background: "linear-gradient(236.99deg, #80C0E4 7%, #1D8FCF 71.94%)",
-                          }}
-                        >
-                          <div className="text-center mb-12">
-                            <div className="text-white/85 text-xs font-semibold tracking-widest uppercase mb-4">
-                              {getBlockData('solutions', 'subHeader', 'GIẢI PHÁP CHUYÊN NGHIỆP')}
-                            </div>
-                            <h2 className="text-white font-extrabold text-3xl md:text-5xl mb-4">
-                              {getBlockData('solutions', 'title.part1', 'Giải pháp phần mềm')}
-                              <br />
-                              <span className="font-medium">{getBlockData('solutions', 'title.part2', 'đóng gói cho nhiều lĩnh vực')}</span>
-                            </h2>
-                            <div className="flex flex-wrap justify-center gap-2 mt-6">
-                              {(getBlockData('solutions', 'domains', []) as any[]).map((domain, idx) => (
-                                <span
-                                  key={idx}
-                                  className="px-4 py-2 rounded-full text-sm text-white/90 border border-white/35 bg-white/10"
-                                >
-                                  {getLocalizedText(domain, globalLocale)}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-6 px-4">
-                            {(getBlockData('solutions', 'items', []) as any[]).slice(0, 4).map((item: any, idx: number) => {
-                              const IconComponent = (LucideIcons as any)[item.iconName || 'Code'] || LucideIcons.Code;
-                              return (
-                                <div
-                                  key={idx}
-                                  className="bg-white rounded-2xl p-6 shadow-xl border border-gray-200"
-                                >
-                                  <div className="flex flex-col gap-4">
-                                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br ${item.iconGradient || 'from-blue-500 to-cyan-500'}`}>
-                                      <IconComponent className="text-white" size={24} />
-                                    </div>
-                                    <h3 className="text-gray-900 font-extrabold text-lg">{getLocalizedText(item.title, globalLocale) || 'Tiêu đề'}</h3>
-                                    <p className="text-gray-600 text-sm leading-relaxed">{getLocalizedText(item.description, globalLocale) || 'Mô tả...'}</p>
-                                    <ul className="space-y-1.5">
-                                      {(item.benefits || []).map((benefit: any, bidx: number) => (
-                                        <li key={bidx} className="flex items-start gap-2">
-                                          <span className="text-[#1D8FCF] mt-1 text-xs">•</span>
-                                          <span className="text-gray-600 text-xs">{getLocalizedText(benefit, globalLocale)}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                    <a
-                                      href={item.buttonLink || '#'}
-                                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-semibold text-xs w-fit mt-2"
-                                      style={{
-                                        background: "linear-gradient(73deg, #1D8FCF 32.85%, #2EABE2 82.8%)",
-                                      }}
-                                    >
-                                      {item.buttonText || 'Xem thêm'}
-                                      <ArrowRight size={16} />
-                                    </a>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {blockType === 'trusts' && (
-                        <div className="bg-white py-12 rounded-lg">
-                          <div className="text-center mb-12">
-                            <span className="text-[#0088D9] font-bold text-sm tracking-widest uppercase mb-3 block">
-                              {getBlockData('trusts', 'subHeader', 'THƯ VIỆN TN')}
-                            </span>
-                            <h2 className="text-4xl md:text-5xl font-extrabold text-[#0F172A] mb-4">
-                              {getBlockData('trusts', 'title', 'Độ tin cậy của Thư viện TN')}
-                            </h2>
-                            <p className="text-gray-600 max-w-2xl mx-auto">
-                              {getBlockData('trusts', 'description', 'Mô tả...')}
-                            </p>
-                          </div>
-                          <div className="grid grid-cols-2 gap-12 items-center">
-                            <div className="relative">
-                              {getBlockData('trusts', 'image') && (
-                                <div
-                                  className="rounded-3xl shadow-2xl"
-                                  style={{
-                                    width: '100%',
-                                    aspectRatio: '5/4',
-                                    background: `url(${getBlockData('trusts', 'image')}) center/cover`,
-                                  }}
-                                />
-                              )}
-                            </div>
-                            <div className="space-y-6">
-                              {(getBlockData('trusts', 'features', []) as any[]).map((feature: any, idx: number) => (
-                                <div key={idx} className="flex gap-4">
-                                  <div className="flex-shrink-0 pt-1">
-                                    {renderIcon(feature.iconName || 'BarChart3')}
-                                  </div>
-                                  <div>
-                                    <h3 className="font-semibold text-lg mb-2">{getLocalizedText(feature.title, globalLocale) || 'Tiêu đề'}</h3>
-                                    <p className="text-gray-600 text-sm">{getLocalizedText(feature.description, globalLocale) || 'Mô tả...'}</p>
-                                  </div>
-                                </div>
-                              ))}
-                              <a
-                                href={getBlockData('trusts', 'button.link', '#')}
-                                className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-[#006FB3] to-[#0088D9] text-white font-semibold"
-                              >
-                                {getBlockData('trusts', 'button.text', 'Tìm hiểu thêm')}
-                                <ArrowRight className="w-5 h-5" />
-                              </a>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {blockType === 'testimonials' && (
-                        <div className="bg-[#eff8ff] py-12 rounded-lg">
-                          <div className="text-center mb-12">
-                            <h2 className="text-4xl md:text-5xl font-bold text-[#0F172A] mb-4">
-                              {getBlockData('testimonials', 'title', 'Khách hàng nói về SFB?')}
-                            </h2>
-                          </div>
-                          <div className="flex flex-wrap gap-4 justify-center px-4">
-                            {(getBlockData('testimonials', 'reviews', []) as any[]).slice(0, 4).map((review: any, idx: number) => (
-                              <div
-                                key={idx}
-                                className="bg-white rounded-[32px] p-6 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col items-start gap-4 w-full max-w-[300px]"
-                              >
-                                <div className="flex gap-1">
-                                  {[...Array(review.rating || 5)].map((_, i) => (
-                                    <Star key={i} className="h-4 w-4 fill-[#FBBF24] text-[#FBBF24]" />
-                                  ))}
-                                </div>
-                                <p className="text-[#334155] text-sm leading-relaxed line-clamp-4">
-                                  "{getLocalizedText(review.quote, globalLocale) || 'Nội dung đánh giá...'}"
-                                </p>
-                                <div className="font-bold text-[#0F172A] text-sm mt-auto">
-                                  {review.author || 'Tác giả'}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {blockType === 'consult' && (
-                        <div className="py-10 px-4 flex justify-center">
-                          <div
-                            className="flex flex-col justify-center items-center w-full max-w-[1298px] py-[80px] px-[20px] rounded-2xl text-center shadow-lg"
-                            style={{ backgroundColor: '#29A3DD' }}
-                          >
-                            <h2 className="text-white text-4xl md:text-5xl font-bold mb-6">
-                              {getBlockData('consult', 'title', 'Miễn phí tư vấn')}
-                            </h2>
-                            <p className="text-white/95 text-base md:text-lg leading-relaxed mb-10 max-w-2xl font-medium">
-                              {getBlockData('consult', 'description', 'Mô tả...')}
-                            </p>
-                            <div className="flex flex-col sm:flex-row items-center gap-4">
-                              <a
-                                href={getBlockData('consult', 'buttons.secondary.link', '#')}
-                                className="flex h-[48px] px-[29px] py-[7px] justify-center items-center gap-[12px] rounded-xl border border-white text-white font-medium hover:bg-white hover:text-[#29A3DD] transition-colors"
-                              >
-                                {getBlockData('consult', 'buttons.secondary.text', 'Xem case studies')}
-                              </a>
-                              <a
-                                href={getBlockData('consult', 'buttons.primary.link', '#')}
-                                className="group flex h-[48px] px-[29px] py-[7px] justify-center items-center gap-[12px] rounded-xl border border-white text-white font-medium hover:bg-white hover:text-[#29A3DD] transition-colors"
-                              >
-                                <span>{getBlockData('consult', 'buttons.primary.text', 'Tư vấn miễn phí ngay')}</span>
-                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                              </a>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      <Button
+                        onClick={() => handleSaveBlock(blockType)}
+                        disabled={loading[blockType]}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {loading[blockType] ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        Cập nhật {tabConfig?.label}
+                      </Button>
                     </CardContent>
                   </Card>
-                </TabsContent>
-              </Tabs>
+
+                  {/* Sections Configuration */}
+                  <Card className="shadow-lg border-blue-50 overflow-hidden">
+                    <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-600 rounded-lg text-white">
+                            {tabConfig && <tabConfig.icon className="h-5 w-5" />}
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg font-bold text-slate-800 italic">Quản lý {tabConfig?.label}</CardTitle>
+                            <p className="text-xs text-slate-500 font-medium italic">{tabConfig?.description}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-full border border-slate-200">
+                          <span className="text-[10px] font-black text-slate-400">STATUS:</span>
+                          <Switch
+                            checked={block?.isActive}
+                            onCheckedChange={(checked) => setBlocks(prev => ({
+                              ...prev,
+                              [blockType]: { ...prev[blockType], isActive: checked }
+                            }))}
+                            className="data-[state=checked]:bg-blue-600"
+                          />
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="p-6 space-y-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                          <Label className="text-xs font-black uppercase tracking-widest text-blue-600">Nội dung văn bản</Label>
+                          <LocaleInput
+                            value={getLocaleValue(block?.data, 'title')}
+                            onChange={(value) => updateLocaleValue(blockType, 'title', value)}
+                            label="Tiêu đề chính"
+                            placeholder="Tiêu đề hiển thị trên Website"
+                            defaultLocale={globalLocale}
+                            aiProvider={aiProvider}
+                          />
+                          <LocaleInput
+                            value={getLocaleValue(block?.data, 'subtitle')}
+                            onChange={(value) => updateLocaleValue(blockType, 'subtitle', value)}
+                            label="Mô tả phụ"
+                            placeholder="Mô tả ngắn gọn phía dưới"
+                            defaultLocale={globalLocale}
+                            aiProvider={aiProvider}
+                            multiline
+                          />
+                        </div>
+                        <div className="flex flex-col justify-center p-6 bg-blue-50/50 rounded-2xl border border-dashed border-blue-200">
+                          <div className="flex items-center gap-2 mb-2 text-blue-700">
+                            <Info className="h-4 w-4" />
+                            <span className="text-xs font-bold uppercase">Lưu ý quản trị</span>
+                          </div>
+                          <p className="text-xs text-slate-600 leading-relaxed italic">
+                            {blockType === 'RECOMMEND' 
+                              ? "Bạn có thể thêm/xóa các Banner ở danh sách bên dưới để tạo Slideshow." 
+                              : `Các ấn phẩm thuộc mục "${tabConfig?.label}" sẽ được hiển thị tự động từ cơ sở dữ liệu.`}
+                          </p>
+                        </div>
+                      </div>
+
+                      {blockType === 'RECOMMEND' && (
+                        <div className="pt-8 border-t border-slate-100">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-bold text-slate-800 uppercase tracking-tight">Danh sách Banner Slideshow</h3>
+                            <Button size="sm" onClick={() => {
+                              const slides = getBlockData('RECOMMEND', 'slides', []) as any[];
+                              addArrayItem('RECOMMEND', 'slides', {
+                                title: { vi: '', en: '', ja: '' },
+                                description: { vi: '', en: '', ja: '' },
+                                buttonText: { vi: 'Xem ngay', en: 'View', ja: '見る' },
+                                buttonLink: '', image: '',
+                              });
+                              setEditingSlideIndex(slides.length);
+                            }} className="bg-blue-600 h-8 text-xs">Thêm Banner</Button>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {(getBlockData('RECOMMEND', 'slides', []) as any[]).map((slide, idx) => (
+                              <Card key={idx} className="group overflow-hidden border-2 border-transparent hover:border-blue-500 transition-all">
+                                <div className="relative aspect-video bg-slate-100 italic flex items-center justify-center cursor-pointer" onClick={() => setEditingSlideIndex(idx)}>
+                                  {slide.image ? <img src={slide.image} className="w-full h-full object-cover" /> : <span className="text-[10px] text-gray-400">Click để chọn ảnh</span>}
+                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
+                                    <Button variant="secondary" size="icon" className="h-7 w-7 rounded-sm"><Edit className="h-3 w-3" /></Button>
+                                    <Button variant="destructive" size="icon" className="h-7 w-7 rounded-sm" onClick={(e) => { e.stopPropagation(); removeArrayItem('RECOMMEND', 'slides', idx); }}><Trash2 className="h-3 w-3" /></Button>
+                                  </div>
+                                  <div className="p-2 text-xs font-bold truncate bg-white border-t">
+                                    {getLocalizedText(slide.title, globalLocale) || "Banner " + (idx+1)}
+                                  </div>
+                                </div>
+                              </Card>
+                            ))}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </CardContent>
+                </Card>
             </TabsContent>
           );
         })}
       </Tabs>
-
-      {/* Dialog for AboutCompany Slides */}
-      <Dialog open={editingSlideIndex !== null} onOpenChange={(open) => {
-        if (!open) setEditingSlideIndex(null);
-      }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ maxWidth: '60rem' }}>
+      {/* Dialog for Slides (RECOMMEND section) */}
+      <Dialog open={editingSlideIndex !== null} onOpenChange={(open) => !open && setEditingSlideIndex(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {editingSlideIndex !== null && (() => {
-                const slides = getBlockData('aboutCompany', 'slides', []);
-                return Array.isArray(slides) && editingSlideIndex >= slides.length;
-              })()
-                ? "Thêm slide mới"
-                : "Chỉnh sửa slide"}
-            </DialogTitle>
+            <DialogTitle className="text-xl font-bold italic text-blue-600">CHỈNH SỬA BANNER SLIDESHOW</DialogTitle>
+            <DialogDescription className="italic">Cấu hình chi tiết nội dung hiển thị cho banner này trên trang chủ.</DialogDescription>
           </DialogHeader>
+          <div className="h-px bg-slate-100 my-2" />
           {editingSlideIndex !== null && (() => {
-            const slides = getBlockData('aboutCompany', 'slides', []) as any[];
-            const slide = slides[editingSlideIndex] || { title: '', description: '', buttonText: '', buttonLink: '', image: '' };
-            return (
-              <div className="space-y-4 py-4">
-                <LocaleInput
-                  value={getLocaleValue(slide, 'title')}
-                  onChange={(value) => {
-                    const newSlides = [...slides];
-                    if (!newSlides[editingSlideIndex]) newSlides[editingSlideIndex] = {};
-                    const updatedSlide = setLocaleValue(newSlides[editingSlideIndex], 'title', value);
-                    newSlides[editingSlideIndex] = updatedSlide;
-                    updateBlockData('aboutCompany', 'slides', newSlides);
-                  }}
-                  label="Tiêu đề"
-                  placeholder="Tiêu đề slide"
-                                      defaultLocale={globalLocale}
-                                      aiProvider={aiProvider}
-                                    />
-                <LocaleInput
-                  value={getLocaleValue(slide, 'description')}
-                  onChange={(value) => {
-                    const newSlides = [...slides];
-                    if (!newSlides[editingSlideIndex]) newSlides[editingSlideIndex] = {};
-                    const updatedSlide = setLocaleValue(newSlides[editingSlideIndex], 'description', value);
-                    newSlides[editingSlideIndex] = updatedSlide;
-                    updateBlockData('aboutCompany', 'slides', newSlides);
-                  }}
-                  label="Mô tả"
-                  placeholder="Mô tả..."
-                  multiline={true}
-                                      defaultLocale={globalLocale}
-                                      aiProvider={aiProvider}
-                                    />
-                <div>
-                  <Label className="mb-2">Hình ảnh</Label>
-                  <ImageUpload
-                    currentImage={slide.image || ''}
-                    onImageSelect={(url: string) => {
-                      const newSlides = [...slides];
-                      if (!newSlides[editingSlideIndex]) newSlides[editingSlideIndex] = {};
-                      newSlides[editingSlideIndex].image = url;
-                      updateBlockData('aboutCompany', 'slides', newSlides);
-                    }}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <LocaleInput
-                      value={getLocaleValue(slide, 'buttonText')}
-                      onChange={(value) => {
-                        const newSlides = [...slides];
-                        if (!newSlides[editingSlideIndex]) newSlides[editingSlideIndex] = {};
-                        const updatedSlide = setLocaleValue(newSlides[editingSlideIndex], 'buttonText', value);
-                        newSlides[editingSlideIndex] = updatedSlide;
-                        updateBlockData('aboutCompany', 'slides', newSlides);
-                      }}
-                      label="Nút - Text"
-                      placeholder="Nhận tư vấn ngay"
-                    />
-                  </div>
-                  <div>
-                    <Label className="mb-2">Nút - Link</Label>
-                    <Input
-                      value={slide.buttonLink || ''}
-                      onChange={(e) => {
-                        const newSlides = [...slides];
-                        if (!newSlides[editingSlideIndex]) newSlides[editingSlideIndex] = {};
-                        newSlides[editingSlideIndex].buttonLink = e.target.value;
-                        updateBlockData('aboutCompany', 'slides', newSlides);
-                      }}
-                      placeholder="/contact"
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingSlideIndex(null)}>
-              Đóng
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog for Solutions Items */}
-      <Dialog open={editingSolutionIndex !== null} onOpenChange={(open) => {
-        if (!open) setEditingSolutionIndex(null);
-      }}>
-        <DialogContent style={{ maxWidth: '80rem', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-          <DialogHeader>
-            <DialogTitle>
-              {editingSolutionIndex !== null && editingSolutionIndex >= (getBlockData('solutions', 'items', []) as any[]).length
-                ? "Thêm solution mới"
-                : "Chỉnh sửa solution"}
-            </DialogTitle>
-          </DialogHeader>
-          {editingSolutionIndex !== null && (() => {
-            const items = getBlockData('solutions', 'items', []) as any[];
-            const item = items[editingSolutionIndex] || {
-              id: items.length + 1,
-              iconName: 'Code',
-              title: '',
-              description: '',
-              benefits: [],
-              buttonText: '',
-              buttonLink: '',
-              iconGradient: 'from-cyan-400 to-blue-600',
+            const slides = getBlockData('RECOMMEND', 'slides', []) as any[];
+            const slide = slides[editingSlideIndex] || {};
+            
+            const updateSlideField = (field: string, value: any) => {
+              const newSlides = [...slides];
+              newSlides[editingSlideIndex] = { ...newSlides[editingSlideIndex], [field]: value };
+              updateBlockData('RECOMMEND', 'slides', newSlides);
             };
-            return (
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="mb-2">Icon</Label>
-                    <Select
-                      value={item.iconName || 'Code'}
-                      onValueChange={(value) => {
-                        const newItems = [...items];
-                        if (!newItems[editingSolutionIndex]) newItems[editingSolutionIndex] = {};
-                        newItems[editingSolutionIndex].iconName = value;
-                        updateBlockData('solutions', 'items', newItems);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ICON_OPTIONS.map((icon) => (
-                          <SelectItem key={icon} value={icon}>
-                            {icon}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="mb-2">Icon Gradient</Label>
-                    <Select
-                      value={item.iconGradient || 'from-cyan-400 to-blue-600'}
-                      onValueChange={(value) => {
-                        const newItems = [...items];
-                        if (!newItems[editingSolutionIndex]) newItems[editingSolutionIndex] = {};
-                        newItems[editingSolutionIndex].iconGradient = value;
-                        updateBlockData('solutions', 'items', newItems);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GRADIENT_OPTIONS.map((grad) => (
-                          <SelectItem key={grad.value} value={grad.value}>
-                            {grad.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <LocaleInput
-                  value={getLocaleValue(item, 'title')}
-                  onChange={(value) => {
-                    const newItems = [...items];
-                    if (!newItems[editingSolutionIndex]) newItems[editingSolutionIndex] = {};
-                    const updatedItem = setLocaleValue(newItems[editingSolutionIndex], 'title', value);
-                    newItems[editingSolutionIndex] = updatedItem;
-                    updateBlockData('solutions', 'items', newItems);
-                  }}
-                  label="Tiêu đề"
-                  placeholder="Quy trình được chuẩn hóa"
-                                      defaultLocale={globalLocale}
-                                      aiProvider={aiProvider}
-                                    />
-                <LocaleInput
-                  value={getLocaleValue(item, 'description')}
-                  onChange={(value) => {
-                    const newItems = [...items];
-                    if (!newItems[editingSolutionIndex]) newItems[editingSolutionIndex] = {};
-                    const updatedItem = setLocaleValue(newItems[editingSolutionIndex], 'description', value);
-                    newItems[editingSolutionIndex] = updatedItem;
-                    updateBlockData('solutions', 'items', newItems);
-                  }}
-                  label="Mô tả"
-                  placeholder="Mô tả..."
-                  multiline={true}
-                                      defaultLocale={globalLocale}
-                                      aiProvider={aiProvider}
-                                    />
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="mb-2">Benefits</Label>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        const newItems = [...items];
-                        if (!newItems[editingSolutionIndex]) newItems[editingSolutionIndex] = {};
-                        if (!newItems[editingSolutionIndex].benefits) newItems[editingSolutionIndex].benefits = [];
-                        newItems[editingSolutionIndex].benefits.push({ vi: '', en: '', ja: '' });
-                        updateBlockData('solutions', 'items', newItems);
-                      }}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Thêm
-                    </Button>
-                  </div>
-                  {((item.benefits || []) as any[]).map((benefit, bidx) => (
-                    <div key={bidx} className="flex gap-2">
-                      <div className="flex-1">
-                        <LocaleInput
-                          value={getLocaleValue(benefit, '')}
-                          onChange={(value) => {
-                            const newItems = [...items];
-                            if (!newItems[editingSolutionIndex]) newItems[editingSolutionIndex] = {};
-                            if (!newItems[editingSolutionIndex].benefits) newItems[editingSolutionIndex].benefits = [];
-                            newItems[editingSolutionIndex].benefits[bidx] = value;
-                            updateBlockData('solutions', 'items', newItems);
-                          }}
-                          label={`Benefit ${bidx + 1}`}
-                          placeholder="Benefit..."
-                                      defaultLocale={globalLocale}
-                                      aiProvider={aiProvider}
-                                    />
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="mt-6"
-                        onClick={() => {
-                          const newItems = [...items];
-                          if (!newItems[editingSolutionIndex]) newItems[editingSolutionIndex] = {};
-                          if (!newItems[editingSolutionIndex].benefits) newItems[editingSolutionIndex].benefits = [];
-                          newItems[editingSolutionIndex].benefits = newItems[editingSolutionIndex].benefits.filter((_: any, i: number) => i !== bidx);
-                          updateBlockData('solutions', 'items', newItems);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <LocaleInput
-                      value={getLocaleValue(item, 'buttonText')}
-                      onChange={(value) => {
-                        const newItems = [...items];
-                        if (!newItems[editingSolutionIndex]) newItems[editingSolutionIndex] = {};
-                        const updatedItem = setLocaleValue(newItems[editingSolutionIndex], 'buttonText', value);
-                        newItems[editingSolutionIndex] = updatedItem;
-                        updateBlockData('solutions', 'items', newItems);
-                      }}
-                      label="Nút - Text"
-                      placeholder="Tìm hiểu cách Thư viện TN triển khai"
-                                      defaultLocale={globalLocale}
-                                      aiProvider={aiProvider}
-                                    />
-                  </div>
-                  <div>
-                    <Label className="mb-2">Nút - Link</Label>
-                    <Input
-                      value={item.buttonLink || ''}
-                      onChange={(e) => {
-                        const newItems = [...items];
-                        if (!newItems[editingSolutionIndex]) newItems[editingSolutionIndex] = {};
-                        newItems[editingSolutionIndex].buttonLink = e.target.value;
-                        updateBlockData('solutions', 'items', newItems);
-                      }}
-                      placeholder="/contact"
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingSolutionIndex(null)}>
-              Đóng
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Dialog for Trusts Features */}
-      <Dialog open={editingTrustFeatureIndex !== null} onOpenChange={(open) => {
-        if (!open) setEditingTrustFeatureIndex(null);
-      }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ maxWidth: '42rem' }}>
-          <DialogHeader>
-            <DialogTitle>
-              {editingTrustFeatureIndex !== null && editingTrustFeatureIndex >= (getBlockData('trusts', 'features', []) as any[]).length
-                ? "Thêm feature mới"
-                : "Chỉnh sửa feature"}
-            </DialogTitle>
-          </DialogHeader>
-          {editingTrustFeatureIndex !== null && (() => {
-            const features = getBlockData('trusts', 'features', []) as any[];
-            const feature = features[editingTrustFeatureIndex] || { iconName: 'BarChart3', title: '', description: '' };
-            return (
-              <div className="space-y-4 py-4">
-                <div>
-                  <Label className="mb-2">Icon</Label>
-                  <Select
-                    value={feature.iconName || 'BarChart3'}
-                    onValueChange={(value) => {
-                      const newFeatures = [...features];
-                      if (!newFeatures[editingTrustFeatureIndex]) newFeatures[editingTrustFeatureIndex] = {};
-                      newFeatures[editingTrustFeatureIndex].iconName = value;
-                      updateBlockData('trusts', 'features', newFeatures);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ICON_OPTIONS.map((icon) => (
-                        <SelectItem key={icon} value={icon}>
-                          {icon}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <LocaleInput
-                  value={getLocaleValue(feature, 'title')}
-                  onChange={(value) => {
-                    const newFeatures = [...features];
-                    if (!newFeatures[editingTrustFeatureIndex]) newFeatures[editingTrustFeatureIndex] = {};
-                    const updatedFeature = setLocaleValue(newFeatures[editingTrustFeatureIndex], 'title', value);
-                    newFeatures[editingTrustFeatureIndex] = updatedFeature;
-                    updateBlockData('trusts', 'features', newFeatures);
-                  }}
-                  label="Tiêu đề"
-                  placeholder="Năng lực được chứng minh"
-                                      defaultLocale={globalLocale}
-                                      aiProvider={aiProvider}
-                                    />
-                <LocaleInput
-                  value={getLocaleValue(feature, 'description')}
-                  onChange={(value) => {
-                    const newFeatures = [...features];
-                    if (!newFeatures[editingTrustFeatureIndex]) newFeatures[editingTrustFeatureIndex] = {};
-                    const updatedFeature = setLocaleValue(newFeatures[editingTrustFeatureIndex], 'description', value);
-                    newFeatures[editingTrustFeatureIndex] = updatedFeature;
-                    updateBlockData('trusts', 'features', newFeatures);
-                  }}
-                  label="Mô tả"
-                  placeholder="Mô tả..."
-                  multiline={true}
-                                      defaultLocale={globalLocale}
-                                      aiProvider={aiProvider}
-                                    />
-              </div>
-            );
-          })()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingTrustFeatureIndex(null)}>
-              Đóng
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog for Features Blocks */}
-      <Dialog open={editingFeatureBlockIndex !== null} onOpenChange={(open) => {
-        if (!open) setEditingFeatureBlockIndex(null);
-      }}>
-        <DialogContent style={{ maxWidth: '80rem', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-          <DialogHeader>
-            <DialogTitle>
-              {editingFeatureBlockIndex !== null && editingFeatureBlockIndex >= (getBlockData('features', 'blocks', []) as any[]).length
-                ? "Thêm block mới"
-                : "Chỉnh sửa block"}
-            </DialogTitle>
-          </DialogHeader>
-          {editingFeatureBlockIndex !== null && (() => {
-            const blocks = getBlockData('features', 'blocks', []) as any[];
-            const featureBlock = blocks[editingFeatureBlockIndex] || {
-              type: 'type1',
-              image: '',
-              imageSide: 'left',
-              text: '',
-              list: [],
-              button: { text: '', link: '' },
-              items: [],
+            const updateSlideLocale = (field: string, value: any) => {
+              const newSlides = [...slides];
+              newSlides[editingSlideIndex] = setLocaleValue(newSlides[editingSlideIndex], field, value);
+              updateBlockData('RECOMMEND', 'slides', newSlides);
             };
+
             return (
-              <div className="space-y-4 py-4">
-                <div>
-                  <Label className="mb-2">Loại Block</Label>
-                  <Select
-                    value={featureBlock.type || 'type1'}
-                    onValueChange={(value) => {
-                      const newBlocks = [...blocks];
-                      if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                      newBlocks[editingFeatureBlockIndex].type = value;
-                      updateBlockData('features', 'blocks', newBlocks);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="type1">Type 1: Text + List + Button</SelectItem>
-                      <SelectItem value="type2">Type 2: Items + Button</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="mb-2">Hình ảnh</Label>
-                  <ImageUpload
-                    currentImage={featureBlock.image || ''}
-                    onImageSelect={(url: string) => {
-                      const newBlocks = [...blocks];
-                      if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                      newBlocks[editingFeatureBlockIndex].image = url;
-                      updateBlockData('features', 'blocks', newBlocks);
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label className="mb-2">Vị trí ảnh</Label>
-                  <Select
-                    value={featureBlock.imageSide || 'left'}
-                    onValueChange={(value) => {
-                      const newBlocks = [...blocks];
-                      if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                      newBlocks[editingFeatureBlockIndex].imageSide = value;
-                      updateBlockData('features', 'blocks', newBlocks);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="left">Trái</SelectItem>
-                      <SelectItem value="right">Phải</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {featureBlock.type === 'type1' && (
-                  <>
-                    <LocaleInput
-                      value={getLocaleValue(featureBlock, 'text')}
-                      onChange={(value) => {
-                        const newBlocks = [...blocks];
-                        if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                        const updatedBlock = setLocaleValue(newBlocks[editingFeatureBlockIndex], 'text', value);
-                        newBlocks[editingFeatureBlockIndex] = updatedBlock;
-                        updateBlockData('features', 'blocks', newBlocks);
-                      }}
-                      label="Nội dung"
-                      placeholder="Nội dung..."
-                      multiline={true}
-                                      defaultLocale={globalLocale}
-                                      aiProvider={aiProvider}
-                                    />
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="mb-2">Danh sách điểm nổi bật</Label>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            const newBlocks = [...blocks];
-                            if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                            if (!newBlocks[editingFeatureBlockIndex].list) newBlocks[editingFeatureBlockIndex].list = [];
-                            newBlocks[editingFeatureBlockIndex].list.push({ vi: '', en: '', ja: '' });
-                            updateBlockData('features', 'blocks', newBlocks);
-                          }}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Thêm
-                        </Button>
+              <div className="space-y-6 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Left Column: Visuals */}
+                  <div className="space-y-6">
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-1 h-4 bg-blue-600 rounded-full" />
+                        <Label className="text-xs font-black uppercase tracking-wider text-slate-700">Hình ảnh Banner</Label>
                       </div>
-                      {((featureBlock.list || []) as any[]).map((item, idx) => (
-                        <div key={idx} className="flex gap-2">
-                          <div className="flex-1">
-                            <LocaleInput
-                              value={getLocaleValue(item, '')}
-                              onChange={(value) => {
-                                const newBlocks = [...blocks];
-                                if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                                if (!newBlocks[editingFeatureBlockIndex].list) newBlocks[editingFeatureBlockIndex].list = [];
-                                newBlocks[editingFeatureBlockIndex].list[idx] = value;
-                                updateBlockData('features', 'blocks', newBlocks);
-                              }}
-                              label={`Điểm ${idx + 1}`}
-                              placeholder="Điểm nổi bật..."
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="mt-6"
-                            onClick={() => {
-                              const newBlocks = [...blocks];
-                              if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                              if (!newBlocks[editingFeatureBlockIndex].list) newBlocks[editingFeatureBlockIndex].list = [];
-                              newBlocks[editingFeatureBlockIndex].list = newBlocks[editingFeatureBlockIndex].list.filter((_: any, i: number) => i !== idx);
-                              updateBlockData('features', 'blocks', newBlocks);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                      <div className="bg-slate-50 p-4 rounded-xl border-2 border-dashed border-slate-200">
+                        <ImageUpload
+                          currentImage={slide.image || ''}
+                          onImageSelect={(url) => updateSlideField('image', url)}
+                        />
+                        <p className="text-[10px] text-slate-400 mt-2 italic text-center text-blue-500">Kích thước khuyên dùng: 1920x800px hoặc tỷ lệ 16:9</p>
+                      </div>
                     </div>
-                  </>
-                )}
-                {featureBlock.type === 'type2' && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="mb-2">Items</Label>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          const newBlocks = [...blocks];
-                          if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                          if (!newBlocks[editingFeatureBlockIndex].items) newBlocks[editingFeatureBlockIndex].items = [];
-                          newBlocks[editingFeatureBlockIndex].items.push({ title: '', text: '' });
-                          updateBlockData('features', 'blocks', newBlocks);
-                        }}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Thêm item
-                      </Button>
+                    <div>
+                    <div className="flex items-center gap-2 mb-3">
+                        <div className="w-1 h-4 bg-blue-600 rounded-full" />
+                        <Label className="text-xs font-black uppercase tracking-wider text-slate-700">Liên kết điều hướng (Link)</Label>
+                      </div>
+                      <div className="relative">
+                        <LinkIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                        <Input
+                          value={slide.buttonLink || ''}
+                          onChange={(e) => updateSlideField('buttonLink', e.target.value)}
+                          placeholder="/book/123 hoặc https://..."
+                          className="pl-10 bg-slate-50 border-slate-200 font-medium italic text-blue-600"
+                        />
+                      </div>
                     </div>
-                    {((featureBlock.items || []) as any[]).map((item: any, idx: number) => (
-                      <Card key={idx}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-2 mb-2">
-                            <div className="space-y-2 flex-1">
-                              <LocaleInput
-                                value={getLocaleValue(item, 'title')}
-                                onChange={(value) => {
-                                  const newBlocks = [...blocks];
-                                  if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                                  if (!newBlocks[editingFeatureBlockIndex].items) newBlocks[editingFeatureBlockIndex].items = [];
-                                  const updatedItem = setLocaleValue(newBlocks[editingFeatureBlockIndex].items[idx], 'title', value);
-                                  newBlocks[editingFeatureBlockIndex].items[idx] = updatedItem;
-                                  updateBlockData('features', 'blocks', newBlocks);
-                                }}
-                                label="Tiêu đề"
-                                placeholder="Tiêu đề..."
-                                className="text-sm"
-                                defaultLocale={globalLocale}
-                                aiProvider={aiProvider}
-                              />
-                              <LocaleInput
-                                value={getLocaleValue(item, 'text')}
-                                onChange={(value) => {
-                                  const newBlocks = [...blocks];
-                                  if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                                  if (!newBlocks[editingFeatureBlockIndex].items) newBlocks[editingFeatureBlockIndex].items = [];
-                                  const updatedItem = setLocaleValue(newBlocks[editingFeatureBlockIndex].items[idx], 'text', value);
-                                  newBlocks[editingFeatureBlockIndex].items[idx] = updatedItem;
-                                  updateBlockData('features', 'blocks', newBlocks);
-                                }}
-                                label="Nội dung"
-                                placeholder="Nội dung..."
-                                multiline={true}
-                                className="text-sm"
-                                defaultLocale={globalLocale}
-                                aiProvider={aiProvider}
-                              />
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => {
-                                const newBlocks = [...blocks];
-                                if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                                if (!newBlocks[editingFeatureBlockIndex].items) newBlocks[editingFeatureBlockIndex].items = [];
-                                newBlocks[editingFeatureBlockIndex].items = newBlocks[editingFeatureBlockIndex].items.filter((_: any, i: number) => i !== idx);
-                                updateBlockData('features', 'blocks', newBlocks);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
                   </div>
-                )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <LocaleInput
-                      value={getLocaleValue(featureBlock.button, 'text')}
-                      onChange={(value) => {
-                        const newBlocks = [...blocks];
-                        if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                        if (!newBlocks[editingFeatureBlockIndex].button) newBlocks[editingFeatureBlockIndex].button = {};
-                        const updatedButton = setLocaleValue(newBlocks[editingFeatureBlockIndex].button, 'text', value);
-                        newBlocks[editingFeatureBlockIndex].button = updatedButton;
-                        updateBlockData('features', 'blocks', newBlocks);
-                      }}
-                      label="Nút - Text"
-                      placeholder="Nút text..."
-                                      defaultLocale={globalLocale}
-                                      aiProvider={aiProvider}
-                                    />
-                  </div>
-                  <div>
-                    <Label className="mb-2">Nút - Link</Label>
-                    <Input
-                      value={featureBlock.button?.link || ''}
-                      onChange={(e) => {
-                        const newBlocks = [...blocks];
-                        if (!newBlocks[editingFeatureBlockIndex]) newBlocks[editingFeatureBlockIndex] = {};
-                        if (!newBlocks[editingFeatureBlockIndex].button) newBlocks[editingFeatureBlockIndex].button = {};
-                        newBlocks[editingFeatureBlockIndex].button.link = e.target.value;
-                        updateBlockData('features', 'blocks', newBlocks);
-                      }}
-                      placeholder="/link"
-                    />
+
+                  {/* Right Column: Content */}
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-1 h-4 bg-blue-600 rounded-full" />
+                      <Label className="text-xs font-black uppercase tracking-wider text-slate-700">Nội dung đa ngôn ngữ</Label>
+                    </div>
+                    <div className="space-y-4 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                      <LocaleInput
+                        value={getLocaleValue(slide, 'title')}
+                        onChange={(value) => updateSlideLocale('title', value)}
+                        label="Tiêu đề hiển thị"
+                        placeholder="Nhập tiêu đề banner..."
+                        defaultLocale={globalLocale}
+                        aiProvider={aiProvider}
+                      />
+                      <LocaleInput
+                        value={getLocaleValue(slide, 'description')}
+                        onChange={(value) => updateSlideLocale('description', value)}
+                        label="Mô tả chi tiết"
+                        placeholder="Mô tả ngắn gọn về banner này..."
+                        defaultLocale={globalLocale}
+                        aiProvider={aiProvider}
+                        multiline
+                      />
+                      <LocaleInput
+                        value={getLocaleValue(slide, 'buttonText')}
+                        onChange={(value) => updateSlideLocale('buttonText', value)}
+                        label="Chữ trên nút (Button Text)"
+                        placeholder="Xem ngay, Khám phá mẫu..."
+                        defaultLocale={globalLocale}
+                        aiProvider={aiProvider}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             );
           })()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingFeatureBlockIndex(null)}>
-              Đóng
-            </Button>
-            <Button onClick={() => {
-              setEditingFeatureBlockIndex(null);
-              toast.success('Đã lưu block thành công');
-            }}>
-              <Save className="h-4 w-4 mr-2" />
-              Lưu
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog for Testimonials Reviews */}
-      <Dialog open={editingTestimonialIndex !== null} onOpenChange={(open) => {
-        if (!open) setEditingTestimonialIndex(null);
-      }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ maxWidth: '42rem' }}>
-          <DialogHeader>
-            <DialogTitle>
-              {editingTestimonialIndex !== null && editingTestimonialIndex >= (getBlockData('testimonials', 'reviews', []) as any[]).length
-                ? "Thêm review mới"
-                : "Chỉnh sửa review"}
-            </DialogTitle>
-          </DialogHeader>
-          {editingTestimonialIndex !== null && (() => {
-            const reviews = getBlockData('testimonials', 'reviews', []) as any[];
-            const review = reviews[editingTestimonialIndex] || { id: reviews.length + 1, quote: '', author: '', rating: 5 };
-            return (
-              <div className="space-y-4 py-4">
-                <LocaleInput
-                  value={getLocaleValue(review, 'author')}
-                  onChange={(value) => {
-                    const newReviews = [...reviews];
-                    if (!newReviews[editingTestimonialIndex]) newReviews[editingTestimonialIndex] = {};
-                    const updatedReview = setLocaleValue(newReviews[editingTestimonialIndex], 'author', value);
-                    newReviews[editingTestimonialIndex] = updatedReview;
-                    updateBlockData('testimonials', 'reviews', newReviews);
-                  }}
-                  label="Tác giả"
-                  placeholder="Ông Nguyễn Văn A"
-                  defaultLocale={globalLocale}
-                  aiProvider={aiProvider}
-                />
-                <LocaleInput
-                  value={getLocaleValue(review, 'quote')}
-                  onChange={(value) => {
-                    const newReviews = [...reviews];
-                    if (!newReviews[editingTestimonialIndex]) newReviews[editingTestimonialIndex] = {};
-                    const updatedReview = setLocaleValue(newReviews[editingTestimonialIndex], 'quote', value);
-                    newReviews[editingTestimonialIndex] = updatedReview;
-                    updateBlockData('testimonials', 'reviews', newReviews);
-                  }}
-                  label="Nội dung đánh giá"
-                  placeholder="Nội dung đánh giá..."
-                  multiline={true}
-                                      defaultLocale={globalLocale}
-                                      aiProvider={aiProvider}
-                                    />
-                <div>
-                  <Label className="mb-2">Đánh giá (1-5 sao)</Label>
-                  <Select
-                    value={String(review.rating || 5)}
-                    onValueChange={(value) => {
-                      const newReviews = [...reviews];
-                      if (!newReviews[editingTestimonialIndex]) newReviews[editingTestimonialIndex] = {};
-                      newReviews[editingTestimonialIndex].rating = parseInt(value);
-                      updateBlockData('testimonials', 'reviews', newReviews);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 sao</SelectItem>
-                      <SelectItem value="2">2 sao</SelectItem>
-                      <SelectItem value="3">3 sao</SelectItem>
-                      <SelectItem value="4">4 sao</SelectItem>
-                      <SelectItem value="5">5 sao</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            );
-          })()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingTestimonialIndex(null)}>
-              Đóng
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog for Features Block2/Block3 Items */}
-      <Dialog open={editingFeatureItemIndex !== null} onOpenChange={(open) => {
-        if (!open) setEditingFeatureItemIndex(null);
-      }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ maxWidth: '42rem' }}>
-          <DialogHeader>
-            <DialogTitle>
-              {editingFeatureItemIndex && editingFeatureItemIndex.index >= (getBlockData('features', `block${editingFeatureItemIndex.block === 'block2' ? '2' : '3'}.items`, []) as any[]).length
-                ? "Thêm item mới"
-                : "Chỉnh sửa item"}
-            </DialogTitle>
-          </DialogHeader>
-          {editingFeatureItemIndex && (() => {
-            const block = editingFeatureItemIndex.block;
-            const items = getBlockData('features', `${block}.items`, []) as any[];
-            const item = items[editingFeatureItemIndex.index] || { title: '', text: '' };
-            return (
-              <div className="space-y-4 py-4">
-                <div>
-                  <Label className="mb-2">Tiêu đề</Label>
-                  <Input
-                    value={item.title || ''}
-                    onChange={(e) => {
-                      const newItems = [...items];
-                      if (!newItems[editingFeatureItemIndex.index]) newItems[editingFeatureItemIndex.index] = {};
-                      newItems[editingFeatureItemIndex.index].title = e.target.value;
-                      updateBlockData('features', `${block}.items`, newItems);
-                    }}
-                    placeholder="Tiêu đề..."
-                  />
-                </div>
-                <div>
-                  <Label className="mb-2">Nội dung</Label>
-                  <Textarea
-                    value={item.text || ''}
-                    onChange={(e) => {
-                      const newItems = [...items];
-                      if (!newItems[editingFeatureItemIndex.index]) newItems[editingFeatureItemIndex.index] = {};
-                      newItems[editingFeatureItemIndex.index].text = e.target.value;
-                      updateBlockData('features', `${block}.items`, newItems);
-                    }}
-                    placeholder="Nội dung..."
-                    rows={4}
-                  />
-                </div>
-              </div>
-            );
-          })()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingFeatureItemIndex(null)}>
-              Đóng
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Secondary Button Link Dialog */}
-      <Dialog open={showSecondaryLinkDialog} onOpenChange={setShowSecondaryLinkDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Chọn link cho nút phụ</DialogTitle>
-            <DialogDescription>
-              Bạn có thể nhập link thủ công hoặc chọn file từ thư viện Media
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between mb-3">
-              <div className="inline-flex rounded-xl border bg-gray-100 p-1 gap-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={secondaryLinkTab === "url" ? "default" : "ghost"}
-                  className="px-4"
-                  onClick={() => setSecondaryLinkTab("url")}
-                >
-                  <LinkIcon className="w-4 h-4 mr-2" />
-                  Nhập link
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={secondaryLinkTab === "media" ? "default" : "ghost"}
-                  className="px-4"
-                  onClick={() => setSecondaryLinkTab("media")}
-                >
-                  <ImageIcon className="w-4 h-4 mr-2" />
-                  Chọn từ Media Library
-                </Button>
-              </div>
+          <DialogFooter className="bg-slate-50 p-4 -mx-6 -mb-6 border-t mt-4 flex items-center justify-between">
+            <div className="hidden md:flex items-center gap-2 text-[10px] text-slate-400 font-bold italic">
+              <Sparkles className="h-3 w-3 text-blue-500" />
+              SỬ DỤNG AI TRANSLATE ĐỂ ĐỒNG BỘ NGÔN NGỮ NHANH
             </div>
-
-            <div className="flex-1 flex flex-col overflow-y-auto">
-              {secondaryLinkTab === "url" ? (
-                <div className="space-y-4">
-                  <div>
-                    <Label>Nhập URL hoặc đường dẫn</Label>
-                    <Input
-                      value={getBlockData('hero', 'secondaryButton.link')}
-                      onChange={(e) => updateBlockData('hero', 'secondaryButton.link', e.target.value)}
-                      placeholder="/video hoặc https://youtube.com/..."
-                      className="mt-2"
-                    />
-                    <p className="text-sm text-gray-500 mt-2">
-                      Ví dụ: /video, https://youtube.com/watch?v=..., /uploads/media/file.mp4
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <MediaLibraryPicker
-                  fileTypeFilter="video,audio"
-                  onSelectImage={(url) => {
-                    updateBlockData('hero', 'secondaryButton.link', url);
-                    setShowSecondaryLinkDialog(false);
-                    toast.success("Đã chọn file từ Media Library");
-                  }}
-                />
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSecondaryLinkDialog(false)}>
-              Đóng
+            <Button variant="default" onClick={() => setEditingSlideIndex(null)} className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 px-8 font-bold">
+              HOÀN TẤT & ĐÓNG
             </Button>
-            {secondaryLinkTab === "url" && (
-              <Button onClick={() => setShowSecondaryLinkDialog(false)}>
-                Xác nhận
-              </Button>
-            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -8,8 +8,13 @@ const {
   getRolePermissions,
   updateRolePermissions,
 } = require('../controllers/roles.controller');
+const { requireAuth } = require('../middlewares/auth.middleware');
+const { restrictToCMS, checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
+
+router.use(requireAuth);
+router.use(restrictToCMS);
 
 /**
  * @openapi
@@ -72,7 +77,7 @@ const router = express.Router();
  *                   items:
  *                     $ref: '#/components/schemas/Role'
  */
-router.get('/', getRoles);
+router.get('/', checkPermission('roles.view'), getRoles);
 
 /**
  * @openapi
@@ -102,7 +107,7 @@ router.get('/', getRoles);
  *       404:
  *         description: Không tìm thấy role
  */
-router.get('/:id', getRoleById);
+router.get('/:id', checkPermission('roles.view'), getRoleById);
 
 /**
  * @openapi
@@ -153,7 +158,7 @@ router.get('/:id', getRoleById);
  *       409:
  *         description: Mã role đã tồn tại
  */
-router.post('/', createRole);
+router.post('/', checkPermission('roles.manage'), createRole);
 
 /**
  * @openapi
@@ -204,7 +209,7 @@ router.post('/', createRole);
  *       409:
  *         description: Mã role đã tồn tại
  */
-router.put('/:id', updateRole);
+router.put('/:id', checkPermission('roles.manage'), updateRole);
 
 /**
  * @openapi
@@ -227,7 +232,7 @@ router.put('/:id', updateRole);
  *       404:
  *         description: Không tìm thấy role
  */
-router.delete('/:id', deleteRole);
+router.delete('/:id', checkPermission('roles.manage'), deleteRole);
 
 /**
  * @openapi
@@ -264,7 +269,7 @@ router.delete('/:id', deleteRole);
  *       404:
  *         description: Không tìm thấy role
  */
-router.get('/:id/permissions', getRolePermissions);
+router.get('/:id/permissions', checkPermission('roles.view'), getRolePermissions);
 
 /**
  * @openapi
@@ -315,7 +320,7 @@ router.get('/:id/permissions', getRolePermissions);
  *       404:
  *         description: Không tìm thấy role
  */
-router.put('/:id/permissions', updateRolePermissions);
+router.put('/:id/permissions', checkPermission('roles.manage'), updateRolePermissions);
 
 module.exports = router;
 

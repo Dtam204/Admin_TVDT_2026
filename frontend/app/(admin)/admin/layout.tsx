@@ -31,6 +31,13 @@ import {
   GraduationCap,
   UserCircle,
   CreditCard,
+  Globe,
+  Monitor,
+  MenuSquare,
+  UsersRound,
+  Shield,
+  Key,
+  BadgeCent,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,39 +63,7 @@ import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 type AdminNavItem = {
-  id:
-    | "dashboard"
-    | "news"
-    | "category"
-    | "system"
-    | "users"
-    | "roles"
-    | "permissions"
-    | "settings"
-    | "news-group"
-    | "media"
-    | "menus"
-    | "homepage"
-    | "contact"
-    | "contact-requests"
-    | "contact-group"
-    | "content-group"
-    | "seo"
-    // Phase 1 MVP
-    | "books-group"
-    | "books"
-    | "authors"
-    | "book-categories"
-    | "publishers"
-    | "book-loans"
-    | "courses-group"
-    | "courses"
-    | "course-categories"
-    | "instructors"
-    | "members-group"
-    | "members"
-    | "membership-plans"
-    | "payments";
+  id: string;
   label: string;
   href?: string;
   icon: ComponentType<{ className?: string }>;
@@ -104,20 +79,16 @@ const menuItems: AdminNavItem[] = [
     icon: LayoutDashboard,
     requiredPermissions: ["dashboard.view", "admin"],
   },
-  
-  // ========================================================================
-  // Phase 1 MVP - Library & Courses System
-  // ========================================================================
-  
+
   {
     id: "books-group",
-    label: "Quản lý Sách",
+    label: "Kho Ấn Phẩm",
     icon: Book,
     requiredPermissions: ["books.view", "books.manage", "admin"],
     children: [
       {
         id: "books",
-        label: "Tất cả sách",
+        label: "Tất cả Sách",
         href: "/admin/books",
         icon: Book,
         requiredPermissions: ["books.view", "books.manage", "admin"],
@@ -130,11 +101,11 @@ const menuItems: AdminNavItem[] = [
         requiredPermissions: ["authors.view", "authors.manage", "admin"],
       },
       {
-        id: "book-categories",
-        label: "Thể loại sách",
-        href: "/admin/book-categories",
+        id: "collections",
+        label: "Thể loại & Bộ sưu tập",
+        href: "/admin/collections",
         icon: FolderTree,
-        requiredPermissions: ["book_categories.view", "book_categories.manage", "admin"],
+        requiredPermissions: ["books.view", "books.manage", "admin"],
       },
       {
         id: "publishers",
@@ -143,32 +114,69 @@ const menuItems: AdminNavItem[] = [
         icon: Briefcase,
         requiredPermissions: ["publishers.view", "publishers.manage", "admin"],
       },
-      {
-        id: "book-loans",
-        label: "Mượn/Trả sách",
-        href: "/admin/book-loans",
-        icon: BookOpen,
-        requiredPermissions: ["book_loans.view", "book_loans.manage", "admin"],
-      },
     ],
   },
   
   {
+    id: "readers-services",
+    label: "Bạn Đọc & Dịch vụ",
+    icon: UsersRound,
+    requiredPermissions: ["members.view", "members.manage", "book_loans.view", "payments.view", "admin"],
+    children: [
+      {
+        id: "members",
+        label: "Hồ sơ Bạn Đọc",
+        href: "/admin/members",
+        icon: UsersRound,
+        requiredPermissions: ["members.view", "members.manage", "admin"],
+      },
+      {
+        id: "membership-plans",
+        label: "Hạng Thẻ (Gói KQ)",
+        href: "/admin/membership-plans",
+        icon: Star,
+        requiredPermissions: ["membership_plans.view", "membership_plans.manage", "admin"],
+      },
+      {
+        id: "membership-requests",
+        label: "Duyệt Đơn Gia Hạn",
+        href: "/admin/membership-requests",
+        icon: Bell,
+        requiredPermissions: ["membership_requests.view", "membership_requests.manage", "admin"],
+      },
+      {
+        id: "book-loans",
+        label: "Lịch sử Mượn/Trả",
+        href: "/admin/book-loans",
+        icon: BookOpen,
+        requiredPermissions: ["book_loans.view", "book_loans.manage", "admin"],
+      },
+      {
+        id: "payments",
+        label: "Tài chính & Giao dịch",
+        href: "/admin/payments",
+        icon: BadgeCent,
+        requiredPermissions: ["payments.view", "payments.manage", "admin"],
+      },
+    ],
+  },
+
+  {
     id: "courses-group",
-    label: "Quản lý Khóa học",
+    label: "Học liệu E-Learning",
     icon: GraduationCap,
     requiredPermissions: ["courses.view", "courses.manage", "admin"],
     children: [
       {
         id: "courses",
-        label: "Tất cả khóa học",
+        label: "Danh sách Khóa học",
         href: "/admin/courses",
         icon: GraduationCap,
         requiredPermissions: ["courses.view", "courses.manage", "admin"],
       },
       {
         id: "course-categories",
-        label: "Danh mục khóa học",
+        label: "Danh mục",
         href: "/admin/course-categories",
         icon: FolderTree,
         requiredPermissions: ["course_categories.view", "course_categories.manage", "admin"],
@@ -182,71 +190,82 @@ const menuItems: AdminNavItem[] = [
       },
     ],
   },
-  
+
   {
-    id: "members-group",
-    label: "Quản lý Thành viên",
-    icon: Users,
-    requiredPermissions: ["members.view", "members.manage", "admin"],
+    id: "portal-group",
+    label: "Truyền thông & App",
+    icon: Globe,
+    requiredPermissions: ["news.view", "homepage.manage", "admin"],
     children: [
+/* 
       {
-        id: "members",
-        label: "Tất cả thành viên",
-        href: "/admin/members",
-        icon: Users,
-        requiredPermissions: ["members.view", "members.manage", "admin"],
+        id: "homepage",
+        label: "Trang chủ CMS",
+        href: "/admin/home",
+        icon: Home,
+        requiredPermissions: ["homepage.manage", "admin"],
       },
-      {
-        id: "membership-plans",
-        label: "Gói thành viên",
-        href: "/admin/membership-plans",
-        icon: Package,
-        requiredPermissions: ["membership_plans.view", "membership_plans.manage", "admin"],
-      },
-    ],
-  },
-  
-  {
-    id: "payments",
-    label: "Thanh toán",
-    href: "/admin/payments",
-    icon: CreditCard,
-    requiredPermissions: ["payments.view", "payments.manage", "admin"],
-  },
-  {
-    id: "news-group",
-    label: "Quản lý Tin tức",
-    icon: Newspaper,
-    requiredPermissions: ["news.view", "news.manage", "categories.view", "categories.manage", "admin"],
-    children: [
+*/
       {
         id: "news",
-        label: "Bài viết",
+        label: "Tin tức & Sự kiện",
         href: "/admin/news",
         icon: Newspaper,
         requiredPermissions: ["news.view", "news.manage", "admin"],
       },
       {
+        id: "notifications",
+        label: "Thông báo App",
+        href: "/admin/notifications",
+        icon: Bell,
+        requiredPermissions: ["admin"],
+      },
+      {
+        id: "comments",
+        label: "Quản lý bình luận",
+        href: "/admin/comments",
+        icon: MessageSquare,
+        requiredPermissions: [], // Để trống để tạm thời mọi người có quyền quan sát đều thấy được
+      },
+      {
         id: "category",
-        label: "Danh mục",
+        label: "Danh mục Tin",
         href: "/admin/categories",
         icon: FolderTree,
         requiredPermissions: ["categories.view", "categories.manage", "admin"],
       },
+      {
+        id: "media",
+        label: "Quản lý Media",
+        href: "/admin/media",
+        icon: Image,
+        requiredPermissions: ["media.view", "media.manage", "admin"],
+      },
+/*
+      {
+        id: "menus",
+        label: "Cấu hình Menu",
+        href: "/admin/menus",
+        icon: Menu,
+        requiredPermissions: ["menus.view", "menus.manage", "admin"],
+      },
+      {
+        id: "seo",
+        label: "Cấu hình SEO",
+        href: "/admin/seo",
+        icon: Search,
+        requiredPermissions: ["seo.view", "seo.manage", "admin"],
+      },
+*/
     ],
-  },  
-  {
-    id: "homepage",
-    label: "Trang chủ",
-    href: "/admin/home",
-    icon: Home,
-    requiredPermissions: ["homepage.manage", "admin"],
   },
+
+/*
   {
     id: "contact-group",
-    label: "Quản lý Liên hệ",
-    icon: Phone,
-    requiredPermissions: ["contact.view", "contact.manage", "contact_requests.view", "contact_requests.manage", "admin"],
+    label: "Tương tác Liên hệ",
+    icon: MessageSquare,
+    requiredPermissions: ["contact.view", "contact_requests.view", "admin"],
     children: [
       {
         id: "contact",
@@ -257,78 +276,50 @@ const menuItems: AdminNavItem[] = [
       },
       {
         id: "contact-requests",
-        label: "Yêu cầu tư vấn",
+        label: "Hộp thư Yêu cầu",
         href: "/admin/contact-requests",
         icon: MessageSquare,
         requiredPermissions: ["contact_requests.view", "contact_requests.manage", "admin"],
       },
     ],
   },
+*/
+
   {
     id: "system",
-    label: "Hệ thống",
+    label: "Quản trị Hệ Thống",
     icon: Settings2,
-    requiredPermissions: [
-      "users.view",
-      "users.manage",
-      "roles.view",
-      "roles.manage",
-      "permissions.manage",
-      "seo.view",
-      "seo.manage",
-      "admin",
-    ],
+    requiredPermissions: ["users.view", "roles.view", "settings.view", "admin"],
     children: [
       {
         id: "users",
-        label: "Người dùng",
+        label: "Cán Bộ / Nhân Sự",
         href: "/admin/users",
-        icon: Users,
+        icon: ShieldCheck,
         requiredPermissions: ["users.view", "users.manage", "admin"],
       },
       {
         id: "roles",
-        label: "Phân quyền",
+        label: "Các Cấp Phân Quyền",
         href: "/admin/roles",
-        icon: ShieldCheck,
+        icon: Key,
         requiredPermissions: ["roles.view", "roles.manage", "admin"],
       },
       {
         id: "permissions",
-        label: "Quyền chi tiết",
+        label: "Cấu hình Đặc quyền",
         href: "/admin/permissions",
-        icon: ShieldCheck,
+        icon: Shield,
         requiredPermissions: ["roles.manage", "permissions.manage", "admin"],
       },
       {
-        id: "seo",
-        label: "Cấu hình SEO",
-        href: "/admin/seo",
-        icon: Settings2,
-        requiredPermissions: ["seo.view", "seo.manage", "admin"],
+        id: "settings",
+        label: "Cài đặt Tổng Cục",
+        href: "/admin/settings",
+        icon: Settings,
+        requiredPermissions: ["settings.view", "settings.manage", "admin"],
       },
     ],
-  },
-  {
-    id: "media",
-    label: "Quản lý Media",
-    href: "/admin/media",
-    icon: Image,
-    requiredPermissions: ["media.view", "media.manage", "admin"],
-  },
-  {
-    id: "menus",
-    label: "Quản lý menu",
-    href: "/admin/menus",
-    icon: FolderTree,
-    requiredPermissions: ["menus.view", "menus.manage", "admin"],
-  },
-  {
-    id: "settings",
-    label: "Cài đặt",
-    href: "/admin/settings",
-    icon: Settings,
-    requiredPermissions: ["settings.view", "settings.manage", "admin"],
   },
 ];
 
@@ -439,22 +430,21 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <aside
         className={`fixed left-0 top-0 z-40 h-screen transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } w-64 text-slate-100 shadow-2xl`}
+          } w-64 text-slate-100 shadow-2xl border-r border-white/10`}
         style={{
-          background: "linear-gradient(73deg, #1D8FCF 32.85%, #2EABE2 82.8%)"
+          background: "linear-gradient(180deg, #020617 0%, #0f172a 100%)"
         }}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="h-16 flex items-center px-6 border-b border-slate-800/60 backdrop-blur">
-            <div className="w-10 h-10 flex items-center justify-center bg-white rounded-[20px]">
-              <img
-                src="/images/logo-2.png"
-                alt="Thư viện TN Logo"
-                className="w-full h-full object-contain"
-              />
+          {/* Logo Section */}
+          <div className="h-14 flex items-center px-6 border-b border-white/10 backdrop-blur-md">
+            <div className="w-8 h-8 flex items-center justify-center bg-indigo-500 rounded-lg shadow-lg shadow-indigo-500/20 border border-white/20">
+              <BookOpen className="w-4 h-4 text-white" />
             </div>
-            <span className="ml-3 text-xl text-slate-100 font-semibold">Thư viện TN Admin</span>
+            <div className="ml-3 flex flex-col">
+              <span className="text-[12px] font-black text-white leading-tight tracking-tight uppercase">Library Admin</span>
+              <span className="text-[8px] text-indigo-400 font-black opacity-80 uppercase tracking-[1.5px]">Master Suite</span>
+            </div>
           </div>
 
           {/* Navigation */}
@@ -465,12 +455,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               const isSubmenuOpen = openSubmenus.has(item.id);
 
               // Kiểm tra permission - ẩn item nếu không có quyền (sau khi đã mount)
-              // Trên server hoặc chưa mount, hiển thị tất cả để tránh hydration mismatch
+              // Dashboard luôn hiện cho Admin
               const hasPermission = !mounted || userPermissions.size === 0
                 ? true
-                : !item.requiredPermissions ||
+                : item.id === "dashboard" || 
+                !item.requiredPermissions ||
                 item.requiredPermissions.length === 0 ||
-                item.requiredPermissions.some((perm) => userPermissions.has(perm));
+                item.requiredPermissions.some((perm) => userPermissions.has(perm)) ||
+                userPermissions.has("admin");
 
               if (!hasPermission) return null;
 
@@ -503,9 +495,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     suppressHydrationWarning
                   >
                     <CollapsibleTrigger
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all text-sm ${isActive
-                        ? "bg-white/10 text-white shadow-lg shadow-blue-500/20 border border-white/10"
-                        : "text-slate-200 hover:bg-white/5"
+                      className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all text-[11px] font-bold uppercase tracking-wider ${isActive
+                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/50 border border-white/10"
+                        : "text-slate-400 hover:bg-white/5 hover:text-white"
                         }`}
                       suppressHydrationWarning
                     >
@@ -540,12 +532,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                           <Link
                             key={child.id}
                             href={child.href || "#"}
-                            className={`w-full flex items-center pl-10 pr-4 py-2.5 rounded-lg transition-all text-sm ${isChildActive
-                              ? "bg-white/10 text-white font-medium border-l-2 border-cyan-400"
-                              : "text-slate-200 hover:bg-white/5"
+                            className={`w-full flex items-center pl-10 pr-4 py-2 rounded-xl transition-all text-[11px] font-bold ${isChildActive
+                              ? "bg-white/10 text-white border-l-4 border-indigo-400"
+                              : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                               }`}
                           >
-                            <ChildIcon className="w-4 h-4" />
+                            <ChildIcon className="w-3.5 h-3.5" />
                             <span className="ml-3">{child.label}</span>
                           </Link>
                         );
@@ -560,8 +552,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   key={item.id}
                   href={item.href || "#"}
                   className={`w-full flex items-center px-4 py-3 rounded-lg transition-all text-sm ${isActive
-                    ? "bg-white/10 text-white shadow-lg shadow-blue-500/20 border border-white/10"
-                    : "text-slate-200 hover:bg-white/5"
+                    ? "bg-indigo-600/20 text-white shadow-xl shadow-black/20 border border-white/10"
+                    : "text-slate-400 hover:bg-white/5 hover:text-white"
                     }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -571,14 +563,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             })}
           </nav>
 
-          {/* Logout */}
-          <div className="p-4 border-t border-gray-200">
+          {/* Logout Section */}
+          <div className="p-4 border-t border-white/10 mt-auto">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center px-4 py-3 text-white-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="w-full flex items-center px-4 py-3 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all font-black text-[11px] uppercase tracking-widest gap-3"
             >
-              <LogOut className="w-5 h-5" />
-              <span className="ml-3">Đăng xuất</span>
+              <LogOut className="w-4 h-4" />
+              <span>Đăng xuất hệ thống</span>
             </button>
           </div>
         </div>
@@ -586,9 +578,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       {/* Main Content */}
       <div className={`transition-all ${sidebarOpen ? "ml-64" : "ml-0"}`}>
-        {/* Header */}
+        {/* Top Header Section */}
         <header
-          className="h-16 bg-white border-b border-gray-200 fixed top-0 right-0 left-0 z-30"
+          className="h-14 bg-white/80 backdrop-blur-xl border-b border-slate-200 fixed top-0 right-0 left-0 z-30 transition-all duration-300"
           style={{ marginLeft: sidebarOpen ? "16rem" : "0" }}
         >
           <div className="h-full px-6 flex items-center justify-between">
@@ -620,7 +612,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-3 hover:bg-gray-100 rounded-lg px-3 py-2 transition-colors">
                     <Avatar>
-                      <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
+                      <AvatarFallback className="bg-slate-900 text-white border border-white/10 shadow-lg font-bold">
                         {userName
                           .split(" ")
                           .map((w) => w[0])
@@ -667,7 +659,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         {/* Page Content */}
         <main className="pt-16 min-h-screen">
           <QueryClientProvider client={queryClient}>
-            <div className="p-6">{children}</div>
+            {children}
           </QueryClientProvider>
         </main>
       </div>

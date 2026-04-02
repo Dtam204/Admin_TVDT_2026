@@ -6,8 +6,13 @@ const {
   updateUser,
   deleteUser,
 } = require('../controllers/users.controller');
+const { requireAuth } = require('../middlewares/auth.middleware');
+const { restrictToCMS, checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
+
+router.use(requireAuth);
+router.use(restrictToCMS);
 
 /**
  * @openapi
@@ -82,7 +87,7 @@ const router = express.Router();
  *                   items:
  *                     $ref: '#/components/schemas/User'
  */
-router.get('/', getUsers);
+router.get('/', checkPermission('users.view'), getUsers);
 
 /**
  * @openapi
@@ -113,7 +118,7 @@ router.get('/', getUsers);
  *       404:
  *         description: Không tìm thấy user
  */
-router.get('/:id', getUserById);
+router.get('/:id', checkPermission('users.view'), getUserById);
 
 /**
  * @openapi
@@ -167,7 +172,7 @@ router.get('/:id', getUserById);
  *       409:
  *         description: Email đã tồn tại
  */
-router.post('/', createUser);
+router.post('/', checkPermission('users.manage'), createUser);
 
 /**
  * @openapi
@@ -220,7 +225,7 @@ router.post('/', createUser);
  *       409:
  *         description: Email đã tồn tại
  */
-router.put('/:id', updateUser);
+router.put('/:id', checkPermission('users.manage'), updateUser);
 
 /**
  * @openapi
@@ -241,6 +246,6 @@ router.put('/:id', updateUser);
  *       404:
  *         description: Không tìm thấy user
  */
-router.delete('/:id', deleteUser);
+router.delete('/:id', checkPermission('users.manage'), deleteUser);
 
 module.exports = router;

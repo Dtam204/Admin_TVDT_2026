@@ -2,10 +2,10 @@
 
 import { use } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMembershipPlan, useDeleteMembershipPlan } from '@/lib/hooks/useMembershipPlans';
+import { useMembershipPlan, useDeleteMembershipPlan, useUpdateMembershipPlan } from '@/lib/hooks/useMembershipPlans';
+import { MembershipPlanForm } from '../MembershipPlanForm';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trash2 } from 'lucide-react';
-import Link from 'next/link';
+import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function MembershipPlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -14,14 +14,14 @@ export default function MembershipPlanDetailPage({ params }: { params: Promise<{
   const itemId = parseInt(id);
 
   const { data, isLoading } = useMembershipPlan(itemId);
+  const { mutate: update, isPending: isUpdating } = useUpdateMembershipPlan(itemId);
   const { mutate: deleteItem, isPending: isDeleting } = useDeleteMembershipPlan();
 
   const handleDelete = () => {
-    if (!confirm('Bạn có chắc muốn xóa?')) return;
-
+    if (!confirm('Bạn có chắc muốn xóa Hạng thẻ này khỏi Thư viện?')) return;
     deleteItem(itemId, {
       onSuccess: () => {
-        toast.success('Đã xóa thành công');
+        toast.success('Đã xóa Hạng thẻ!');
         router.push('/admin/membership-plans');
       },
       onError: (error: any) => {
@@ -30,47 +30,28 @@ export default function MembershipPlanDetailPage({ params }: { params: Promise<{
     });
   };
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="text-center py-12">Đang tải...</div>
-      </div>
-    );
-  }
+  const handleUpdate = (updatedData: any) => {
+    update(updatedData, {
+      onSuccess: () => {
+        toast.success('Lưu cấu hình Hạng thẻ thành công!');
+      },
+      onError: (error: any) => {
+        toast.error(error.message || 'Lỗi khi cập nhật!');
+      }
+    });
+  };
 
-  if (!data?.data) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="text-center py-12">Không tìm thấy dữ liệu</div>
-      </div>
-    );
-  }
-
-  const item = data.data;
+  if (isLoading) return <div className="text-center py-12">Đang tải cấu hình...</div>;
+  if (!data?.data) return <div className="text-center py-12">Không tìm thấy dữ liệu</div>;
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
-          <Link href="/admin/membership-plans">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold">Chi tiết Gói thành viên</h1>
-            <p className="text-muted-foreground">#{itemId}</p>
-          </div>
-        </div>
-        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-          <Trash2 className="w-4 h-4 mr-2" />
-          Xóa
-        </Button>
+    <div className="relative">
+      <div className="absolute top-6 right-6 z-10">
+         <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+           <Trash2 className="w-4 h-4 mr-2" /> Xóa Thẻ
+         </Button>
       </div>
-
-      <div className="bg-card p-6 rounded-lg border">
-        <pre className="text-sm">{JSON.stringify(item, null, 2)}</pre>
-      </div>
+      <MembershipPlanForm initialData={data.data} onSubmit={handleUpdate} isSubmitting={isUpdating} />
     </div>
   );
 }

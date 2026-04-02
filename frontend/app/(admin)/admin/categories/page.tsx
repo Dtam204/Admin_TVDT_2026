@@ -145,6 +145,20 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  // Auto-generate code from name
+  useEffect(() => {
+    const nameText = typeof formData.name === 'string' ? formData.name : (formData.name as any)?.vi || '';
+    if (nameText && !editingCategory && !formData.code) {
+      // Simple slugify for code
+      const generatedCode = nameText.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      setFormData(prev => ({ ...prev, code: generatedCode }));
+    }
+  }, [formData.name, editingCategory]);
+
   const handleEdit = (category: Category) => {
     setEditingCategory(category);
     // Normalize dữ liệu để đảm bảo các field luôn là locale object
@@ -301,6 +315,7 @@ export default function AdminCategoriesPage() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+{/* 
                 <div className="space-y-2">
                   <Label htmlFor="code">Mã danh mục</Label>
                   <Input
@@ -312,6 +327,7 @@ export default function AdminCategoriesPage() {
                     disabled={!!editingCategory}
                   />
                 </div>
+*/}
                 <div className="space-y-2">
                   <LocaleInput
                     label="Tên danh mục"

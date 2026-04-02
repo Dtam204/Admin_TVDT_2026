@@ -6,7 +6,7 @@ const path = require('path');
  * Tự động tạo bảng nếu chưa tồn tại
  */
 
-const pool = require('../config/database').pool;
+const { pool } = require('../config/database');
 const mediaUploadsDir = path.join(__dirname, '../../uploads/media');
 
 function ensureMediaFolderDir(id) {
@@ -73,6 +73,13 @@ async function ensureMediaTables() {
         `);
         console.log('✓ description column added to media_folders');
       }
+
+      // Đảm bảo có UNIQUE constraint trên slug cho ON CONFLICT
+      try {
+        await client.query('ALTER TABLE media_folders ADD CONSTRAINT media_folders_slug_key UNIQUE (slug);');
+      } catch (e) {
+        // Ignored if already exists
+      }
     }
     
     // Kiểm tra bảng media_files
@@ -136,11 +143,13 @@ async function ensureMediaTables() {
     `);
     
     // Ensure directory exists for each folder
-    const foldersResult = await client.query('SELECT id FROM media_folders');
+    // Optimization: Only check first 100 folders OR just root folders
+    const foldersResult = await client.query('SELECT id FROM media_folders LIMIT 50');
     foldersResult.rows.forEach((row) => {
       ensureMediaFolderDir(row.id);
     });
 
+    console.log('✓ Media folders check completed');
     return true;
   } catch (error) {
     console.error('Error ensuring media tables:', error.message);
