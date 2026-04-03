@@ -107,9 +107,53 @@ exports.getById = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   const client = await pool.connect();
   try {
+    const data = req.body;
+    const { member_id } = data;
+
+    if (!member_id) {
+      return res.status(400).json({ success: false, message: 'Thiếu ID hội viên' });
+    }
+
     await client.query('BEGIN');
 
-    const data = req.body;
+    // 1. Kiểm tra trạng thái thẻ & Hạn mức thực tế (Đồng bộ hóa Expiry)
+    const { rows: members } = await client.query(`
+      SELECT m.*, mp.max_books_borrowed, mp.tier_code, mp.name->>'vi' as plan_name
+      FROM members m
+      LEFT JOIN membership_plans mp ON m.membership_plan_id = mp.id
+      WHERE m.id = $1
+    `, [member_id]);
+
+    if (members.length === 0) {
+      throw new Error('Hội viên không tồn tại');
+    }
+
+    const member = members[0];
+    if (member.status !== 'active') {
+      throw new Error(`Thẻ này đang ở trạng thái "${member.status}", không thể mượn sách.`);
+    }
+
+    const effective = getEffectiveMembership({
+      membership_expires: member.membership_expires,
+      tier_code: member.tier_code || 'basic',
+      plan_name: member.plan_name || 'Cơ bản',
+      max_books_borrowed: member.max_books_borrowed || 3
+    });
+
+    // 2. Kiểm tra số sách đang mượn
+    const { rows: currentLoans } = await client.query(`
+      SELECT COUNT(*) as count 
+      FROM book_loans 
+      WHERE member_id = $1 AND status IN ('borrowing', 'overdue')
+    `, [member_id]);
+
+    const activeCount = parseInt(currentLoans[0].count);
+
+    if (activeCount >= effective.max_books_borrowed) {
+      throw new Error(`Hội viên đã đạt giới hạn mượn sách (${effective.max_books_borrowed} cuốn). Vui lòng trả sách hoặc nâng cấp thẻ để mượn tiếp.`);
+    }
+
+    // 3. Thực hiện tạo phiếu mượn
     const fields = Object.keys(data).join(', ');
     const values = Object.keys(data).map((_, i) => `$${i + 1}`).join(', ');
     const params = Object.values(data);

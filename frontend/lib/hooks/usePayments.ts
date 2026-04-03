@@ -35,7 +35,19 @@ const paymentsApi = {
       method: 'DELETE',
     });
   },
+
+  getStats: async () => {
+    return adminApiCall('/api/admin/payments/stats');
+  },
 };
+
+export function useFinanceStats() {
+  return useQuery({
+    queryKey: ['payments', 'stats'],
+    queryFn: () => paymentsApi.getStats(),
+    staleTime: 60 * 1000, // 1 minute
+  });
+}
 
 export function usePayments(params?: any) {
   return useQuery({

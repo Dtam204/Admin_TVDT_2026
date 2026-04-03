@@ -86,6 +86,7 @@ router.post('/summarize', checkPermission('books.manage'), AdminAIController.sum
 router.get('/:id', checkPermission('books.view'), adminPubController.getDetail);
 router.put('/:id', checkPermission('books.manage'), adminPubController.update);
 router.delete('/:id', checkPermission('books.manage'), adminPubController.delete);
+router.get('/storage-locations', checkPermission('publications.view'), adminPubController.getStorageLocations);
 router.get('/dashboard/stats', checkPermission('books.view'), adminPubController.getStats);
 router.get('/', checkPermission('books.view'), adminPubController.getAll);
 

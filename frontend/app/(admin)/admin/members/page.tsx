@@ -227,12 +227,19 @@ export default function MembersPage() {
                       </TableCell>
                       <TableCell className="px-4 text-slate-900">
                          <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase text-indigo-600">{item.membership_plan || 'Cơ bản'}</span>
+                            <span className={cn(
+                              "text-[10px] font-black uppercase",
+                              item.is_expired ? "text-rose-500" : "text-indigo-600"
+                            )}>{item.effective_plan || 'Cơ bản'}</span>
                             <span className="text-[11px] font-bold font-mono text-emerald-600">VÍ: {Number(item.balance || 0).toLocaleString()}đ</span>
                          </div>
                       </TableCell>
                       <TableCell className="text-center px-4">
-                        {getStatusBadge(item.status)}
+                        {item.is_expired ? (
+                          <Badge className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter border shadow-sm bg-rose-50 text-rose-600 border-rose-100">
+                            Hết hạn
+                          </Badge>
+                        ) : getStatusBadge(item.status)}
                       </TableCell>
                       <TableCell className="text-right pr-6 py-2">
                         <div className="flex gap-1.5 justify-end">

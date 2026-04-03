@@ -3,6 +3,9 @@ const router = express.Router();
 const readerController = require('../controllers/reader.controller');
 const { authLimiter } = require('../middlewares/rateLimit.middleware');
 const requireAuth = require('../middlewares/auth.middleware');
+const notificationController = require('../controllers/notification.controller');
+const interactionController = require('../controllers/interaction.controller');
+
 
 /**
  * @openapi
@@ -64,6 +67,32 @@ router.get('/borrow-history', requireAuth, readerController.getBorrowHistory);
 
 /**
  * @openapi
+ * /api/reader/transactions:
+ *   get:
+ *     tags: [Reader Portal]
+ *     summary: Lấy lịch sử giao dịch nạp tiền & thanh toán
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: Danh sách giao dịch }
+ */
+router.get('/transactions', requireAuth, readerController.getTransactions);
+
+/**
+ * @openapi
+ * /api/reader/membership-requests:
+ *   get:
+ *     tags: [Reader Portal]
+ *     summary: Xem lịch sử yêu cầu nâng cấp/gia hạn thẻ
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: Danh sách yêu cầu }
+ */
+router.get('/membership-requests', requireAuth, readerController.getMembershipRequests);
+
+/**
+ * @openapi
  * /api/reader/renew-card:
  *   post:
  *     tags: [Reader Portal]
@@ -115,5 +144,58 @@ router.put('/profile', requireAuth, readerController.updateProfile);
  *       200: { description: Gửi email khôi phục thành công }
  */
 router.post('/forgot-password', authLimiter, readerController.forgotPassword);
+
+/**
+ * @openapi
+ * /api/reader/notifications:
+ *   get:
+ *     tags: [Reader Portal]
+ *     summary: Lấy danh sách thông báo của tôi
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: Danh sách thông báo }
+ */
+router.get('/notifications', requireAuth, notificationController.getMyNotifications);
+
+router.patch('/notifications/:id/read', requireAuth, notificationController.markAsRead);
+router.patch('/notifications/read-all', requireAuth, notificationController.markAllAsRead);
+
+/**
+ * @openapi
+ * /api/reader/books/{bookId}/reviews:
+ *   get:
+ *     tags: [Reader Portal]
+ *     summary: Lấy danh sách đánh giá của sách
+ *     responses:
+ *       200: { description: Danh sách đánh giá }
+ *   post:
+ *     tags: [Reader Portal]
+ *     summary: Gửi đánh giá sách
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: Đánh giá thành công }
+ */
+router.get('/books/:bookId/reviews', interactionController.getBookReviews);
+router.post('/books/:bookId/reviews', requireAuth, interactionController.submitReview);
+
+/**
+ * @openapi
+ * /api/reader/wishlist:
+ *   get:
+ *     tags: [Reader Portal]
+ *     summary: Lấy danh sách yêu thích của tôi
+ *     security:
+ *       - bearerAuth: []
+ *   post:
+ *     tags: [Reader Portal]
+ *     summary: Thêm/Xóa khỏi danh sách yêu thích
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/wishlist', requireAuth, interactionController.getMyWishlist);
+router.post('/books/:bookId/wishlist', requireAuth, interactionController.toggleWishlist);
+
 
 module.exports = router;

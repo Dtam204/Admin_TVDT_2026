@@ -15,6 +15,7 @@ import {
   LayoutDashboard
 } from "lucide-react";
 import Link from 'next/link';
+import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import {
   BarChart,
@@ -128,6 +129,48 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="px-6 space-y-6 pt-6">
+        {/* ACTION REQUIRED ALERTS - PHASE 8 */}
+        {(stats?.totalPendingRequests > 0 || stats?.totalOverdueLoans > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {stats?.totalPendingRequests > 0 && (
+              <Link href="/admin/membership-requests">
+                <Card className="border-none bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg cursor-pointer hover:scale-[1.01] transition-transform">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white/20 rounded-lg">
+                        <AlertCircle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Yêu cầu chờ duyệt</p>
+                        <h4 className="text-xl font-black">{stats.totalPendingRequests} đơn hàng mới</h4>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="bg-white/10 hover:bg-white/20 border-none text-white text-[10px] font-bold uppercase">Xử lý ngay</Button>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+            {stats?.totalOverdueLoans > 0 && (
+              <Link href="/admin/books/loans">
+                <Card className="border-none bg-gradient-to-r from-rose-500 to-red-700 text-white shadow-lg cursor-pointer hover:scale-[1.01] transition-transform">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white/20 rounded-lg">
+                        <History className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Sách quá hạn</p>
+                        <h4 className="text-xl font-black">{stats.totalOverdueLoans} phiếu mượn</h4>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="bg-white/10 hover:bg-white/20 border-none text-white text-[10px] font-bold uppercase">Xem chi tiết</Button>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {isLoading ? (

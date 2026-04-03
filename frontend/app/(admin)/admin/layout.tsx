@@ -38,6 +38,7 @@ import {
   Shield,
   Key,
   BadgeCent,
+  History as HistoryIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -195,7 +196,7 @@ const menuItems: AdminNavItem[] = [
     id: "portal-group",
     label: "Truyền thông & App",
     icon: Globe,
-    requiredPermissions: ["news.view", "homepage.manage", "admin"],
+    requiredPermissions: ["news.view", "homepage.manage", "notifications.view", "books.view", "admin"],
     children: [
 /* 
       {
@@ -214,11 +215,18 @@ const menuItems: AdminNavItem[] = [
         requiredPermissions: ["news.view", "news.manage", "admin"],
       },
       {
-        id: "notifications",
+        id: "app-notifications",
         label: "Thông báo App",
         href: "/admin/notifications",
         icon: Bell,
-        requiredPermissions: ["admin"],
+        requiredPermissions: [],
+      },
+      {
+        id: "reviews",
+        label: "Đánh giá & Phản hồi",
+        href: "/admin/reviews",
+        icon: Star,
+        requiredPermissions: ["books.view", "books.manage", "admin"],
       },
       {
         id: "comments",
@@ -311,6 +319,13 @@ const menuItems: AdminNavItem[] = [
         href: "/admin/permissions",
         icon: Shield,
         requiredPermissions: ["roles.manage", "permissions.manage", "admin"],
+      },
+      {
+        id: "audit-logs",
+        label: "Nhật ký hoạt động",
+        href: "/admin/audit-logs",
+        icon: HistoryIcon,
+        requiredPermissions: ["admin"],
       },
       {
         id: "settings",
@@ -524,7 +539,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                           ? true
                           : !child.requiredPermissions ||
                           child.requiredPermissions.length === 0 ||
-                          child.requiredPermissions.some((perm) => userPermissions.has(perm));
+                          child.requiredPermissions.some((perm) => userPermissions.has(perm)) ||
+                          userPermissions.has("admin");
 
                         if (!childHasPermission) return null;
 

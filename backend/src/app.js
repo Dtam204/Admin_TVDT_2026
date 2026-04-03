@@ -46,6 +46,8 @@ const publicNewsRoutes = require('./routes/public_news.routes');
 const readerActionRoutes = require('./routes/reader_action.routes');
 const memberActionsRoutes = require('./routes/member_actions.routes');
 const notificationRoutes = require('./routes/admin_notification.routes');
+const adminLibraryRoutes = require('./routes/admin_library.routes');
+const webhookRoutes = require('./routes/webhook.routes');
 const requireAuth = require('./middlewares/auth.middleware');
 const { restrictToCMS } = require('./middlewares/rbac.middleware');
 const logger = require('./middlewares/logger.middleware');
@@ -139,6 +141,7 @@ app.use('/api/public/search', publicSearchRoutes);
 app.use('/api/public/comments', publicCommentRoutes);
 app.use('/api/public/news', publicNewsRoutes);
 app.use('/api/public/membership-plans', publicMembershipPlansRoutes);
+app.use('/api/webhooks', webhookRoutes);
 app.use('/api/health', healthRoutes);
 
 // Protected Admin Routes Group
@@ -180,6 +183,7 @@ adminRouter.use('/member-actions', memberActionsRoutes);
 adminRouter.use('/borrow', borrowRoutes);
 adminRouter.use('/book-loans', bookLoansRoutes);
 adminRouter.use('/notifications', notificationRoutes);
+adminRouter.use('/library', adminLibraryRoutes);
 
 // Mount Admin Router
 app.use('/api/admin', adminRouter);

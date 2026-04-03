@@ -1,8 +1,9 @@
 /**
- * Simple Database Setup Script
- * Chỉ chạy schema.sql để setup toàn bộ database
+ * Database Synchronizer Script
+ * Chạy schema.sql để khởi tạo hoặc đồng bộ hóa database.
+ * An toàn để chạy lại nhiều lần (Idempotent).
  * 
- * Usage: node scripts/setup-simple.js
+ * Usage: npm run setup
  */
 
 require('dotenv').config();
@@ -12,7 +13,7 @@ const { Pool } = require('pg');
 const { createDatabaseIfNotExists } = require('../src/config/database');
 
 async function setupSimple() {
-  console.log('🚀 Starting database setup...\n');
+  console.log('🚀 Starting database synchronization...\n');
 
   const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
@@ -32,27 +33,28 @@ async function setupSimple() {
 
   try {
     // Step 1: Create database
-    console.log('📦 Step 1/3: Creating database...');
+    console.log('📦 Step 1/3: Preparing database...');
     const dbCreated = await createDatabaseIfNotExists();
     if (!dbCreated) {
-      console.error('❌ Cannot create database. Check PostgreSQL connection.');
+      console.error('❌ Cannot prepare database. Check PostgreSQL connection.');
       process.exit(1);
     }
-    console.log('✅ Database ready\n');
+    console.log('✅ Database is ready\n');
 
     // Step 2: Connect
     console.log('🔌 Step 2/3: Connecting to database...');
     pool = new Pool(dbConfig);
     client = await pool.connect();
-    console.log('✅ Connected\n');
+    console.log('✅ Connected successfully\n');
 
     // Step 3: Run schema.sql
-    console.log('📄 Step 3/3: Running schema.sql...');
-    console.log('   This includes:');
-    console.log('   - Core system (roles, users, permissions)');
-    console.log('   - News, Contact, Media, Menus, SEO');
-    console.log('   - Phase 1: Books, Courses, Members, Payments');
-    console.log('   - All seed data\n');
+    console.log('📄 Step 3/3: Synchronizing schema.sql...');
+    console.log('   Syncing modules:');
+    console.log('   - Core System & RBAC');
+    console.log('   - CMS (News, Media, SEO)');
+    console.log('   - Library Phase 1 (Books, Loans, Payments)');
+    console.log('   - Library Phase 2 (Notifications, Reviews, Wishlists)');
+    console.log('   - Interaction Workflow (Requests, Comments)\n');
     
     const schemaPath = path.join(__dirname, '..', 'database', 'schema.sql');
     if (!fs.existsSync(schemaPath)) {
@@ -60,11 +62,14 @@ async function setupSimple() {
     }
     
     const schemaSQL = fs.readFileSync(schemaPath, 'utf8');
+    
+    // Split schema into semi-colon separated statements for better error handling if needed
+    // But for a simple sync, running the whole file is OK as it uses IF NOT EXISTS
     await client.query(schemaSQL);
-    console.log('✅ Schema executed successfully\n');
+    console.log('✅ Schema synchronization completed\n');
 
     // Verify
-    console.log('✅ Verifying setup...');
+    console.log('🔍 Verifying system integrity...');
     const { rows: tables } = await client.query(`
       SELECT table_name 
       FROM information_schema.tables 
@@ -72,51 +77,42 @@ async function setupSimple() {
       ORDER BY table_name
     `);
     
-    console.log(`   Found ${tables.length} table(s)\n`);
+    console.log(`   ✅ Total tables synced: ${tables.length}\n`);
     
-    // Count seed data
-    const counts = await Promise.all([
-      client.query('SELECT COUNT(*) FROM roles'),
-      client.query('SELECT COUNT(*) FROM permissions'),
-      client.query('SELECT COUNT(*) FROM membership_plans'),
-      client.query('SELECT COUNT(*) FROM publishers'),
-      client.query('SELECT COUNT(*) FROM authors'),
-      client.query('SELECT COUNT(*) FROM book_categories'),
-      client.query('SELECT COUNT(*) FROM books'),
-      client.query('SELECT COUNT(*) FROM course_categories'),
-      client.query('SELECT COUNT(*) FROM instructors'),
-      client.query('SELECT COUNT(*) FROM courses'),
-      client.query('SELECT COUNT(*) FROM members'),
-    ]);
+    // Count summary data
+    const tableCounts = [
+      { name: 'Roles', table: 'roles' },
+      { name: 'Permissions', table: 'permissions' },
+      { name: 'Users', table: 'users' },
+      { name: 'Membership Plans', table: 'membership_plans' },
+      { name: 'Members', table: 'members' },
+      { name: 'Books', table: 'books' },
+      { name: 'Book Loans', table: 'book_loans' },
+      { name: 'Payments', table: 'payments' },
+      { name: 'Notifications', table: 'notifications' },
+      { name: 'Book Reviews', table: 'book_reviews' },
+      { name: 'Comments', table: 'comments' },
+      { name: 'Membership Requests', table: 'membership_requests' }
+    ];
 
-    console.log('📊 Seed Data Summary:');
-    console.log(`   Roles: ${counts[0].rows[0].count}`);
-    console.log(`   Permissions: ${counts[1].rows[0].count}`);
-    console.log(`   Membership Plans: ${counts[2].rows[0].count}`);
-    console.log(`   Publishers: ${counts[3].rows[0].count}`);
-    console.log(`   Authors: ${counts[4].rows[0].count}`);
-    console.log(`   Book Categories: ${counts[5].rows[0].count}`);
-    console.log(`   Books: ${counts[6].rows[0].count}`);
-    console.log(`   Course Categories: ${counts[7].rows[0].count}`);
-    console.log(`   Instructors: ${counts[8].rows[0].count}`);
-    console.log(`   Courses: ${counts[9].rows[0].count}`);
-    console.log(`   Members: ${counts[10].rows[0].count}\n`);
+    console.log('📊 Synchronized Data Summary:');
+    for (const item of tableCounts) {
+      try {
+        const res = await client.query(`SELECT COUNT(*) FROM ${item.table}`);
+        console.log(`   - ${item.name.padEnd(20)}: ${res.rows[0].count}`);
+      } catch (e) {
+        console.log(`   - ${item.name.padEnd(20)}: (table not found or error)`);
+      }
+    }
 
-    console.log('🎉 Database setup completed successfully!\n');
-    console.log('💡 Next steps:');
-    console.log('   1. Start backend: npm run dev');
-    console.log('   2. Start frontend: cd frontend && npm run dev');
-    console.log('   3. Login: http://localhost:3000/admin/login\n');
+    console.log('\n🎉 Database is now fully synchronized and up to date!\n');
+    console.log('💡 Tip: You can run this command again safely whenever the schema.sql is updated.\n');
 
   } catch (error) {
-    console.error('\n❌ Setup failed:');
+    console.error('\n❌ Synchronization failed:');
     console.error(`   Error: ${error.message}`);
     if (error.code) console.error(`   Code: ${error.code}`);
     if (error.detail) console.error(`   Detail: ${error.detail}`);
-    
-    if (error.code === 'ECONNREFUSED') {
-      console.error('\n💡 Make sure PostgreSQL is running!');
-    }
     
     process.exit(1);
   } finally {

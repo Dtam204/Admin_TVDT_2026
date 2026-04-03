@@ -1,7 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useMembershipRequests, useApproveMembershipRequest, useRejectMembershipRequest } from '@/lib/hooks/useMembershipRequests';
+import { 
+  useMembershipRequests, 
+  useApproveMembershipRequest, 
+  useRejectMembershipRequest 
+} from '@/lib/hooks/useMembershipRequests';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +31,8 @@ export default function MembershipRequestsPage() {
   const [manualDays, setManualDays] = useState<number | ''>('');
   const [isApproveOpen, setIsApproveOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
+
+
 
   const handleApprove = () => {
     if (!selectedRequest) return;
@@ -101,7 +107,8 @@ export default function MembershipRequestsPage() {
               <TableHeader className="bg-slate-50/50">
                 <TableRow>
                   <TableHead className="font-bold pl-6 py-4">Bạn đọc</TableHead>
-                  <TableHead className="font-bold">Gói yêu cầu</TableHead>
+                  <TableHead className="font-bold">Gói & Giá tiền</TableHead>
+                  <TableHead className="font-bold text-center">Thời hạn</TableHead>
                   <TableHead className="font-bold">Ghi chú từ khách</TableHead>
                   <TableHead className="font-bold">Thời gian gửi</TableHead>
                   <TableHead className="text-right pr-6">Thao tác</TableHead>
@@ -109,10 +116,10 @@ export default function MembershipRequestsPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={5} className="h-40 text-center text-slate-400">Đang tải dữ liệu...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="h-40 text-center text-slate-400">Đang tải dữ liệu...</TableCell></TableRow>
                 ) : data?.data?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-60 text-center">
+                    <TableCell colSpan={6} className="h-60 text-center">
                       <div className="flex flex-col items-center gap-2 text-slate-400">
                         <CheckCircle2 className="w-12 h-12 opacity-20" />
                         <p className="font-medium italic text-lg">Không có yêu cầu nào trong danh sách này</p>
@@ -125,11 +132,28 @@ export default function MembershipRequestsPage() {
                       <TableCell className="pl-6 py-4">
                         <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{req.member_name}</div>
                         <div className="text-[11px] text-slate-500 font-mono">Card: {req.card_number}</div>
+                        {req.status === 'pending' && (
+                          <div className="mt-2 p-1.5 bg-indigo-50 rounded-lg border border-indigo-100 w-fit">
+                            <p className="text-[9px] font-black uppercase text-indigo-600 tracking-tighter leading-none mb-1">NỘI DUNG CHUYỂN KHOẢN (SEPAY)</p>
+                            <p className="text-xs font-black text-indigo-700 font-mono">TVDT {req.id}</p>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100 font-bold">
-                          {req.plan_name || 'Gói mặc định'}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100 font-bold w-fit">
+                            {req.plan_name || 'Gói mặc định'}
+                          </Badge>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">Giá chốt đơn:</span>
+                            <span className="text-sm font-black text-emerald-600">
+                              {Number(req.amount || req.plan_price || 0).toLocaleString('vi-VN')} VNĐ
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center font-medium text-slate-600">
+                        {req.plan_duration || 30} ngày
                       </TableCell>
                       <TableCell className="max-w-[300px]">
                         <p className="text-sm text-slate-600 italic line-clamp-2">{req.request_note || '-'}</p>
@@ -148,6 +172,7 @@ export default function MembershipRequestsPage() {
                             >
                               <XCircle className="w-4 h-4 mr-1" /> Từ chối
                             </Button>
+
                             <Button 
                               size="sm" 
                               className="bg-emerald-600 hover:bg-emerald-700"
@@ -159,9 +184,18 @@ export default function MembershipRequestsPage() {
                         ) : (
                           <div className="flex flex-col items-end">
                             {getStatusBadge(req.status)}
-                            <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
-                              <Info className="w-3 h-3" /> Duyệt bởi: {req.processor_name || 'Admin'}
-                            </div>
+                            {req.status === 'approved' && (
+                              <div className="mt-2 text-right">
+                                {req.external_txn_id && (
+                                  <div className="text-[9px] text-emerald-600 font-black uppercase font-mono bg-emerald-50 px-2 py-1 rounded border border-emerald-100 mb-1">
+                                    TXN: {req.external_txn_id}
+                                  </div>
+                                )}
+                                <div className="text-[10px] text-slate-400 flex items-center justify-end gap-1 font-bold">
+                                  <Info className="w-3 h-3" /> {req.gateway ? `Qua ${req.gateway}` : `Bởi: ${req.processor_name || 'Admin'}`}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </TableCell>

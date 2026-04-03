@@ -4,6 +4,7 @@
  */
 
 const { pool } = require('../config/database');
+const AuditService = require('../services/admin/audit.service');
 
 // ============================================================================
 // CRUD OPERATIONS
@@ -55,9 +56,15 @@ exports.getAll = async (req, res, next) => {
 
     const { rows: countRows } = await pool.query(countQuery, countParams);
 
+    const standardizedData = rows.map(p => ({
+      ...p,
+      name: p.name?.vi || p.name || '',
+      description: p.description?.vi || p.description || ''
+    }));
+
     return res.json({
       success: true,
-      data: rows,
+      data: standardizedData,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -83,9 +90,14 @@ exports.getById = async (req, res, next) => {
       });
     }
 
+    const p = rows[0];
     return res.json({
       success: true,
-      data: rows[0],
+      data: {
+        ...p,
+        name: p.name?.vi || p.name || '',
+        description: p.description?.vi || p.description || ''
+      },
     });
   } catch (error) {
     return next(error);
@@ -97,6 +109,7 @@ exports.create = async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const adminId = req.user?.id || null;
 
     const { 
       name, 
@@ -109,8 +122,8 @@ exports.create = async (req, res, next) => {
       status 
     } = req.body;
 
-    const nameJson = typeof name === 'object' ? name : { vi: name };
-    const descJson = typeof description === 'object' ? description : { vi: description || "" };
+    const nameStr = typeof name === 'string' ? name : (name?.vi || '');
+    const descStr = typeof description === 'string' ? description : (description?.vi || '');
 
     const query = `
       INSERT INTO publishers (
@@ -118,9 +131,9 @@ exports.create = async (req, res, next) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *
     `;
     const params = [
-      JSON.stringify(nameJson),
+      JSON.stringify({ vi: nameStr }),
       slug,
-      JSON.stringify(descJson),
+      JSON.stringify({ vi: descStr }),
       address || null,
       phone || null,
       email || null,
@@ -129,13 +142,18 @@ exports.create = async (req, res, next) => {
     ];
 
     const { rows } = await client.query(query, params);
+    const newPublisher = rows[0];
+
+    if (adminId) {
+      await AuditService.log(adminId, 'CREATE', 'PUBLISHER', newPublisher.id, null, newPublisher);
+    }
 
     await client.query('COMMIT');
 
     return res.status(201).json({
       success: true,
       message: 'Đã tạo publisher thành công',
-      data: rows[0],
+      data: newPublisher,
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -153,6 +171,7 @@ exports.update = async (req, res, next) => {
 
     const { id } = req.params;
     const data = req.body;
+    const adminId = req.user?.id || null;
 
     // Check if exists
     const { rows: existing } = await client.query('SELECT * FROM publishers WHERE id = $1', [id]);
@@ -163,6 +182,7 @@ exports.update = async (req, res, next) => {
         message: 'Không tìm thấy publisher',
       });
     }
+    const oldPublisher = existing[0];
 
     // Build update query
     const updateFields = [];
@@ -171,19 +191,16 @@ exports.update = async (req, res, next) => {
 
     const fieldsToHandle = ['slug', 'address', 'phone', 'email', 'website', 'logo_url', 'status'];
     
-    // Xử lý name (JSONB)
     if (data.name !== undefined) {
       updateFields.push(`name = $${paramIndex++}`);
-      params.push(JSON.stringify(typeof data.name === 'object' ? data.name : { vi: data.name }));
+      params.push(JSON.stringify({ vi: typeof data.name === 'string' ? data.name : (data.name?.vi || '') }));
     }
 
-    // Xử lý description (JSONB)
     if (data.description !== undefined) {
       updateFields.push(`description = $${paramIndex++}`);
-      params.push(JSON.stringify(typeof data.description === 'object' ? data.description : { vi: data.description || "" }));
+      params.push(JSON.stringify({ vi: typeof data.description === 'string' ? data.description : (data.description?.vi || '') }));
     }
 
-    // Xử lý các trường thông thường
     fieldsToHandle.forEach(field => {
       if (data[field] !== undefined) {
         updateFields.push(`${field} = $${paramIndex++}`);
@@ -199,14 +216,19 @@ exports.update = async (req, res, next) => {
       );
     }
 
-    await client.query('COMMIT');
-
     const { rows } = await client.query('SELECT * FROM publishers WHERE id = $1', [id]);
+    const updatedPublisher = rows[0];
+
+    if (adminId) {
+      await AuditService.log(adminId, 'UPDATE', 'PUBLISHER', id, oldPublisher, updatedPublisher);
+    }
+
+    await client.query('COMMIT');
 
     return res.json({
       success: true,
       message: 'Đã cập nhật publisher thành công',
-      data: rows[0],
+      data: updatedPublisher,
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -223,6 +245,7 @@ exports.remove = async (req, res, next) => {
     await client.query('BEGIN');
 
     const { id } = req.params;
+    const adminId = req.user?.id || null;
 
     const { rows } = await client.query('SELECT * FROM publishers WHERE id = $1', [id]);
     if (rows.length === 0) {
@@ -232,14 +255,19 @@ exports.remove = async (req, res, next) => {
         message: 'Không tìm thấy publisher',
       });
     }
+    const oldPublisher = rows[0];
 
     await client.query('DELETE FROM publishers WHERE id = $1', [id]);
+
+    if (adminId) {
+      await AuditService.log(adminId, 'DELETE', 'PUBLISHER', id, oldPublisher, null);
+    }
 
     await client.query('COMMIT');
 
     return res.json({
       success: true,
-      message: 'Đã xóa publisher thành công',
+      message: 'Đã xóa nhà xuất bản thành công',
     });
   } catch (error) {
     await client.query('ROLLBACK');

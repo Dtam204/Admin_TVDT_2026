@@ -1,8 +1,9 @@
 const { pool } = require('../../config/database');
+const AuditService = require('./audit.service');
 
 /**
  * Service xử lý nghiệp vụ Tác giả (Authors) chuyên nghiệp
- * Hỗ trợ đa ngôn ngữ qua JSONB và quản lý slug tự động
+ * Standardized for Library Admin System (Single Language Optimization)
  */
 class AuthorService {
   /**
@@ -52,8 +53,14 @@ class AuthorService {
 
     const { rows: countRows } = await pool.query(countQuery, countParams);
 
+    const data = rows.map(a => ({
+      ...a,
+      name: a.name?.vi || a.name || '',
+      bio: a.bio?.vi || a.bio || ''
+    }));
+
     return {
-      data: rows,
+      data,
       total: parseInt(countRows[0].count),
       page: parseInt(page),
       limit: parseInt(limit),
@@ -72,13 +79,19 @@ class AuthorService {
       WHERE a.id = $1
     `;
     const { rows } = await pool.query(query, [id]);
-    return rows[0] || null;
+    if (!rows[0]) return null;
+    
+    return {
+      ...rows[0],
+      name: rows[0].name?.vi || rows[0].name || '',
+      bio: rows[0].bio?.vi || rows[0].bio || ''
+    };
   }
 
   /**
    * Tạo mới tác giả
    */
-  static async create(data) {
+  static async create(data, adminId = null) {
     const { 
       name, slug: customSlug, pseudonyms, professional_title, gender, 
       bio, avatar, cover_image, birth_year, death_year, 
@@ -86,10 +99,9 @@ class AuthorService {
       website, social_links, featured, status 
     } = data;
     
-    // Auto-generate slug from name.vi or name.en if not provided
+    const nameStr = typeof name === 'string' ? name : (name.vi || name.en || 'author');
     let slug = customSlug;
     if (!slug) {
-      const nameStr = name.vi || name.en || Object.values(name)[0] || 'author';
       slug = nameStr.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
     }
@@ -110,12 +122,12 @@ class AuthorService {
     `;
 
     const values = [
-      JSON.stringify(name),
+      JSON.stringify({ vi: nameStr }),
       slug,
       JSON.stringify(pseudonyms || {}),
       professional_title || null,
       gender || null,
-      JSON.stringify(bio || {}),
+      JSON.stringify({ vi: typeof bio === 'string' ? bio : (bio?.vi || '') }),
       avatar || null,
       cover_image || null,
       birth_year || null,
@@ -132,13 +144,22 @@ class AuthorService {
     ];
 
     const { rows } = await pool.query(query, values);
-    return rows[0];
+    const newAuthor = rows[0];
+
+    if (adminId) {
+      await AuditService.log(adminId, 'CREATE', 'AUTHOR', newAuthor.id, null, newAuthor);
+    }
+
+    return newAuthor;
   }
 
   /**
    * Cập nhật tác giả
    */
-  static async update(id, data) {
+  static async update(id, data, adminId = null) {
+    const oldAuthor = await this.getById(id);
+    if (!oldAuthor) throw new Error('Author not found');
+
     const fields = [];
     const values = [];
     let idx = 1;
@@ -146,7 +167,7 @@ class AuthorService {
     const allowedFields = [
       'avatar', 'cover_image', 'birth_year', 'death_year', 
       'nationality', 'birth_place', 'website', 
-      'featured', 'status', 'professional_title', 'gender'
+      'featured', 'status', 'professional_title', 'gender', 'slug'
     ];
 
     allowedFields.forEach(f => {
@@ -156,7 +177,17 @@ class AuthorService {
       }
     });
 
-    const jsonFields = ['name', 'bio', 'pseudonyms', 'education', 'awards', 'career_highlights', 'social_links'];
+    if (data.name) {
+      fields.push(`name = $${idx++}`);
+      values.push(JSON.stringify({ vi: typeof data.name === 'string' ? data.name : (data.name.vi || '') }));
+    }
+
+    if (data.bio) {
+      fields.push(`bio = $${idx++}`);
+      values.push(JSON.stringify({ vi: typeof data.bio === 'string' ? data.bio : (data.bio.vi || '') }));
+    }
+
+    const jsonFields = ['pseudonyms', 'education', 'awards', 'career_highlights', 'social_links'];
     jsonFields.forEach(f => {
       if (data[f]) {
         fields.push(`${f} = $${idx++}`);
@@ -164,20 +195,32 @@ class AuthorService {
       }
     });
 
-    if (fields.length === 0) return this.getById(id);
+    if (fields.length === 0) return oldAuthor;
 
     values.push(id);
     const query = `UPDATE authors SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING *`;
     
     const { rows } = await pool.query(query, values);
-    return rows[0];
+    const updatedAuthor = rows[0];
+
+    if (adminId) {
+      await AuditService.log(adminId, 'UPDATE', 'AUTHOR', id, oldAuthor, updatedAuthor);
+    }
+
+    return updatedAuthor;
   }
 
   /**
    * Xóa tác giả
    */
-  static async delete(id) {
+  static async delete(id, adminId = null) {
+    const oldAuthor = await this.getById(id);
     const { rowCount } = await pool.query('DELETE FROM authors WHERE id = $1', [id]);
+    
+    if (rowCount > 0 && adminId) {
+      await AuditService.log(adminId, 'DELETE', 'AUTHOR', id, oldAuthor, null);
+    }
+    
     return rowCount > 0;
   }
 }

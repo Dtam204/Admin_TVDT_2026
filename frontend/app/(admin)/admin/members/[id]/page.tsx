@@ -203,9 +203,19 @@ export default function MemberEditPage({ params }: { params: Promise<{ id: strin
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-3xl font-bold tracking-tight">{formData.full_name || 'Hồ sơ Bạn đọc'}</h1>
-              <Badge variant={formData.status === 'active' ? 'default' : 'secondary'} className={formData.status === 'active' ? 'bg-emerald-500' : ''}>
-                {formData.status === 'active' ? 'Hoạt động' : 'Tạm khóa'}
-              </Badge>
+              <div className="flex gap-2">
+                <Badge variant={formData.status === 'active' ? 'default' : 'secondary'} className={formData.status === 'active' ? 'bg-emerald-500' : ''}>
+                  {formData.status === 'active' ? 'Hoạt động' : 'Tạm khóa'}
+                </Badge>
+                {formData.is_expired && (
+                  <Badge variant="destructive" className="animate-pulse">Hết hạn VIP</Badge>
+                )}
+                {formData.effective_tier && !formData.is_expired && formData.effective_tier !== 'basic' && (
+                  <Badge className="bg-gradient-to-r from-amber-500 to-orange-600 border-none shadow-sm shadow-orange-200">
+                    {formData.effective_tier.toUpperCase()}
+                  </Badge>
+                )}
+              </div>
             </div>
             <p className="text-muted-foreground flex items-center gap-2 mt-1 font-medium">
               <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
@@ -272,11 +282,11 @@ export default function MemberEditPage({ params }: { params: Promise<{ id: strin
                 <div>
                   <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Hạn mức mượn</p>
                   <p className="text-2xl font-black text-indigo-900">
-                    {loansData?.data?.filter((l:any) => l.status === 'borrowing').length || 0}
+                    {item.current_loans_count || 0}
                     <span className="text-sm font-bold text-slate-400 mx-1">/</span>
                     {item.max_books_borrowed || 3}
                   </p>
-                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">Sách đang giữ trong kho</p>
+                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">Theo hạng thẻ: {item.effective_tier?.toUpperCase() || 'BASIC'}</p>
                 </div>
               </CardContent>
             </Card>
@@ -327,19 +337,15 @@ export default function MemberEditPage({ params }: { params: Promise<{ id: strin
                 </div>
                 <div>
                   <p className={`text-xs font-bold uppercase tracking-widest ${
-                    (item.membership_expires && new Date(item.membership_expires) < new Date())
-                    ? 'text-amber-400'
-                    : 'text-blue-400'
+                    item.is_expired ? 'text-amber-400' : 'text-blue-400'
                   }`}>Trạng thái thẻ</p>
                   <p className={`text-xl font-black ${
-                    (item.membership_expires && new Date(item.membership_expires) < new Date())
-                    ? 'text-amber-700'
-                    : 'text-blue-800'
+                    item.is_expired ? 'text-amber-700' : 'text-blue-800'
                   }`}>
-                    {(item.membership_expires && new Date(item.membership_expires) < new Date()) ? 'HẾT HẠN' : (item.tier_code?.toUpperCase() || 'GIẤY')}
+                    {item.is_expired ? 'HẾT HẠN (VỀ BASIC)' : (item.effective_plan?.toUpperCase() || 'GIẤY')}
                   </p>
                   <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                    Hết hạn: {item.membership_expires ? new Date(item.membership_expires).toLocaleDateString('vi-VN') : 'N/A'}
+                    Gói gốc: {item.membership_plan_name || 'N/A'} • {item.membership_expires ? `Hết: ${new Date(item.membership_expires).toLocaleDateString('vi-VN')}` : 'Vô hạn'}
                   </p>
                 </div>
               </CardContent>

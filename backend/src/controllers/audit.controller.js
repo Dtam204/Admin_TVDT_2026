@@ -42,11 +42,13 @@ exports.getAuditLogs = async (req, res, next) => {
     const dataQuery = `
       SELECT 
         a.id, 
+        a.user_id,
         a.action, 
         a.module, 
         a.entity_id, 
         a.description, 
         a.new_data, 
+        a.old_data,
         a.ip_address, 
         a.user_agent, 
         a.created_at,

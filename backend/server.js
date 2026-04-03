@@ -19,6 +19,7 @@ async function startServer() {
     
     // Start the server
     const { ensureTablesOnce } = require('./src/utils/ensureMediaTables');
+    const CronJobManager = require('./src/utils/cron');
     app.listen(PORT, async () => {
       console.log(`✅ Backend server started on port ${PORT}`);
       console.log(`   API: http://localhost:${PORT}/api`);
@@ -27,6 +28,9 @@ async function startServer() {
       try {
         await ensureTablesOnce();
         console.log('✅ Media tables initialization checked');
+        
+        // Bắt đầu các tác vụ định kỳ (Quét quá hạn lúc 8h sáng)
+        CronJobManager.start();
       } catch (err) {
         console.error('❌ Failed to initialize media tables:', err.message);
       }

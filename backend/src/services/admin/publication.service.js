@@ -1,22 +1,32 @@
 const { pool } = require('../../config/database');
+const AuditService = require('./audit.service');
 
 /**
  * Service xử lý nghiệp vụ Ấn phẩm (Publications)
- * Khôi phục đầy đủ các trường dữ liệu để tương thích với Frontend
+ * CHUẨN HÓA 100%: Loại bỏ đa ngôn ngữ phức tạp, dùng Vị trí kho (ID) và ghi Log Admin.
  */
 class PublicationService {
-  static async createPublicationWithCopies(pubData, copiesData = []) {
+  /**
+   * Tạo mới Ấn phẩm kèm Bản sao
+   */
+  static async createPublicationWithCopies(pubData, copiesData = [], adminId = null) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const title = pubData.title || "Chưa có tiêu đề";
+      
+      const title = typeof pubData.title === 'string' ? pubData.title : (pubData.title?.vi || pubData.title?.en || "Chưa có tiêu đề");
       let slug = (pubData.slug || title).toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+      
       const { rows: existingSlug } = await client.query('SELECT id FROM books WHERE slug = $1', [slug]);
       if (existingSlug.length > 0) slug = `${slug}-${Math.random().toString(36).substr(2, 5)}`;
+      
       const code = pubData.code || `PUB-${Date.now()}`;
-      const isbn = pubData.isbdContent || pubData.isbn || code; 
-      const titleJson = typeof title === 'object' ? title : { vi: title };
-      const descriptionJson = typeof pubData.description === 'object' ? pubData.description : { vi: pubData.description || "" };
+      const isbn = pubData.isbn || code; 
+      
+      // Chuẩn hóa JSON - Chỉ lưu trữ nội dung Tiếng Việt đơn giản để Mobile App dễ đọc
+      const titleJson = { vi: title };
+      const description = typeof pubData.description === 'string' ? pubData.description : (pubData.description?.vi || "");
+      const descriptionJson = { vi: description };
 
       const mediaType = pubData.media_type || (pubData.is_digital ? 'Digital' : 'Physical');
       const isDigital = (mediaType === 'Digital' || mediaType === 'Hybrid');
@@ -30,15 +40,52 @@ class PublicationService {
           cooperation_status, media_type
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27) 
         RETURNING id
-      `, [code, isbn, JSON.stringify(titleJson), pubData.author || "Nhiều tác giả", slug, pubData.publisher_id || null, pubData.collection_id || null, JSON.stringify(descriptionJson), pubData.thumbnail || pubData.cover_image || null, pubData.publicationYear || pubData.publication_year || new Date().getFullYear(), pubData.language || 'vi', pubData.pageCount || pubData.pages || 0, isDigital, pubData.digital_file_url || null, JSON.stringify(pubData.metadata || {}), pubData.status || 'available', pubData.aiSummary || pubData.ai_summary || null, pubData.dominantColor || pubData.dominant_color || '#4f46e5', pubData.edition || null, pubData.volume || null, pubData.dimensions || null, JSON.stringify(pubData.keywords || []), JSON.stringify(pubData.digitalContent || pubData.digital_content || {}), JSON.stringify(pubData.toc || []), pubData.access_policy || 'public', pubData.cooperation_status || 'cooperating', mediaType]);
+      `, [
+        code, isbn, JSON.stringify(titleJson), pubData.author || "Nhiều tác giả", slug, 
+        pubData.publisher_id || null, pubData.collection_id || null, JSON.stringify(descriptionJson), 
+        pubData.thumbnail || pubData.cover_image || null, pubData.publication_year || new Date().getFullYear(), 
+        pubData.language || 'vi', pubData.pages || 0, isDigital, pubData.digital_file_url || null, 
+        JSON.stringify(pubData.metadata || {}), pubData.status || 'available', pubData.ai_summary || null, 
+        pubData.dominant_color || '#4f46e5', pubData.edition || null, pubData.volume || null, 
+        pubData.dimensions || null, JSON.stringify(pubData.keywords || []), 
+        JSON.stringify(pubData.digital_content || {}), JSON.stringify(pubData.toc || []), 
+        pubData.access_policy || 'basic', pubData.cooperation_status || 'cooperating', mediaType
+      ]);
       
       const publicationId = rows[0].id;
+
+      // 2. Thêm bản sao (Copies) - Sử dụng storage_location_id chuẩn hóa
+      if (copiesData && Array.isArray(copiesData)) {
+        for (const [idx, copy] of copiesData.entries()) {
+          const finalBarcode = copy.barcode || `BC-${publicationId}-${Date.now()}-${idx}`;
+          await client.query(`
+            INSERT INTO publication_copies (publication_id, barcode, copy_number, price, status, condition, storage_location_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+          `, [publicationId, finalBarcode, 
+              copy.copy_number || (idx + 1).toString(), 
+              copy.price || 0, 
+              copy.status || 'available', 
+              copy.condition || 'good', 
+              copy.storage_location_id || null
+          ]);
+        }
+      }
 
       if (pubData.author_ids?.length > 0) {
         for (const authorId of pubData.author_ids) {
           await client.query('INSERT INTO book_authors (book_id, author_id) VALUES ($1, $2)', [publicationId, authorId]);
         }
       }
+
+      // 3. Ghi nhật ký Admin
+      await AuditService.log({
+        userId: adminId,
+        action: 'CREATE',
+        module: 'Ấn phẩm',
+        entityId: publicationId,
+        description: `Đã thêm ấn phẩm mới: ${title}`,
+        newData: { title, code, isbn }
+      });
 
       await client.query('COMMIT');
       return { id: publicationId };
@@ -50,10 +97,12 @@ class PublicationService {
     }
   }
 
+  /**
+   * Chi tiết ấn phẩm (Dùng cho Edit/View)
+   */
   static async getPublicationDetail(id) {
-    // Lấy thông tin ấn phẩm đầy đủ (bao gồm publisher, authors)
     const { rows: pubRows } = await pool.query(`
-      SELECT b.*,
+      SELECT b.*, sl.name as storage_location_name,
              json_build_object('id', p.id, 'name', p.name) as publisher,
              (
                SELECT json_agg(json_build_object('id', a.id, 'name', a.name))
@@ -63,19 +112,18 @@ class PublicationService {
              ) as authors_list
       FROM books b
       LEFT JOIN publishers p ON b.publisher_id = p.id
+      LEFT JOIN publication_copies pc ON b.id = pc.publication_id
+      LEFT JOIN storage_locations sl ON pc.storage_location_id = sl.id
       WHERE b.id = $1
     `, [id]);
 
     if (pubRows.length === 0) return null;
     const publication = pubRows[0];
 
-    // Lấy danh sách bản sao (quan trọng cho LoanForm và trang quản lý)
     const { rows: copies } = await pool.query(`
-      SELECT pc.*,
-             s.name as storage_name,
-             s.description as storage_location
+      SELECT pc.*, sl.name as storage_name
       FROM publication_copies pc
-      LEFT JOIN storages s ON pc.storage_id = s.id
+      LEFT JOIN storage_locations sl ON pc.storage_location_id = sl.id
       WHERE pc.publication_id = $1
       ORDER BY pc.copy_number ASC
     `, [id]);
@@ -83,7 +131,9 @@ class PublicationService {
     return { publication, copies };
   }
 
-
+  /**
+   * Lấy danh sách (Có phân trang & bộ lọc)
+   */
   static async getAll(params = {}) {
     try {
       const { page = 1, limit = 10, search = '', collection_id, status, cooperation_status, media_type } = params;
@@ -104,7 +154,8 @@ class PublicationService {
 
       const dataQuery = `
         SELECT b.*, p.name as publisher_name,
-               (SELECT count(*) FROM publication_copies pc WHERE pc.publication_id = b.id) as total_copies
+               (SELECT count(*) FROM publication_copies pc WHERE pc.publication_id = b.id) as total_copies,
+               (SELECT count(*) FROM interaction_logs il WHERE il.object_id = b.id AND il.action_type = 'view') as real_views
         FROM books b 
         LEFT JOIN publishers p ON b.publisher_id = p.id
         ${filter} ORDER BY b.id DESC LIMIT $${idx++} OFFSET $${idx++}
@@ -115,44 +166,62 @@ class PublicationService {
       return {
         publications: publications.map(p => ({
           ...p,
-          thumbnail: p.cover_image, // Khôi phục cho Frontend
-          publisher: { name: p.publisher_name }, // Khôi phục cấu trúc Object
+          thumbnail: p.cover_image,
+          publisher: { name: p.publisher_name },
           copyCount: parseInt(p.total_copies || 0),
-          viewCount: 0,
-          trendingScore: 0
+          viewCount: parseInt(p.real_views || 0), // Lấy view thật từ log
+          trendingScore: parseInt(p.real_views || 0) * 1.5 // Tính điểm trending tạm tính
         })),
         pagination: {
           totalItems,
-          totalCount: totalItems, 
           totalPages: Math.ceil(totalItems / limit),
           currentPage: parseInt(page),
           limit: parseInt(limit)
         }
       };
     } catch (error) {
-      console.error("SQL Error in getAll:", error.message);
+      console.error("PublicationService.getAll Error:", error.message);
       throw error;
     }
   }
 
-  static async updatePublicationWithCopies(id, pubData, copies = []) {
+  /**
+   * Cập nhật Ấn phẩm
+   */
+  static async updatePublicationWithCopies(id, pubData, copies = [], adminId = null) {
     const client = await pool.connect();
     try {
+      const { rows: oldPub } = await client.query('SELECT * FROM books WHERE id = $1', [id]);
+      if (oldPub.length === 0) throw new Error("Publication not found");
+
       await client.query('BEGIN');
       const mediaType = pubData.media_type || (pubData.is_digital ? 'Digital' : 'Physical');
       const isDigital = (mediaType === 'Digital' || mediaType === 'Hybrid');
+      
+      const title = typeof pubData.title === 'string' ? pubData.title : (pubData.title?.vi || pubData.title?.en || "Không rõ");
 
-      // 1. Cập nhật thông tin sách
       await client.query(`
-        UPDATE books SET title = $1, description = $2, collection_id = $3, publisher_id = $4,
+        UPDATE books SET 
+          title = $1, description = $2, collection_id = $3, publisher_id = $4,
           publication_year = $5, language = $6, pages = $7, is_digital = $8, digital_file_url = $9,
           status = $10, ai_summary = $11, cover_image = $12, edition = $13, volume = $14,
           dimensions = $15, keywords = $16, digital_content = $17, toc = $18, 
-          access_policy = $19, cooperation_status = $20, media_type = $21
+          access_policy = $19, cooperation_status = $20, media_type = $21, updated_at = CURRENT_TIMESTAMP
         WHERE id = $22
-      `, [JSON.stringify(typeof pubData.title === 'object' ? pubData.title : { vi: pubData.title }), JSON.stringify(typeof pubData.description === 'object' ? pubData.description : { vi: pubData.description }), pubData.collection_id || null, pubData.publisher_id || null, pubData.publicationYear || pubData.publication_year || new Date().getFullYear(), pubData.language || 'vi', pubData.pageCount || pubData.pages || 0, isDigital, pubData.digital_file_url || null, pubData.status || 'available', pubData.aiSummary || null, pubData.thumbnail || pubData.cover_image || null, pubData.edition || null, pubData.volume || null, pubData.dimensions || null, JSON.stringify(pubData.keywords || []), JSON.stringify(pubData.digitalContent || {}), JSON.stringify(pubData.toc || []), pubData.access_policy || 'public', pubData.cooperation_status || 'cooperating', mediaType, id]);
+      `, [
+        JSON.stringify({ vi: title }), 
+        JSON.stringify({ vi: typeof pubData.description === 'string' ? pubData.description : (pubData.description?.vi || "") }), 
+        pubData.collection_id || null, pubData.publisher_id || null, 
+        pubData.publication_year || new Date().getFullYear(), pubData.language || 'vi', 
+        pubData.pages || 0, isDigital, pubData.digital_file_url || null, 
+        pubData.status || 'available', pubData.ai_summary || null, 
+        pubData.thumbnail || pubData.cover_image || null, pubData.edition || null, 
+        pubData.volume || null, pubData.dimensions || null, 
+        JSON.stringify(pubData.keywords || []), JSON.stringify(pubData.digital_content || {}), 
+        JSON.stringify(pubData.toc || []), pubData.access_policy || 'basic', 
+        pubData.cooperation_status || 'cooperating', mediaType, id
+      ]);
 
-      // 2. Cập nhật Tác giả
       if (pubData.author_ids) {
         await client.query('DELETE FROM book_authors WHERE book_id = $1', [id]);
         for (const authorId of pubData.author_ids) {
@@ -160,24 +229,26 @@ class PublicationService {
         }
       }
 
-      // 3. QUAN TRỌNG: Cập nhật Bản sao (Copies)
       if (copies && Array.isArray(copies)) {
         await client.query('DELETE FROM publication_copies WHERE publication_id = $1', [id]);
-        
-        // Helper kiểm tra UUID hợp lệ
-        const isValidUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
-
         for (const [idx, copy] of copies.entries()) {
           const finalBarcode = copy.barcode || `BC-${id}-${Date.now()}-${idx}`;
-          // Nếu storage_id không phải UUID hợp lệ, để null để tránh lỗi SQL
-          const finalStorageId = isValidUUID(copy.storage_id) ? copy.storage_id : null;
-          
           await client.query(`
-            INSERT INTO publication_copies (publication_id, barcode, storage_id, copy_number, price, status)
-            VALUES ($1, $2, $3, $4, $5, $6)
-          `, [id, finalBarcode, finalStorageId, copy.copy_number || (idx + 1).toString(), copy.price || 0, copy.status || 'available']);
+            INSERT INTO publication_copies (publication_id, barcode, copy_number, price, status, condition, storage_location_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+          `, [id, finalBarcode, copy.copy_number || (idx + 1).toString(), copy.price || 0, copy.status || 'available', copy.condition || 'good', copy.storage_location_id || null]);
         }
       }
+
+      await AuditService.log({
+        userId: adminId,
+        action: 'UPDATE',
+        module: 'Ấn phẩm',
+        entityId: id,
+        description: `Đã cập nhật thông tin ấn phẩm: ${title}`,
+        oldData: oldPub[0],
+        newData: pubData
+      });
 
       await client.query('COMMIT');
       return { success: true };
@@ -189,15 +260,32 @@ class PublicationService {
     }
   }
 
-  static async deletePublication(id) {
+  /**
+   * Xóa Ấn phẩm
+   */
+  static async deletePublication(id, adminId = null) {
     const client = await pool.connect();
     try {
+      const { rows: oldPub } = await client.query('SELECT title FROM books WHERE id = $1', [id]);
+      if (oldPub.length === 0) return false;
+
       await client.query('BEGIN');
-      // Xóa theo thứ tự đúng để tránh lỗi Foreign Key
       await client.query('DELETE FROM book_loans WHERE book_id = $1', [id]);
       await client.query('DELETE FROM publication_copies WHERE publication_id = $1', [id]);
       await client.query('DELETE FROM book_authors WHERE book_id = $1', [id]);
       const { rowCount } = await client.query('DELETE FROM books WHERE id = $1', [id]);
+      
+      if (rowCount > 0) {
+        await AuditService.log({
+          userId: adminId,
+          action: 'DELETE',
+          module: 'Ấn phẩm',
+          entityId: id,
+          description: `Đã xóa ấn phẩm: ${JSON.stringify(oldPub[0].title)}`,
+          oldData: oldPub[0]
+        });
+      }
+
       await client.query('COMMIT');
       return rowCount > 0;
     } catch (error) {
@@ -220,11 +308,10 @@ class PublicationService {
         totalDigital: parseInt(digitalCountRes[0].total || 0)
       };
     } catch (error) {
-      console.error("Error in getStats:", error.message);
+      console.error("PublicationService.getStats Error:", error.message);
       throw error;
     }
   }
-
 }
 
 module.exports = PublicationService;

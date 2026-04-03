@@ -18,10 +18,6 @@
 -- 13. PHASE 1: Payments
 -- ============================================================================
 
--- ============================================================================
--- 1. CORE SYSTEM: ROLES, USERS, PERMISSIONS
--- ============================================================================
-
 -- Function để tự động cập nhật updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -30,6 +26,52 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Kích hoạt tiện ích sinh UUID (Dùng cho Phase Next Gen)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- ============================================================================
+-- 0. NEXT GEN: LIBRARIES & COLLECTIONS (UUID Based)
+-- ============================================================================
+
+-- Bảng libraries (Thư viện/Kho tổng)
+CREATE TABLE IF NOT EXISTS libraries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    address TEXT,
+    phone VARCHAR(20),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bảng storages (Kho lưu trữ chi tiết)
+CREATE TABLE IF NOT EXISTS storages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    library_id UUID REFERENCES libraries(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bảng collections (Bộ sưu tập/Thể loại cấp cao)
+CREATE TABLE IF NOT EXISTS collections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    parent_id UUID REFERENCES collections(id) ON DELETE SET NULL,
+    name VARCHAR(255) NOT NULL,
+    icon VARCHAR(50), 
+    description TEXT,
+    order_index INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- 1. CORE SYSTEM: ROLES, USERS, PERMISSIONS
+-- ============================================================================
 
 -- Bảng roles (vai trò người dùng)
 CREATE TABLE IF NOT EXISTS roles (
@@ -430,10 +472,12 @@ CREATE TRIGGER update_book_categories_updated_at BEFORE UPDATE ON book_categorie
 CREATE TABLE IF NOT EXISTS books (
   id SERIAL PRIMARY KEY,
   isbn VARCHAR(50) UNIQUE NOT NULL,
+  code VARCHAR(50) UNIQUE, -- Mã quản lý nội bộ (Next Gen)
   title JSONB NOT NULL,
   slug VARCHAR(255) UNIQUE NOT NULL,
   author TEXT,
   publisher_id INTEGER REFERENCES publishers(id) ON DELETE SET NULL,
+  collection_id UUID REFERENCES collections(id) ON DELETE SET NULL, -- Liên kết Bộ sưu tập mới
   description JSONB,
   cover_image VARCHAR(500),
   publication_year INTEGER,
@@ -444,12 +488,27 @@ CREATE TABLE IF NOT EXISTS books (
   available_quantity INTEGER DEFAULT 0,
   price DECIMAL(10,2) DEFAULT 0,
   rental_price DECIMAL(10,2) DEFAULT 0,
-  status VARCHAR(20) DEFAULT 'available' CHECK (status IN ('available', 'out_of_stock', 'discontinued')),
+  status VARCHAR(50) DEFAULT 'available',
+  cooperation_status VARCHAR(50) DEFAULT 'cooperating', -- Trạng thái hợp tác
+  media_type VARCHAR(50) DEFAULT 'Physical', -- Physical, Digital, Hybrid
+  access_policy VARCHAR(50) DEFAULT 'public', -- Danh mục yêu cầu thẻ (basic, vip...)
+  edition VARCHAR(100), -- Tái bản/Phiên bản
+  volume VARCHAR(50), -- Tập
+  dimensions VARCHAR(100), -- Kích thước
+  keywords JSONB, -- Từ khóa tìm kiếm
+  digital_content JSONB, -- Nội dung số chi tiết
+  toc JSONB, -- Mục lục
   featured BOOLEAN DEFAULT false,
   rating_average DECIMAL(3,2) DEFAULT 0,
   total_reviews INTEGER DEFAULT 0,
   total_borrowed INTEGER DEFAULT 0,
   location VARCHAR(100),
+  is_digital BOOLEAN DEFAULT false,
+  digital_file_url TEXT,
+  isbd_content TEXT,
+  ai_summary TEXT,
+  dominant_color VARCHAR(20),
+  trending_score NUMERIC(5,2) DEFAULT 0,
   metadata JSONB,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -614,9 +673,11 @@ CREATE TABLE IF NOT EXISTS membership_plans (
   id SERIAL PRIMARY KEY,
   name JSONB NOT NULL,
   slug VARCHAR(255) UNIQUE NOT NULL,
+  tier_code VARCHAR(50) DEFAULT 'basic', -- Cấp độ (basic, premium, vip,...)
   description JSONB,
   price DECIMAL(10,2) DEFAULT 0,
   duration_days INTEGER DEFAULT 30,
+  late_fee_per_day DECIMAL(10,2) DEFAULT 5000, -- Phí phạt quá hạn mặc định
   features JSONB,
   max_books_borrowed INTEGER DEFAULT 3,
   max_concurrent_courses INTEGER DEFAULT 1,
@@ -642,18 +703,24 @@ CREATE TABLE IF NOT EXISTS members (
   full_name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   phone VARCHAR(50),
+  card_number VARCHAR(50) UNIQUE, -- Mã số thẻ thư viện
+  identity_number VARCHAR(50), -- CCCD/CMND
   avatar VARCHAR(500),
   date_of_birth DATE,
   gender VARCHAR(10) CHECK (gender IN ('male', 'female', 'other')),
   address TEXT,
   membership_plan_id INTEGER REFERENCES membership_plans(id) ON DELETE SET NULL,
   membership_expires DATE,
+  card_type_id INTEGER, -- Liên kết loại thẻ
+  issued_date DATE, -- Ngày cấp thẻ
+  is_verified BOOLEAN DEFAULT false,
   total_books_borrowed INTEGER DEFAULT 0,
   total_courses_enrolled INTEGER DEFAULT 0,
   total_courses_completed INTEGER DEFAULT 0,
-  wallet_balance DECIMAL(10,2) DEFAULT 0,
+  balance DECIMAL(10,2) DEFAULT 0, -- Số dư ví (Đổi tên từ wallet_balance)
   points INTEGER DEFAULT 0,
   status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'banned')),
+  last_activity_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -667,6 +734,93 @@ DROP TRIGGER IF EXISTS update_members_updated_at ON members;
 CREATE TRIGGER update_members_updated_at BEFORE UPDATE ON members
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- 11.3. Membership Requests (Flow phê duyệt & SePay)
+CREATE TABLE IF NOT EXISTS membership_requests (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    plan_id INTEGER REFERENCES membership_plans(id) ON DELETE SET NULL,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    amount DECIMAL(15, 2), -- Số tiền chốt tại thời điểm đăng ký
+    transaction_id VARCHAR(100), -- Mã giao dịch từ SePay/Ngân hàng
+    gateway VARCHAR(50),
+    request_note TEXT,
+    admin_note TEXT,
+    manual_days_approved INTEGER,
+    processed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    processed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_membership_requests_member ON membership_requests(member_id);
+CREATE INDEX IF NOT EXISTS idx_membership_requests_status ON membership_requests(status);
+CREATE INDEX IF NOT EXISTS idx_membership_requests_txn ON membership_requests(transaction_id);
+
+DROP TRIGGER IF EXISTS update_membership_requests_updated_at ON membership_requests;
+CREATE TRIGGER update_membership_requests_updated_at BEFORE UPDATE ON membership_requests
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 11.4. Member Activity & Card Transactions
+CREATE TABLE IF NOT EXISTS member_activities (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    activity_type VARCHAR(50) NOT NULL,
+    description TEXT,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS member_transactions (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    amount DECIMAL(15, 2) NOT NULL,
+    transaction_type VARCHAR(50) NOT NULL, -- 'deposit', 'membership_fee', 'fine', 'refund'
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'completed',
+    processed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- 16. PHASE 2: DIGITAL LIBRARY - REPOSITORIES & CONTENT
+-- ============================================================================
+
+-- Bảng Bản sao (publication_copies) - Kết nối Hybrid giữa SERIAL books và UUID storages
+CREATE TABLE IF NOT EXISTS publication_copies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    publication_id INTEGER REFERENCES books(id) ON DELETE CASCADE,
+    storage_id UUID REFERENCES storages(id) ON DELETE SET NULL,
+    barcode VARCHAR(100) UNIQUE,
+    copy_number VARCHAR(100),
+    price NUMERIC(15,2),
+    status VARCHAR(50) DEFAULT 'available',
+    added_date DATE DEFAULT CURRENT_DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bảng Bookmarks (Digital Reading)
+CREATE TABLE IF NOT EXISTS publication_bookmarks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    publication_id INTEGER REFERENCES books(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    page_number INTEGER NOT NULL,
+    parent_id UUID REFERENCES publication_bookmarks(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bảng Pages (Digital Content for SEARCH & AI)
+CREATE TABLE IF NOT EXISTS publication_pages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    publication_id INTEGER REFERENCES books(id) ON DELETE CASCADE,
+    page_number INTEGER NOT NULL,
+    content TEXT,
+    image_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(publication_id, page_number)
+);
+
 -- ============================================================================
 -- 12. PHASE 1: BOOK LOANS
 -- ============================================================================
@@ -675,10 +829,14 @@ CREATE TABLE IF NOT EXISTS book_loans (
   id SERIAL PRIMARY KEY,
   member_id INTEGER REFERENCES members(id) ON DELETE CASCADE,
   book_id INTEGER REFERENCES books(id) ON DELETE CASCADE,
+  copy_id UUID REFERENCES publication_copies(id) ON DELETE SET NULL, -- Liên kết bản sao UUID
+  ma_dang_ky_ca_biet VARCHAR(100), -- Barcode bản sao
+  registration_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, 
   loan_date DATE NOT NULL DEFAULT CURRENT_DATE,
   due_date DATE NOT NULL,
   return_date DATE,
-  status VARCHAR(20) DEFAULT 'borrowed' CHECK (status IN ('borrowed', 'returned', 'overdue', 'lost')),
+  approved_at TIMESTAMP WITH TIME ZONE,
+  status VARCHAR(20) DEFAULT 'borrowed' CHECK (status IN ('pending', 'borrowing', 'borrowed', 'returned', 'overdue', 'lost', 'rejected')),
   late_fee DECIMAL(10,2) DEFAULT 0,
   notes TEXT,
   staff_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -703,11 +861,11 @@ CREATE TABLE IF NOT EXISTS payments (
   id SERIAL PRIMARY KEY,
   transaction_id VARCHAR(255) UNIQUE NOT NULL,
   member_id INTEGER REFERENCES members(id) ON DELETE SET NULL,
-  type VARCHAR(50) NOT NULL CHECK (type IN ('course', 'membership', 'book_rental', 'late_fee')),
+  type VARCHAR(50) NOT NULL, -- 'course', 'membership', 'book_rental', 'fee_penalty', 'wallet_deposit', ...
   related_id INTEGER,
-  amount DECIMAL(10,2) NOT NULL,
+  amount DECIMAL(15,2) NOT NULL,
   currency VARCHAR(10) DEFAULT 'VND',
-  payment_method VARCHAR(50) CHECK (payment_method IN ('card', 'bank_transfer', 'momo', 'zalopay', 'wallet')),
+  payment_method VARCHAR(50) DEFAULT 'bank_transfer',
   status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
   payment_gateway VARCHAR(50),
   gateway_response JSONB,
@@ -726,6 +884,126 @@ CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at);
 DROP TRIGGER IF EXISTS update_payments_updated_at ON payments;
 CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON payments
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 13.5. Book Reservations (Đặt giữ chỗ)
+CREATE TABLE IF NOT EXISTS book_reservations (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'notified', 'fulfilled', 'cancelled', 'expired')),
+    requested_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    notified_at TIMESTAMP WITH TIME ZONE,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_reservations_book_id ON book_reservations(book_id, status);
+
+DROP TRIGGER IF EXISTS update_book_reservations_updated_at ON book_reservations;
+CREATE TRIGGER update_book_reservations_updated_at BEFORE UPDATE ON book_reservations
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- 14. PHASE 2: INTERACTION & SOCIAL
+-- ============================================================================
+
+-- 14.1. Comments & Replies
+CREATE TABLE IF NOT EXISTS comments (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  object_id INTEGER NOT NULL, -- ID của sách, bài viết, hoặc khóa học
+  object_type VARCHAR(50) NOT NULL, -- 'book', 'news', 'course'
+  parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+  reply_to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  content TEXT NOT NULL,
+  rating INTEGER DEFAULT 0, -- Đánh giá sao (Nếu có)
+  status VARCHAR(20) DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected', 'hidden', 'deleted')),
+  is_featured BOOLEAN DEFAULT FALSE,
+  likes_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_comments_object ON comments(object_type, object_id);
+CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_id);
+
+DROP TRIGGER IF EXISTS update_comments_updated_at ON comments;
+CREATE TRIGGER update_comments_updated_at BEFORE UPDATE ON comments
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 14.2. Comment Reports
+CREATE TABLE IF NOT EXISTS comment_reports (
+  id SERIAL PRIMARY KEY,
+  comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+  reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'new' CHECK (status IN ('new', 'processing', 'resolved', 'ignored')),
+  resolved_by INTEGER REFERENCES users(id),
+  resolved_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 14.3. Book Reviews (Đánh giá & Xếp hạng)
+CREATE TABLE IF NOT EXISTS book_reviews (
+    id SERIAL PRIMARY KEY,
+    book_id INTEGER REFERENCES books(id) ON DELETE CASCADE,
+    member_id INTEGER REFERENCES members(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    status VARCHAR(20) DEFAULT 'published',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(book_id, member_id)
+);
+
+DROP TRIGGER IF EXISTS update_book_reviews_updated_at ON book_reviews;
+CREATE TRIGGER update_book_reviews_updated_at BEFORE UPDATE ON book_reviews
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 14.4. Wishlists (Danh sách yêu thích)
+CREATE TABLE IF NOT EXISTS wishlists (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER REFERENCES members(id) ON DELETE CASCADE,
+    book_id INTEGER REFERENCES books(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(member_id, book_id)
+);
+
+-- ============================================================================
+-- 15. PHASE 2: SYSTEM NOTIFICATIONS
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER REFERENCES members(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL, -- 'overdue', 'renewal', 'system', 'payment'
+    title JSONB NOT NULL,
+    message JSONB NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    related_id INTEGER,
+    related_type VARCHAR(50), -- 'book_loan', 'payment', 'membership_request'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_member_id ON notifications(member_id);
+
+-- 14.5. Interaction Logs (Theo dõi hành động để thống kê Dashboard)
+CREATE TABLE IF NOT EXISTS interaction_logs (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER REFERENCES members(id) ON DELETE SET NULL,
+    object_id INTEGER NOT NULL, -- ID cá»§a sÃ¡ch, bÃ i viáº¿t, hoáº·c khÃ³a há» c
+    object_type VARCHAR(50) NOT NULL, -- 'book', 'news', 'course'
+    action_type VARCHAR(50) NOT NULL, -- 'read', 'view', 'download', 'favorite'
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_interaction_logs_object ON interaction_logs(object_type, object_id);
+CREATE INDEX IF NOT EXISTS idx_interaction_logs_member ON interaction_logs(member_id);
+CREATE INDEX IF NOT EXISTS idx_interaction_logs_action ON interaction_logs(action_type);
 
 -- ============================================================================
 -- SEED DATA
@@ -829,7 +1107,14 @@ INSERT INTO permissions (code, name, description, module) VALUES
   ('membership_plans.manage', 'Quản lý gói thành viên', 'Thêm, sửa, xóa gói', 'members'),
   -- Payments Module
   ('payments.view', 'Xem thanh toán', 'Xem lịch sử thanh toán', 'payments'),
-  ('payments.manage', 'Quản lý thanh toán', 'Xử lý, cập nhật thanh toán', 'payments')
+  ('payments.manage', 'Quản lý thanh toán', 'Xử lý, cập nhật thanh toán', 'payments'),
+  -- Phase 2: Interaction & Social
+  ('comments.view', 'Xem bình luận', 'Xem danh sách bình luận hệ thống', 'comments'),
+  ('comments.manage', 'Quản lý bình luận', 'Phê duyệt, ẩn, xóa bình luận', 'comments'),
+  ('comment_reports.manage', 'Quản lý báo cáo', 'Xử lý các báo cáo vi phạm bình luận', 'comments'),
+  -- Phase 2: Notifications
+  ('notifications.view', 'Xem thông báo', 'Xem thông báo hệ thống', 'notifications'),
+  ('notifications.manage', 'Quản lý thông báo', 'Gửi, ẩn thộng báo', 'notifications')
 ON CONFLICT (code) DO NOTHING;
 
 -- Assign all permissions to admin role
@@ -854,317 +1139,6 @@ BEGIN
 
   RAISE NOTICE 'Assigned all permissions to admin role';
 END $$;
-
--- Insert default membership plans
-INSERT INTO membership_plans (name, slug, description, price, duration_days, max_books_borrowed, max_concurrent_courses, features, sort_order) VALUES
-  (
-    '{"vi": "Miễn phí", "en": "Free", "ja": "無料"}',
-    'free',
-    '{"vi": "Gói miễn phí cơ bản", "en": "Basic free plan", "ja": "基本無料プラン"}',
-    0,
-    365,
-    3,
-    1,
-    '["Mượn tối đa 3 cuốn sách", "1 khóa học miễn phí", "Hỗ trợ cơ bản"]',
-    1
-  ),
-  (
-    '{"vi": "Cơ bản", "en": "Basic", "ja": "基本"}',
-    'basic',
-    '{"vi": "Gói cơ bản với nhiều ưu đãi", "en": "Basic plan with benefits", "ja": "特典付き基本プラン"}',
-    99000,
-    30,
-    5,
-    3,
-    '["Mượn tối đa 5 cuốn sách", "3 khóa học đồng thời", "Giảm 5% học phí", "Hỗ trợ ưu tiên"]',
-    2
-  ),
-  (
-    '{"vi": "Premium", "en": "Premium", "ja": "プレミアム"}',
-    'premium',
-    '{"vi": "Gói cao cấp dành cho người dùng thường xuyên", "en": "Premium plan for frequent users", "ja": "頻繁に利用する方向けプレミアムプラン"}',
-    199000,
-    30,
-    10,
-    10,
-    '["Mượn tối đa 10 cuốn sách", "10 khóa học đồng thời", "Giảm 15% học phí", "Hỗ trợ ưu tiên 24/7", "Truy cập sớm nội dung mới"]',
-    3
-  ),
-  (
-    '{"vi": "VIP", "en": "VIP", "ja": "VIP"}',
-    'vip',
-    '{"vi": "Gói VIP không giới hạn", "en": "Unlimited VIP plan", "ja": "無制限VIPプラン"}',
-    499000,
-    30,
-    999,
-    999,
-    '["Mượn sách không giới hạn", "Khóa học không giới hạn", "Giảm 30% học phí", "Hỗ trợ VIP 24/7", "Sự kiện độc quyền", "Tư vấn cá nhân hóa"]',
-    4
-  )
-ON CONFLICT (slug) DO NOTHING;
-
--- Insert sample publishers
-INSERT INTO publishers (name, slug, description, address, phone, email, website, status) VALUES
-  ('Nhà xuất bản Kim Đồng', 'nxb-kim-dong', 'Nhà xuất bản hàng đầu về sách thiếu nhi', '55 Quang Trung, Hai Bà Trưng, Hà Nội', '024 3942 0195', 'info@nxbkimdong.com.vn', 'https://nxbkimdong.com.vn', 'active'),
-  ('Nhà xuất bản Trẻ', 'nxb-tre', 'Nhà xuất bản văn học và giáo dục', '161B Lý Chính Thắng, Q.3, TP.HCM', '028 3930 4799', 'hopthubandoc@nxbtre.com.vn', 'https://nxbtre.com.vn', 'active'),
-  ('Nhà xuất bản Thế Giới', 'nxb-the-gioi', 'Nhà xuất bản sách nước ngoài', '7 Nguyễn Thị Minh Khai, Q.1, TP.HCM', '028 3822 5062', 'info@thegioipublishers.vn', 'https://thegioipublishers.vn', 'active'),
-  ('Nhà xuất bản Lao Động', 'nxb-lao-dong', 'Nhà xuất bản kinh tế và xã hội', '175 Giảng Võ, Đống Đa, Hà Nội', '024 3851 4339', 'nxblaodong@laodong.com.vn', 'https://nxblaodong.com.vn', 'active'),
-  ('O''Reilly Media', 'oreilly', 'Leading technical publisher', 'Sebastopol, CA, USA', '+1 707-827-7000', 'info@oreilly.com', 'https://oreilly.com', 'active')
-ON CONFLICT (slug) DO NOTHING;
-
--- Insert sample authors
-INSERT INTO authors (name, slug, bio, nationality, birth_year, featured, status) VALUES
-  (
-    '{"vi": "Nguyễn Nhật Ánh", "en": "Nguyen Nhat Anh", "ja": "グエン・ニャット・アン"}',
-    'nguyen-nhat-anh',
-    '{"vi": "Nhà văn nổi tiếng với các tác phẩm văn học thiếu nhi", "en": "Famous writer of children literature", "ja": "児童文学の有名な作家"}',
-    'Vietnam',
-    1955,
-    true,
-    'active'
-  ),
-  (
-    '{"vi": "Tô Hoài", "en": "To Hoai", "ja": "トー・ホアイ"}',
-    'to-hoai',
-    '{"vi": "Nhà văn của thế hệ chúng ta", "en": "Writer of our generation", "ja": "私たちの世代の作家"}',
-    'Vietnam',
-    1920,
-    true,
-    'active'
-  ),
-  (
-    '{"vi": "J.K. Rowling", "en": "J.K. Rowling", "ja": "J.K.ローリング"}',
-    'jk-rowling',
-    '{"vi": "Tác giả bộ truyện Harry Potter nổi tiếng", "en": "Author of Harry Potter series", "ja": "ハリー・ポッターシリーズの著者"}',
-    'United Kingdom',
-    1965,
-    true,
-    'active'
-  ),
-  (
-    '{"vi": "Robert C. Martin", "en": "Robert C. Martin", "ja": "ロバート・C・マーティン"}',
-    'robert-martin',
-    '{"vi": "Chuyên gia phần mềm, tác giả Clean Code", "en": "Software expert, Clean Code author", "ja": "ソフトウェアエキスパート、Clean Codeの著者"}',
-    'United States',
-    1952,
-    true,
-    'active'
-  ),
-  (
-    '{"vi": "Yuval Noah Harari", "en": "Yuval Noah Harari", "ja": "ユヴァル・ノア・ハラリ"}',
-    'yuval-harari',
-    '{"vi": "Sử gia người Israel, tác giả Sapiens", "en": "Israeli historian, Sapiens author", "ja": "イスラエルの歴史家、Sapiensの著者"}',
-    'Israel',
-    1976,
-    true,
-    'active'
-  )
-ON CONFLICT (slug) DO NOTHING;
-
--- Insert sample book categories
-INSERT INTO book_categories (code, name, slug, description, icon, sort_order, status) VALUES
-  (
-    'FICTION',
-    '{"vi": "Văn học", "en": "Fiction", "ja": "文学"}',
-    'van-hoc',
-    '{"vi": "Sách văn học, tiểu thuyết", "en": "Literature and novels", "ja": "文学と小説"}',
-    'book-open',
-    1,
-    'active'
-  ),
-  (
-    'TECH',
-    '{"vi": "Công nghệ", "en": "Technology", "ja": "技術"}',
-    'cong-nghe',
-    '{"vi": "Sách về lập trình, công nghệ", "en": "Programming and tech books", "ja": "プログラミングと技術書"}',
-    'code',
-    2,
-    'active'
-  ),
-  (
-    'BUSINESS',
-    '{"vi": "Kinh tế", "en": "Business", "ja": "ビジネス"}',
-    'kinh-te',
-    '{"vi": "Sách về kinh doanh, quản trị", "en": "Business and management", "ja": "ビジネスとマネジメント"}',
-    'briefcase',
-    3,
-    'active'
-  ),
-  (
-    'SCIENCE',
-    '{"vi": "Khoa học", "en": "Science", "ja": "科学"}',
-    'khoa-hoc',
-    '{"vi": "Sách khoa học tự nhiên, xã hội", "en": "Natural and social sciences", "ja": "自然科学と社会科学"}',
-    'microscope',
-    4,
-    'active'
-  ),
-  (
-    'CHILD',
-    '{"vi": "Thiếu nhi", "en": "Children", "ja": "子供"}',
-    'thieu-nhi',
-    '{"vi": "Sách dành cho trẻ em", "en": "Books for children", "ja": "子供向けの本"}',
-    'baby',
-    5,
-    'active'
-  )
-ON CONFLICT (code) DO NOTHING;
-
--- Insert sample books
-INSERT INTO books (isbn, title, slug, publisher_id, description, publication_year, language, pages, format, quantity, available_quantity, price, rental_price, status, featured, location) VALUES
-  (
-    '978-604-2-16789-1',
-    '{"vi": "Tôi thấy hoa vàng trên cỏ xanh", "en": "I See Yellow Flowers on Green Grass", "ja": "緑の草の上に黄色い花"}',
-    'toi-thay-hoa-vang',
-    (SELECT id FROM publishers WHERE slug = 'nxb-tre' LIMIT 1),
-    '{"vi": "Tác phẩm văn học thiếu nhi nổi tiếng của Nguyễn Nhật Ánh", "en": "Famous children literature by Nguyen Nhat Anh", "ja": "グエン・ニャット・アンの有名な児童文学"}',
-    2010,
-    'vi',
-    352,
-    'paperback',
-    20,
-    20,
-    85000,
-    15000,
-    'available',
-    true,
-    'KS-A1'
-  ),
-  (
-    '978-604-2-18234-5',
-    '{"vi": "Mắt biếc", "en": "Dreamy Eyes", "ja": "夢のような目"}',
-    'mat-biec',
-    (SELECT id FROM publishers WHERE slug = 'nxb-tre' LIMIT 1),
-    '{"vi": "Câu chuyện tình yêu đẹp đẽ và da diết", "en": "Beautiful and emotional love story", "ja": "美しく感動的な恋愛物語"}',
-    2008,
-    'vi',
-    244,
-    'paperback',
-    15,
-    15,
-    75000,
-    12000,
-    'available',
-    true,
-    'KS-A2'
-  ),
-  (
-    '978-0-13-468599-1',
-    '{"vi": "Clean Code", "en": "Clean Code", "ja": "クリーンコード"}',
-    'clean-code',
-    (SELECT id FROM publishers WHERE slug = 'oreilly' LIMIT 1),
-    '{"vi": "Nghệ thuật viết code sạch và chuyên nghiệp", "en": "A Handbook of Agile Software Craftsmanship", "ja": "アジャイルソフトウェア職人技のハンドブック"}',
-    2008,
-    'en',
-    464,
-    'paperback',
-    10,
-    10,
-    450000,
-    50000,
-    'available',
-    true,
-    'KS-B1'
-  ),
-  (
-    '978-0-06-231609-7',
-    '{"vi": "Sapiens: Lược sử loài người", "en": "Sapiens: A Brief History of Humankind", "ja": "サピエンス全史"}',
-    'sapiens',
-    (SELECT id FROM publishers WHERE slug = 'nxb-the-gioi' LIMIT 1),
-    '{"vi": "Câu chuyện về sự tiến hóa của loài người", "en": "Story of human evolution", "ja": "人類の進化の物語"}',
-    2015,
-    'en',
-    512,
-    'hardcover',
-    8,
-    8,
-    320000,
-    45000,
-    'available',
-    true,
-    'KS-C1'
-  ),
-  (
-    '978-604-2-22145-3',
-    '{"vi": "Dế Mèn phiêu lưu ký", "en": "The Cricket Adventures", "ja": "コオロギの冒険"}',
-    'de-men-phieu-luu-ky',
-    (SELECT id FROM publishers WHERE slug = 'nxb-kim-dong' LIMIT 1),
-    '{"vi": "Tác phẩm kinh điển văn học thiếu nhi", "en": "Classic children literature", "ja": "古典的な児童文学"}',
-    2005,
-    'vi',
-    212,
-    'paperback',
-    25,
-    25,
-    55000,
-    10000,
-    'available',
-    false,
-    'KS-D1'
-  )
-ON CONFLICT (isbn) DO NOTHING;
-
--- Link books with authors
-INSERT INTO book_authors (book_id, author_id, sort_order)
-SELECT b.id, a.id, 0
-FROM books b, authors a
-WHERE b.slug = 'toi-thay-hoa-vang' AND a.slug = 'nguyen-nhat-anh'
-ON CONFLICT (book_id, author_id) DO NOTHING;
-
-INSERT INTO book_authors (book_id, author_id, sort_order)
-SELECT b.id, a.id, 0
-FROM books b, authors a
-WHERE b.slug = 'mat-biec' AND a.slug = 'nguyen-nhat-anh'
-ON CONFLICT (book_id, author_id) DO NOTHING;
-
-INSERT INTO book_authors (book_id, author_id, sort_order)
-SELECT b.id, a.id, 0
-FROM books b, authors a
-WHERE b.slug = 'clean-code' AND a.slug = 'robert-martin'
-ON CONFLICT (book_id, author_id) DO NOTHING;
-
-INSERT INTO book_authors (book_id, author_id, sort_order)
-SELECT b.id, a.id, 0
-FROM books b, authors a
-WHERE b.slug = 'sapiens' AND a.slug = 'yuval-harari'
-ON CONFLICT (book_id, author_id) DO NOTHING;
-
-INSERT INTO book_authors (book_id, author_id, sort_order)
-SELECT b.id, a.id, 0
-FROM books b, authors a
-WHERE b.slug = 'de-men-phieu-luu-ky' AND a.slug = 'to-hoai'
-ON CONFLICT (book_id, author_id) DO NOTHING;
-
--- Link books with categories
-INSERT INTO book_category_books (book_id, category_id)
-SELECT b.id, c.id
-FROM books b, book_categories c
-WHERE b.slug = 'toi-thay-hoa-vang' AND c.code = 'FICTION'
-ON CONFLICT (book_id, category_id) DO NOTHING;
-
-INSERT INTO book_category_books (book_id, category_id)
-SELECT b.id, c.id
-FROM books b, book_categories c
-WHERE b.slug = 'mat-biec' AND c.code = 'FICTION'
-ON CONFLICT (book_id, category_id) DO NOTHING;
-
-INSERT INTO book_category_books (book_id, category_id)
-SELECT b.id, c.id
-FROM books b, book_categories c
-WHERE b.slug = 'clean-code' AND c.code = 'TECH'
-ON CONFLICT (book_id, category_id) DO NOTHING;
-
-INSERT INTO book_category_books (book_id, category_id)
-SELECT b.id, c.id
-FROM books b, book_categories c
-WHERE b.slug = 'sapiens' AND c.code = 'SCIENCE'
-ON CONFLICT (book_id, category_id) DO NOTHING;
-
-INSERT INTO book_category_books (book_id, category_id)
-SELECT b.id, c.id
-FROM books b, book_categories c
-WHERE b.slug = 'de-men-phieu-luu-ky' AND c.code = 'CHILD'
-ON CONFLICT (book_id, category_id) DO NOTHING;
 
 -- Insert sample course categories
 INSERT INTO course_categories (code, name, slug, description, icon, sort_order, status) VALUES
@@ -1324,256 +1298,6 @@ FROM courses c, course_categories cc
 WHERE c.slug = 'ml-basics' AND cc.code = 'AI'
 ON CONFLICT (course_id, category_id) DO NOTHING;
 
--- Insert sample members
-INSERT INTO members (full_name, email, phone, membership_plan_id, membership_expires, status) VALUES
-  (
-    'Nguyễn Văn A',
-    'nguyenvana@example.com',
-    '0901234567',
-    (SELECT id FROM membership_plans WHERE slug = 'free' LIMIT 1),
-    '2026-12-31',
-    'active'
-  ),
-  (
-    'Trần Thị B',
-    'tranthib@example.com',
-    '0902345678',
-    (SELECT id FROM membership_plans WHERE slug = 'basic' LIMIT 1),
-    '2026-02-28',
-    'active'
-  ),
-  (
-    'Lê Văn C',
-    'levanc@example.com',
-    '0903456789',
-    (SELECT id FROM membership_plans WHERE slug = 'premium' LIMIT 1),
-    '2026-03-15',
-    'active'
-  )
-ON CONFLICT (email) DO NOTHING;
-
--- Insert sample book loans
--- Note: Using NOT EXISTS to avoid duplicates since book_loans doesn't have unique constraint on (member_id, book_id)
-INSERT INTO book_loans (member_id, book_id, loan_date, due_date, return_date, status, late_fee, notes, staff_id)
-SELECT 
-  m.id,
-  b.id,
-  CURRENT_DATE - INTERVAL '15 days',
-  CURRENT_DATE - INTERVAL '1 day',
-  NULL,
-  'borrowed',
-  0,
-  'Đang mượn',
-  (SELECT id FROM users WHERE email = 'admin@sfb.local' LIMIT 1)
-FROM members m, books b
-WHERE m.email = 'nguyenvana@example.com' AND b.slug = 'toi-thay-hoa-vang'
-  AND NOT EXISTS (
-    SELECT 1 FROM book_loans bl 
-    WHERE bl.member_id = m.id AND bl.book_id = b.id AND bl.status = 'borrowed'
-  )
-LIMIT 1;
-
-INSERT INTO book_loans (member_id, book_id, loan_date, due_date, return_date, status, late_fee, notes, staff_id)
-SELECT 
-  m.id,
-  b.id,
-  CURRENT_DATE - INTERVAL '20 days',
-  CURRENT_DATE - INTERVAL '5 days',
-  CURRENT_DATE - INTERVAL '2 days',
-  'returned',
-  0,
-  'Đã trả',
-  (SELECT id FROM users WHERE email = 'admin@sfb.local' LIMIT 1)
-FROM members m, books b
-WHERE m.email = 'tranthib@example.com' AND b.slug = 'mat-biec'
-  AND NOT EXISTS (
-    SELECT 1 FROM book_loans bl 
-    WHERE bl.member_id = m.id AND bl.book_id = b.id AND bl.loan_date = CURRENT_DATE - INTERVAL '20 days'
-  )
-LIMIT 1;
-
-INSERT INTO book_loans (member_id, book_id, loan_date, due_date, return_date, status, late_fee, notes, staff_id)
-SELECT 
-  m.id,
-  b.id,
-  CURRENT_DATE - INTERVAL '30 days',
-  CURRENT_DATE - INTERVAL '15 days',
-  NULL,
-  'overdue',
-  50000,
-  'Quá hạn trả',
-  (SELECT id FROM users WHERE email = 'admin@sfb.local' LIMIT 1)
-FROM members m, books b
-WHERE m.email = 'levanc@example.com' AND b.slug = 'clean-code'
-  AND NOT EXISTS (
-    SELECT 1 FROM book_loans bl 
-    WHERE bl.member_id = m.id AND bl.book_id = b.id AND bl.status = 'overdue'
-  )
-LIMIT 1;
-
-INSERT INTO book_loans (member_id, book_id, loan_date, due_date, return_date, status, late_fee, notes, staff_id)
-SELECT 
-  m.id,
-  b.id,
-  CURRENT_DATE - INTERVAL '5 days',
-  CURRENT_DATE + INTERVAL '10 days',
-  NULL,
-  'borrowed',
-  0,
-  'Đang mượn',
-  (SELECT id FROM users WHERE email = 'admin@sfb.local' LIMIT 1)
-FROM members m, books b
-WHERE m.email = 'nguyenvana@example.com' AND b.slug = 'sapiens'
-  AND NOT EXISTS (
-    SELECT 1 FROM book_loans bl 
-    WHERE bl.member_id = m.id AND bl.book_id = b.id AND bl.loan_date = CURRENT_DATE - INTERVAL '5 days'
-  )
-LIMIT 1;
-
-INSERT INTO book_loans (member_id, book_id, loan_date, due_date, return_date, status, late_fee, notes, staff_id)
-SELECT 
-  m.id,
-  b.id,
-  CURRENT_DATE - INTERVAL '10 days',
-  CURRENT_DATE + INTERVAL '5 days',
-  NULL,
-  'borrowed',
-  0,
-  'Đang mượn',
-  (SELECT id FROM users WHERE email = 'admin@sfb.local' LIMIT 1)
-FROM members m, books b
-WHERE m.email = 'tranthib@example.com' AND b.slug = 'de-men-phieu-luu-ky'
-  AND NOT EXISTS (
-    SELECT 1 FROM book_loans bl 
-    WHERE bl.member_id = m.id AND bl.book_id = b.id AND bl.loan_date = CURRENT_DATE - INTERVAL '10 days'
-  )
-LIMIT 1;
-
--- Insert sample payments
-INSERT INTO payments (transaction_id, member_id, type, related_id, amount, currency, payment_method, status, payment_gateway, notes, paid_at)
-SELECT 
-  'TXN-MEMBERSHIP-' || TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '30 days', 'YYYYMMDD') || '-001',
-  m.id,
-  'membership',
-  (SELECT id FROM membership_plans WHERE slug = 'basic' LIMIT 1),
-  299000,
-  'VND',
-  'momo',
-  'completed',
-  'momo',
-  'Thanh toán gói Basic',
-  CURRENT_TIMESTAMP - INTERVAL '30 days'
-FROM members m
-WHERE m.email = 'tranthib@example.com'
-  AND NOT EXISTS (
-    SELECT 1 FROM payments p 
-    WHERE p.member_id = m.id AND p.type = 'membership' AND p.related_id = (SELECT id FROM membership_plans WHERE slug = 'basic' LIMIT 1)
-  )
-LIMIT 1
-ON CONFLICT (transaction_id) DO NOTHING;
-
-INSERT INTO payments (transaction_id, member_id, type, related_id, amount, currency, payment_method, status, payment_gateway, notes, paid_at)
-SELECT 
-  'TXN-MEMBERSHIP-' || TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '20 days', 'YYYYMMDD') || '-002',
-  m.id,
-  'membership',
-  (SELECT id FROM membership_plans WHERE slug = 'premium' LIMIT 1),
-  999000,
-  'VND',
-  'bank_transfer',
-  'completed',
-  'vietcombank',
-  'Thanh toán gói Premium',
-  CURRENT_TIMESTAMP - INTERVAL '20 days'
-FROM members m
-WHERE m.email = 'levanc@example.com'
-  AND NOT EXISTS (
-    SELECT 1 FROM payments p 
-    WHERE p.member_id = m.id AND p.type = 'membership' AND p.related_id = (SELECT id FROM membership_plans WHERE slug = 'premium' LIMIT 1)
-  )
-LIMIT 1
-ON CONFLICT (transaction_id) DO NOTHING;
-
-INSERT INTO payments (transaction_id, member_id, type, related_id, amount, currency, payment_method, status, payment_gateway, notes, paid_at)
-SELECT 
-  'TXN-COURSE-' || TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '10 days', 'YYYYMMDD') || '-003',
-  m.id,
-  'course',
-  (SELECT id FROM courses WHERE slug = 'react-nextjs-course' LIMIT 1),
-  1490000,
-  'VND',
-  'card',
-  'completed',
-  'stripe',
-  'Thanh toán khóa học React & Next.js',
-  CURRENT_TIMESTAMP - INTERVAL '10 days'
-FROM members m
-WHERE m.email = 'nguyenvana@example.com'
-  AND NOT EXISTS (
-    SELECT 1 FROM payments p 
-    WHERE p.member_id = m.id AND p.type = 'course' AND p.related_id = (SELECT id FROM courses WHERE slug = 'react-nextjs-course' LIMIT 1)
-  )
-LIMIT 1
-ON CONFLICT (transaction_id) DO NOTHING;
-
-INSERT INTO payments (transaction_id, member_id, type, related_id, amount, currency, payment_method, status, payment_gateway, notes, paid_at)
-SELECT 
-  'TXN-BOOK-' || TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '5 days', 'YYYYMMDD') || '-004',
-  m.id,
-  'book_rental',
-  (SELECT id FROM book_loans WHERE member_id = m.id AND status = 'borrowed' LIMIT 1),
-  12000,
-  'VND',
-  'wallet',
-  'completed',
-  'internal',
-  'Thanh toán phí thuê sách',
-  CURRENT_TIMESTAMP - INTERVAL '5 days'
-FROM members m
-WHERE m.email = 'nguyenvana@example.com'
-  AND EXISTS (SELECT 1 FROM book_loans WHERE member_id = m.id AND status = 'borrowed')
-LIMIT 1
-ON CONFLICT (transaction_id) DO NOTHING;
-
-INSERT INTO payments (transaction_id, member_id, type, related_id, amount, currency, payment_method, status, payment_gateway, notes, paid_at)
-SELECT 
-  'TXN-LATEFEE-' || TO_CHAR(CURRENT_TIMESTAMP - INTERVAL '2 days', 'YYYYMMDD') || '-005',
-  m.id,
-  'late_fee',
-  (SELECT id FROM book_loans WHERE member_id = m.id AND status = 'overdue' LIMIT 1),
-  50000,
-  'VND',
-  'momo',
-  'completed',
-  'momo',
-  'Phí quá hạn trả sách',
-  CURRENT_TIMESTAMP - INTERVAL '2 days'
-FROM members m
-WHERE m.email = 'levanc@example.com'
-  AND EXISTS (SELECT 1 FROM book_loans WHERE member_id = m.id AND status = 'overdue')
-LIMIT 1
-ON CONFLICT (transaction_id) DO NOTHING;
-
-INSERT INTO payments (transaction_id, member_id, type, related_id, amount, currency, payment_method, status, payment_gateway, notes)
-SELECT 
-  'TXN-PENDING-' || TO_CHAR(CURRENT_TIMESTAMP, 'YYYYMMDD') || '-006',
-  m.id,
-  'course',
-  (SELECT id FROM courses WHERE slug = 'uiux-masterclass' LIMIT 1),
-  1290000,
-  'VND',
-  'zalopay',
-  'pending',
-  'zalopay',
-  'Đang chờ thanh toán khóa học UI/UX'
-FROM members m
-WHERE m.email = 'tranthib@example.com'
-  AND NOT EXISTS (
-    SELECT 1 FROM payments p 
-    WHERE p.member_id = m.id AND p.type = 'course' AND p.related_id = (SELECT id FROM courses WHERE slug = 'uiux-masterclass' LIMIT 1) AND p.status = 'completed'
-  )
-LIMIT 1
-ON CONFLICT (transaction_id) DO NOTHING;
 
 -- ============================================================================
 -- DATABASE OPTIMIZATION - Performance Indexes & Functions

@@ -1,16 +1,14 @@
 const PublicationService = require('../services/admin/publication.service');
 const CollectionService = require('../services/admin/collection.service');
+const StorageLocationService = require('../services/admin/storage_location.service');
 
 class AdminPublicationController {
   static async create(req, res) {
     try {
-      console.log('--- Controller Create Publication Hit ---', JSON.stringify(req.body, null, 2));
-      const { 
-        publication, 
-        copies,
-      } = req.body;
+      const { publication, copies } = req.body;
+      const adminId = req.user?.id || null;
       
-      const result = await PublicationService.createPublicationWithCopies(publication, copies);
+      const result = await PublicationService.createPublicationWithCopies(publication, copies, adminId);
       res.status(201).json({ 
         success: true, 
         message: 'Publication created successfully',
@@ -30,6 +28,15 @@ class AdminPublicationController {
     }
   }
 
+  static async getStorageLocations(req, res) {
+    try {
+      const locations = await StorageLocationService.getAll();
+      res.json({ success: true, data: locations });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
   static async getDetail(req, res) {
     try {
       const { id } = req.params;
@@ -44,9 +51,10 @@ class AdminPublicationController {
   static async update(req, res) {
     try {
       const { id } = req.params;
-      console.log(`--- [DEBUG] Update Publication ${id} --- Payload:`, JSON.stringify(req.body, null, 2));
       const { publication, copies } = req.body;
-      const result = await PublicationService.updatePublicationWithCopies(id, publication, copies);
+      const adminId = req.user?.id || null;
+
+      const result = await PublicationService.updatePublicationWithCopies(id, publication, copies, adminId);
       res.json({ success: true, data: result });
     } catch (error) {
       console.error(`--- [DEBUG] Update Error ---`, error.message);
@@ -57,7 +65,8 @@ class AdminPublicationController {
   static async delete(req, res) {
     try {
       const { id } = req.params;
-      const success = await PublicationService.deletePublication(id);
+      const adminId = req.user?.id || null;
+      const success = await PublicationService.deletePublication(id, adminId);
       if (!success) return res.status(404).json({ success: false, message: "Not found" });
       res.json({ success: true, message: "Deleted" });
     } catch (error) {

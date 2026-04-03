@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useBookLoans, useReservations } from '@/lib/hooks/useBookLoans';
+import { useBookLoans, useReservations, useApproveBorrow, useExtendBorrow, useReturnBook, useDeleteBookLoan } from '@/lib/hooks/useBookLoans';
+import { adminApiCall } from '@/lib/api/admin/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -34,9 +35,10 @@ export default function BookLoansPage() {
   const { data: reservationsData, isLoading: isLoadingRes } = useReservations();
 
   const [isExporting, setIsExporting] = useState(false);
-  const [isApproving, setIsApproving] = useState(false);
-  const [isExtending, setIsExtending] = useState(false);
-  const [isReturning, setIsReturning] = useState(false);
+  const { mutateAsync: approveBorrow, isPending: isApproving } = useApproveBorrow();
+  const { mutateAsync: extendBorrow,  isPending: isExtending } = useExtendBorrow();
+  const { mutateAsync: returnBook,   isPending: isReturning } = useReturnBook();
+  const { mutateAsync: deleteLoan,   isPending: isDeleting }  = useDeleteBookLoan();
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -52,50 +54,68 @@ export default function BookLoansPage() {
   };
 
   const handleApprove = async (id: number) => {
-    setIsApproving(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await approveBorrow(id);
       toast.success('Đã duyệt yêu cầu mượn sách!');
       refetch();
-    } catch (error) {
-      toast.error('Lỗi khi duyệt yêu cầu');
-    } finally {
-      setIsApproving(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Lỗi khi duyệt yêu cầu');
     }
   };
 
   const handleConfirmExtend = async (days: number) => {
-    setIsExtending(true);
+    if (!selectedLoan) return;
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await extendBorrow({ id: selectedLoan.id, days });
       toast.success(`Đã gia hạn thành công thêm ${days} ngày!`);
       setIsExtendModalOpen(false);
       refetch();
-    } catch (error) {
-      toast.error('Lỗi khi gia hạn');
-    } finally {
-      setIsExtending(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Lỗi khi gia hạn');
     }
   };
 
   const handleConfirmReturn = async () => {
-    setIsReturning(true);
+    if (!selectedLoan) return;
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await returnBook(selectedLoan.id);
       toast.success('Đã xác nhận trả sách thành công!');
       setIsReturnModalOpen(false);
       refetch();
-    } catch (error) {
-      toast.error('Lỗi khi trả sách');
-    } finally {
-      setIsReturning(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Lỗi khi trả sách');
     }
   };
 
   const handleDelete = async (id: number) => {
     if (confirm('Bạn có chắc chắn muốn xóa bản ghi này?')) {
-      toast.success('Đã xóa bản ghi thành công!');
-      refetch();
+      try {
+        await deleteLoan(id);
+        toast.success('Đã xóa bản ghi thành công!');
+        refetch();
+      } catch (error: any) {
+        toast.error(error.message || 'Lỗi khi xóa bản ghi');
+      }
+    }
+  };
+
+  const handleRemind = async (loan: any) => {
+    try {
+      await adminApiCall('/api/admin/library/notifications/send', {
+        method: 'POST',
+        body: JSON.stringify({
+          member_id: loan.member_id || loan.memberId,
+          type: 'overdue',
+          target_type: 'individual',
+          title: { vi: 'Nhắc nhở: Sách mượn đã quá hạn' },
+          message: { vi: `Cuốn sách "${loan.book_title || loan.publicationName}" bạn đang mượn đã quá hạn. Vui lòng sắp xếp thời gian trả sách.` },
+          related_id: loan.id,
+          related_type: 'book_loan'
+        })
+      });
+      toast.success('Đã gửi thông báo nhắc nợ tới độc giả!');
+    } catch (error: any) {
+      toast.error(error.message || 'Lỗi khi gửi thông báo');
     }
   };
 
@@ -354,7 +374,7 @@ export default function BookLoansPage() {
                                     Gia hạn
                                   </Button>
                                   <Button 
-                                    variant="default" 
+                                    variant={item.status === 'overdue' ? "destructive" : "default"}
                                     size="sm" 
                                     className={cn(
                                       "h-8 rounded-lg font-black px-2 text-[10px]",
@@ -368,6 +388,16 @@ export default function BookLoansPage() {
                                   >
                                     Trả sách
                                   </Button>
+                                  {item.status === 'overdue' && (
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      className="h-8 border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg font-bold px-2 text-[10px] animate-pulse"
+                                      onClick={() => handleRemind(item)}
+                                    >
+                                      Nhắc nợ
+                                    </Button>
+                                  )}
                                 </>
                               )}
                               <div className="flex ml-1">

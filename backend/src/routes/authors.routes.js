@@ -15,7 +15,10 @@ const router = express.Router();
  * /api/admin/authors:
  *   get:
  *     tags: [Admin Authors]
- *     summary: Lấy danh sách tác giả
+ *     summary: Danh sách tác giả
+ *     description: Lấy danh sách các tác giả sách trong hệ thống. Hỗ trợ tìm kiếm theo tên và phân trang.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: page
@@ -26,9 +29,10 @@ const router = express.Router();
  *       - in: query
  *         name: search
  *         schema: { type: 'string' }
+ *         description: Tìm kiếm theo tên tác giả
  *     responses:
  *       200:
- *         description: OK
+ *         description: Thành công
  *         content:
  *           application/json:
  *             schema:
@@ -36,27 +40,23 @@ const router = express.Router();
  *                 - $ref: '#/components/schemas/BaseResponse'
  *                 - type: object
  *                   properties:
- *                     data: { type: 'array', items: { $ref: '#/components/schemas/Author' } }
- *                     pagination: { $ref: '#/components/schemas/Pagination' }
- *   post:
- *     tags: [Admin Authors]
- *     summary: Tạo tác giả mới
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema: { $ref: '#/components/schemas/Author' }
- *     responses:
- *       201:
- *         description: Created
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
- *
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Author'
+ *                     pagination:
+ *                       $ref: '#/components/schemas/Pagination'
+ */
+router.get('/', getAll);
+
+/**
+ * @openapi
  * /api/admin/authors/{id}:
  *   get:
  *     tags: [Admin Authors]
- *     summary: Lấy chi tiết tác giả
+ *     summary: Chi tiết tác giả
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -64,7 +64,7 @@ const router = express.Router();
  *         schema: { type: 'integer' }
  *     responses:
  *       200:
- *         description: OK
+ *         description: Thành công
  *         content:
  *           application/json:
  *             schema:
@@ -72,10 +72,43 @@ const router = express.Router();
  *                 - $ref: '#/components/schemas/BaseResponse'
  *                 - type: object
  *                   properties:
- *                     data: { $ref: '#/components/schemas/Author' }
+ *                     data:
+ *                       $ref: '#/components/schemas/Author'
+ */
+router.get('/:id', getById);
+
+/**
+ * @openapi
+ * /api/admin/authors:
+ *   post:
+ *     tags: [Admin Authors]
+ *     summary: Thêm tác giả mới
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Author'
+ *     responses:
+ *       201:
+ *         description: Tạo thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BaseResponse'
+ */
+router.post('/', create);
+
+/**
+ * @openapi
+ * /api/admin/authors/{id}:
  *   put:
  *     tags: [Admin Authors]
  *     summary: Cập nhật tác giả
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -85,13 +118,26 @@ const router = express.Router();
  *       required: true
  *       content:
  *         application/json:
- *           schema: { $ref: '#/components/schemas/Author' }
+ *           schema:
+ *             $ref: '#/components/schemas/Author'
  *     responses:
  *       200:
- *         description: Updated
+ *         description: Cập nhật thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BaseResponse'
+ */
+router.put('/:id', update);
+
+/**
+ * @openapi
+ * /api/admin/authors/{id}:
  *   delete:
  *     tags: [Admin Authors]
  *     summary: Xóa tác giả
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -99,12 +145,12 @@ const router = express.Router();
  *         schema: { type: 'integer' }
  *     responses:
  *       200:
- *         description: Deleted
+ *         description: Xóa thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BaseResponse'
  */
-router.get('/', getAll);
-router.get('/:id', getById);
-router.post('/', create);
-router.put('/:id', update);
 router.delete('/:id', remove);
 
 module.exports = router;

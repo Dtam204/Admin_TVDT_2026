@@ -1,7 +1,14 @@
 'use client';
 
 import { useRouter, useParams } from 'next/navigation';
-import { useAdminPublication, useUpdatePublication, useAdminCollections, useUploadPdf, useUploadImage } from '@/lib/hooks/usePublications';
+import { 
+  useAdminPublication, 
+  useUpdatePublication, 
+  useAdminCollections, 
+  useUploadPdf, 
+  useUploadImage,
+  useAdminStorageLocations 
+} from '@/lib/hooks/usePublications';
 import { useAuthorsSelect, usePublishersSelect } from '@/lib/hooks/useBooks';
 import { usePublishers } from '@/lib/hooks/usePublishers';
 import { useBookLoans } from '@/lib/hooks/useBookLoans';
@@ -158,6 +165,8 @@ export default function EditBookPage() {
   const publishers = publishersData?.data || [];
   
   const { data: authorsSelect } = useAuthorsSelect();
+  const { data: storageLocationsRes } = useAdminStorageLocations();
+  const storageLocations = storageLocationsRes?.data || [];
 
   const getDisplayValue = (val: any) => {
     if (!val) return 'N/A';
@@ -243,7 +252,7 @@ export default function EditBookPage() {
           copy_number: c.copy_number || '',
           price: c.price || 0,
           status: c.status || 'available',
-          storage_location: c.storage_location || c.storage_name || ''
+          storage_location_id: c.storage_location_id?.toString() || ''
         }))
       });
       
@@ -570,12 +579,22 @@ export default function EditBookPage() {
                             />
                           </TableCell>
                           <TableCell>
-                            <Input
-                              className="border-none bg-transparent h-8 focus-visible:ring-0 text-sm"
-                              placeholder="Kạng - Kệ"
-                              value={copy.storage_location || copy.storage_id || ''}
-                              onChange={e => handleCopyChange(idx, 'storage_location', e.target.value)}
-                            />
+                            <Select 
+                              value={copy.storage_location_id} 
+                              onValueChange={v => handleCopyChange(idx, 'storage_location_id', v)}
+                            >
+                              <SelectTrigger className="border-none bg-transparent h-8 focus:ring-0 text-sm p-0">
+                                <SelectValue placeholder="Chọn kệ" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl border-none shadow-2xl">
+                                {storageLocations.map((loc: any) => (
+                                  <SelectItem key={loc.id} value={loc.id.toString()}>{loc.name}</SelectItem>
+                                ))}
+                                {storageLocations.length === 0 && (
+                                  <SelectItem value="none" disabled>Không có dữ liệu</SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell className="text-center">
                             <Input

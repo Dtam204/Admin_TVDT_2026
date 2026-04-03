@@ -22,6 +22,8 @@ class DashboardService {
       totalRevenue: "SELECT SUM(ABS(amount)) FROM payments WHERE type IN ('wallet_deposit', 'plan_subscription', 'manual_payment', 'service_fee') AND status = 'completed'",
       totalFavorites: "SELECT COUNT(*) FROM interaction_logs WHERE action_type = 'favorite'",
       totalBorrows: "SELECT COUNT(*) FROM book_loans",
+      totalOverdueLoans: "SELECT COUNT(*) FROM book_loans WHERE status = 'overdue' OR (status = 'borrowing' AND due_date < CURRENT_DATE)",
+      totalPendingRequests: "SELECT COUNT(*) FROM membership_requests WHERE status = 'pending'",
       avgRating: "SELECT AVG(rating)::numeric(10,1) FROM comments WHERE rating > 0",
       totalRatings: "SELECT COUNT(*) FROM comments WHERE rating > 0",
       

@@ -1,5 +1,6 @@
 const { pool } = require('../config/database');
 const { generateTransactionId } = require('../utils/id_helper');
+const AuditService = require('../services/admin/audit.service');
 const bcrypt = require('bcryptjs');
 
 /**
@@ -71,6 +72,7 @@ exports.getAllTransactions = async (req, res) => {
  */
 exports.createTransaction = async (req, res) => {
   const client = await pool.connect();
+  const adminId = req.user?.id || null;
   try {
     const { member_id, amount, transaction_type, description } = req.body;
     await client.query('BEGIN');
@@ -85,9 +87,9 @@ exports.createTransaction = async (req, res) => {
     };
     const mappedType = typeMap[transaction_type] || transaction_type;
 
-    await client.query(
+    const { rows: txnRows } = await client.query(
       `INSERT INTO payments (member_id, amount, type, status, notes, transaction_id, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)`,
+       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP) RETURNING *`,
       [member_id, amount, mappedType, 'completed', description, generateTransactionId(mappedType)]
     );
 
@@ -103,6 +105,10 @@ exports.createTransaction = async (req, res) => {
       [balanceChange, member_id]
     );
 
+    if (adminId) {
+      await AuditService.log(adminId, 'CREATE', 'TRANSACTION', txnRows[0].id, null, txnRows[0]);
+    }
+
     await client.query('COMMIT');
     res.json({ success: true, message: 'Giao dịch thành công và đã cập nhật số dư' });
   } catch (error) {
@@ -117,6 +123,7 @@ exports.createTransaction = async (req, res) => {
  * Admin Issues a Fine (Phiếu phí phạt)
  */
 exports.createFine = async (req, res) => {
+  const adminId = req.user?.id || null;
   try {
     const { member_id, amount, description } = req.body;
     
@@ -126,7 +133,7 @@ exports.createFine = async (req, res) => {
 
     const { rows } = await pool.query(
       `INSERT INTO payments (member_id, amount, type, status, notes, transaction_id, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP) RETURNING id`,
+       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP) RETURNING *`,
       [member_id, Math.abs(amount), 'fee_penalty', 'pending', description || 'Phí phạt vi phạm nội quy', generateTransactionId('PEN')]
     );
 
@@ -134,6 +141,10 @@ exports.createFine = async (req, res) => {
       'INSERT INTO member_activities (member_id, activity_type, description) VALUES ($1, $2, $3)',
       [member_id, 'fine_issued', `Hệ thống gửi phiếu phí phạt: ${amount.toLocaleString()} VNĐ. Truy vấn ID: #${rows[0].id}`]
     );
+
+    if (adminId) {
+      await AuditService.log(adminId, 'CREATE', 'FINE', rows[0].id, null, rows[0]);
+    }
 
     res.json({ success: true, message: 'Đã gửi phiếu phí phạt cho hội viên (Trạng thái: Chờ đóng)', payment_id: rows[0].id });
   } catch (error) {
@@ -146,15 +157,16 @@ exports.createFine = async (req, res) => {
  */
 exports.createRefund = async (req, res) => {
   const client = await pool.connect();
+  const adminId = req.user?.id || null;
   try {
     const { member_id, amount, description } = req.body;
     await client.query('BEGIN');
 
     const refundAmount = Math.abs(amount);
 
-    await client.query(
+    const { rows: txnRows } = await client.query(
       `INSERT INTO payments (member_id, amount, type, status, notes, transaction_id, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)`,
+       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP) RETURNING *`,
       [member_id, refundAmount, 'refund', 'completed', description || 'Hoàn tiền giao dịch', generateTransactionId('REF')]
     );
 
@@ -162,6 +174,10 @@ exports.createRefund = async (req, res) => {
       'UPDATE members SET balance = balance + $1 WHERE id = $2',
       [refundAmount, member_id]
     );
+
+    if (adminId) {
+      await AuditService.log(adminId, 'CREATE', 'REFUND', txnRows[0].id, null, txnRows[0]);
+    }
 
     await client.query('COMMIT');
     res.json({ success: true, message: 'Đã hoàn tiền thành công vào ví' });
@@ -194,7 +210,8 @@ exports.getTransactions = async (req, res) => {
     const { id } = req.params;
     const { rows } = await pool.query(`
       SELECT 
-        id, amount, type as transaction_type, status, notes as description, created_at
+        id, amount, type as transaction_type, status, notes as description, created_at,
+        external_txn_id, gateway, payment_method, sync_status, reference_id
       FROM payments 
       WHERE member_id = $1 
       ORDER BY created_at DESC
@@ -210,17 +227,23 @@ exports.getTransactions = async (req, res) => {
  */
 exports.deposit = async (req, res) => {
   const client = await pool.connect();
+  const adminId = req.user?.id || null;
   try {
     const { id } = req.params;
     const { amount, description } = req.body;
     await client.query('BEGIN');
     
-    await client.query(`
+    const { rows: txnRows } = await client.query(`
       INSERT INTO payments (member_id, amount, type, status, notes, transaction_id, created_at) 
-      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP) RETURNING *
     `, [id, amount, 'wallet_deposit', 'completed', description || 'Nạp tiền qua quầy', generateTransactionId('DEP')]);
     
     await client.query('UPDATE members SET balance = COALESCE(balance, 0) + $1 WHERE id = $2', [amount, id]);
+
+    if (adminId) {
+      await AuditService.log(adminId, 'CREATE', 'DEPOSIT', txnRows[0].id, null, txnRows[0]);
+    }
+
     await client.query('COMMIT');
     res.json({ success: true, message: 'Nạp tiền thành công và đã cập nhật vào bảng thanh toán' });
   } catch (error) {
@@ -235,12 +258,25 @@ exports.deposit = async (req, res) => {
  * Reset Password
  */
 exports.resetPassword = async (req, res) => {
+  const adminId = req.user?.id || null;
   try {
     const { id } = req.params;
     const { new_password } = req.body;
     const hashedPassword = await bcrypt.hash(new_password, 10);
-    await pool.query('UPDATE members SET password = $1 WHERE id = $2', [hashedPassword, id]);
-    res.json({ success: true, message: 'Đã reset mật khẩu' });
+    
+    // Tìm user_id của member này
+    const { rows: memberRows } = await pool.query('SELECT user_id, full_name FROM members WHERE id = $1', [id]);
+    if (memberRows.length === 0 || !memberRows[0].user_id) {
+      throw new Error('Thành viên này chưa được liên kết với tài khoản người dùng.');
+    }
+
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, memberRows[0].user_id]);
+
+    if (adminId) {
+      await AuditService.log(adminId, 'UPDATE', 'MEMBER_PASSWORD', id, { member: memberRows[0].full_name }, { action: 'RESET_PASSWORD' });
+    }
+
+    res.json({ success: true, message: 'Đã reset mật khẩu thành công cho tài khoản người dùng.' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

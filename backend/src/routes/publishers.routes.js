@@ -15,7 +15,10 @@ const router = express.Router();
  * /api/admin/publishers:
  *   get:
  *     tags: [Admin Publishers]
- *     summary: Lấy danh sách nhà xuất bản
+ *     summary: Danh sách nhà xuất bản
+ *     description: Lấy danh sách các nhà xuất bản có trong hệ thống. Hỗ trợ tìm kiếm theo tên và phân trang.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: page
@@ -26,9 +29,10 @@ const router = express.Router();
  *       - in: query
  *         name: search
  *         schema: { type: 'string' }
+ *         description: Tìm kiếm theo tên nhà xuất bản
  *     responses:
  *       200:
- *         description: OK
+ *         description: Thành công
  *         content:
  *           application/json:
  *             schema:
@@ -36,27 +40,23 @@ const router = express.Router();
  *                 - $ref: '#/components/schemas/BaseResponse'
  *                 - type: object
  *                   properties:
- *                     data: { type: 'array', items: { $ref: '#/components/schemas/Publisher' } }
- *                     pagination: { $ref: '#/components/schemas/Pagination' }
- *   post:
- *     tags: [Admin Publishers]
- *     summary: Tạo nhà xuất bản mới
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema: { $ref: '#/components/schemas/Publisher' }
- *     responses:
- *       201:
- *         description: Created
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
- *
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Publisher'
+ *                     pagination:
+ *                       $ref: '#/components/schemas/Pagination'
+ */
+router.get('/', getAll);
+
+/**
+ * @openapi
  * /api/admin/publishers/{id}:
  *   get:
  *     tags: [Admin Publishers]
- *     summary: Lấy chi tiết nhà xuất bản
+ *     summary: Chi tiết nhà xuất bản
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -64,7 +64,7 @@ const router = express.Router();
  *         schema: { type: 'integer' }
  *     responses:
  *       200:
- *         description: OK
+ *         description: Thành công
  *         content:
  *           application/json:
  *             schema:
@@ -72,10 +72,43 @@ const router = express.Router();
  *                 - $ref: '#/components/schemas/BaseResponse'
  *                 - type: object
  *                   properties:
- *                     data: { $ref: '#/components/schemas/Publisher' }
+ *                     data:
+ *                       $ref: '#/components/schemas/Publisher'
+ */
+router.get('/:id', getById);
+
+/**
+ * @openapi
+ * /api/admin/publishers:
+ *   post:
+ *     tags: [Admin Publishers]
+ *     summary: Thêm nhà xuất bản mới
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Publisher'
+ *     responses:
+ *       201:
+ *         description: Tạo thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BaseResponse'
+ */
+router.post('/', create);
+
+/**
+ * @openapi
+ * /api/admin/publishers/{id}:
  *   put:
  *     tags: [Admin Publishers]
  *     summary: Cập nhật nhà xuất bản
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -85,13 +118,26 @@ const router = express.Router();
  *       required: true
  *       content:
  *         application/json:
- *           schema: { $ref: '#/components/schemas/Publisher' }
+ *           schema:
+ *             $ref: '#/components/schemas/Publisher'
  *     responses:
  *       200:
- *         description: Updated
+ *         description: Cập nhật thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BaseResponse'
+ */
+router.put('/:id', update);
+
+/**
+ * @openapi
+ * /api/admin/publishers/{id}:
  *   delete:
  *     tags: [Admin Publishers]
  *     summary: Xóa nhà xuất bản
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -99,12 +145,12 @@ const router = express.Router();
  *         schema: { type: 'integer' }
  *     responses:
  *       200:
- *         description: Deleted
+ *         description: Xóa thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BaseResponse'
  */
-router.get('/', getAll);
-router.get('/:id', getById);
-router.post('/', create);
-router.put('/:id', update);
 router.delete('/:id', remove);
 
 module.exports = router;

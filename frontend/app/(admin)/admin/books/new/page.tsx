@@ -1,7 +1,14 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCreatePublication, useAdminCollections, useSummarize, useUploadPdf, useUploadImage } from '@/lib/hooks/usePublications';
+import { 
+  useCreatePublication, 
+  useAdminCollections, 
+  useSummarize, 
+  useUploadPdf, 
+  useUploadImage,
+  useAdminStorageLocations
+} from '@/lib/hooks/usePublications';
 import { useAuthorsSelect, usePublishersSelect } from '@/lib/hooks/useBooks';
 import { useState } from 'react';
 import { usePublishers } from '@/lib/hooks/usePublishers';
@@ -46,6 +53,8 @@ export default function NewBookPage() {
   const { data: authors } = useAuthorsSelect();
   const { data: publishersData } = usePublishers({ limit: 100 });
   const publishers = publishersData?.data || [];
+  const { data: storageLocationsRes } = useAdminStorageLocations();
+  const storageLocations = storageLocationsRes?.data || [];
 
   const getDisplayValue = (val: any) => {
     if (!val) return 'N/A';
@@ -96,7 +105,7 @@ export default function NewBookPage() {
       media_type: 'Physical'
     },
     copies: [
-      { storage_location: '', barcode: '', copy_number: '01', price: 0, condition: 'good' }
+      { storage_location_id: '', barcode: '', copy_number: '01', price: 0, condition: 'good' }
     ]
   });
 
@@ -114,7 +123,7 @@ export default function NewBookPage() {
     setFormData({
       ...formData,
       copies: [...formData.copies, { 
-        storage_location: '',
+        storage_location_id: '',
         barcode: autoBarcode, 
         copy_number: nextIndex.toString().padStart(2, '0'), 
         price: 0,
@@ -424,12 +433,22 @@ export default function NewBookPage() {
                             />
                           </TableCell>
                           <TableCell>
-                            <Input
-                              className="border-none bg-transparent h-8 focus-visible:ring-0 text-sm"
-                              placeholder="VD: Kạng A - Kệ 3"
-                              value={copy.storage_location || ''}
-                              onChange={e => handleCopyChange(idx, 'storage_location', e.target.value)}
-                            />
+                            <Select 
+                              value={copy.storage_location_id} 
+                              onValueChange={v => handleCopyChange(idx, 'storage_location_id', v)}
+                            >
+                              <SelectTrigger className="border-none bg-transparent h-8 focus:ring-0 text-sm p-0">
+                                <SelectValue placeholder="Chọn kệ" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl border-none shadow-2xl">
+                                {storageLocations.map((loc: any) => (
+                                  <SelectItem key={loc.id} value={loc.id.toString()}>{loc.name}</SelectItem>
+                                ))}
+                                {storageLocations.length === 0 && (
+                                  <SelectItem value="none" disabled>Không có dữ liệu</SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell className="text-center">
                             <Input

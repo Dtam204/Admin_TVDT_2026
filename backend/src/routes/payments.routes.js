@@ -6,9 +6,15 @@ const {
   update,
   remove,
 } = require('../controllers/payments.controller');
+const { getFinanceStats } = require('../controllers/finance.controller');
 const requireAuth = require('../middlewares/auth.middleware');
+const { restrictToCMS, checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
+
+// Tất cả các route admin thanh toán đều yêu cầu đăng nhập và thuộc quyền CMS
+router.use(requireAuth);
+router.use(restrictToCMS);
 
 /**
  * @openapi
@@ -104,10 +110,11 @@ const router = express.Router();
  *       200:
  *         description: Deleted
  */
-router.get('/', requireAuth, getAll);
-router.get('/:id', requireAuth, getById);
-router.post('/', requireAuth, create);
-router.put('/:id', requireAuth, update);
-router.delete('/:id', requireAuth, remove);
+router.get('/stats', checkPermission('payments.view'), getFinanceStats);
+router.get('/', checkPermission('payments.view'), getAll);
+router.get('/:id', checkPermission('payments.view'), getById);
+router.post('/', checkPermission('payments.manage'), create);
+router.put('/:id', checkPermission('payments.manage'), update);
+router.delete('/:id', checkPermission('payments.manage'), remove);
 
 module.exports = router;

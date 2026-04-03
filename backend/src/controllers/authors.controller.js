@@ -38,7 +38,8 @@ exports.getById = async (req, res, next) => {
 // POST /api/admin/authors
 exports.create = async (req, res, next) => {
   try {
-    const data = await AuthorService.create(req.body);
+    const adminId = req.user?.id || null;
+    const data = await AuthorService.create(req.body, adminId);
     return res.status(201).json({
       success: true,
       message: 'Đã tạo tác giả thành công',
@@ -53,7 +54,8 @@ exports.create = async (req, res, next) => {
 exports.update = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const data = await AuthorService.update(id, req.body);
+    const adminId = req.user?.id || null;
+    const data = await AuthorService.update(id, req.body, adminId);
 
     if (!data) {
       return res.status(404).json({
@@ -76,7 +78,8 @@ exports.update = async (req, res, next) => {
 exports.remove = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const success = await AuthorService.delete(id);
+    const adminId = req.user?.id || null;
+    const success = await AuthorService.delete(id, adminId);
 
     if (!success) {
       return res.status(404).json({

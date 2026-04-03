@@ -1,3 +1,0 @@
-ReferenceError: res2 is not defined
-    at checkSchema (D:\Do_An_Tot_Nghiep\Admin-thuvien\admin-thuvien-tn\backend\src\test_db.js:16:28)
-    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)

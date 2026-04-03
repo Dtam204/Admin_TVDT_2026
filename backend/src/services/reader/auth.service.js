@@ -2,6 +2,7 @@ const { pool } = require('../../config/database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { jwt: jwtConfig } = require('../../config/env');
+const { getEffectiveMembership } = require('../../utils/member_helper');
 
 /**
  * Reader Authentication Service
@@ -20,6 +21,7 @@ async function authenticateReader({ identifier, password }) {
 
   try {
     // 1. Find reader by email OR card_number
+    // SQL simplified: Get raw values, logic handled by JS helper
     const { rows } = await pool.query(
       `
       SELECT 
@@ -28,22 +30,13 @@ async function authenticateReader({ identifier, password }) {
         m.full_name,
         m.card_number,
         m.status,
+        m.membership_expires,
         u.password,
         u.role_id,
         r.code AS role_code,
-        m.membership_expires,
-        CASE 
-          WHEN m.membership_expires IS NOT NULL AND m.membership_expires < CURRENT_DATE THEN 'Thẻ Basic (Gói cũ đã hết hạn)'
-          ELSE mp.name 
-        END AS plan_name,
-        CASE 
-          WHEN m.membership_expires IS NOT NULL AND m.membership_expires < CURRENT_DATE THEN 3
-          ELSE mp.max_books_borrowed 
-        END AS max_borrow_limit,
-        CASE 
-          WHEN m.membership_expires IS NOT NULL AND m.membership_expires < CURRENT_DATE THEN 'basic'
-          ELSE mp.tier_code 
-        END AS tier_code
+        mp.name->>'vi' as plan_name,
+        mp.max_books_borrowed,
+        mp.tier_code
       FROM members m
       JOIN users u ON m.user_id = u.id
       JOIN roles r ON u.role_id = r.id
@@ -58,27 +51,35 @@ async function authenticateReader({ identifier, password }) {
       return null;
     }
 
-    const reader = rows[0];
+    const readerData = rows[0];
 
     // 2. Security check: Only allow active readers
-    if (reader.status !== 'active') {
+    if (readerData.status !== 'active') {
       return null;
     }
 
     // 3. Verify password
-    const isPasswordValid = await bcrypt.compare(password, reader.password).catch(() => false);
+    const isPasswordValid = await bcrypt.compare(password, readerData.password).catch(() => false);
     if (!isPasswordValid) {
       return null;
     }
 
-    // 4. Get Reader Entitlements (Extra permissions)
+    // 4. Calculate Effective Membership (Business Logic)
+    const effective = getEffectiveMembership({
+      membership_expires: readerData.membership_expires,
+      tier_code: readerData.tier_code || 'basic',
+      plan_name: readerData.plan_name || 'Cơ bản',
+      max_books_borrowed: readerData.max_books_borrowed || 3
+    });
+
+    // 5. Get Reader Entitlements (Extra permissions)
     const { rows: entitlementRows } = await pool.query(
       `
       SELECT resource_type, resource_id, extra_borrow_limit
       FROM reader_entitlements
       WHERE reader_id = $1 AND (expire_date IS NULL OR expire_date >= CURRENT_DATE) AND is_active = TRUE
       `,
-      [reader.id]
+      [readerData.id]
     );
 
     const entitlements = entitlementRows.map(e => ({
@@ -87,15 +88,15 @@ async function authenticateReader({ identifier, password }) {
       extraLimit: e.extra_borrow_limit
     }));
 
-    // 5. Generate JWT Token for Reader
-    // Nếu hết hạn -> Tier Code bị đè xuống 'basic' nhờ lệnh SQL ở trên.
+    // 6. Generate JWT Token for Reader
+    // Uses the effective tier (e.g., 'basic' if expired)
     const token = jwt.sign(
       {
-        sub: reader.id,
-        email: reader.email,
-        cardNumber: reader.card_number,
-        role: reader.role_code,
-        tierCode: reader.tier_code || 'basic',
+        sub: readerData.id,
+        email: readerData.email,
+        cardNumber: readerData.card_number,
+        role: readerData.role_code,
+        tierCode: effective.tier_code,
         type: 'reader'
       },
       jwtConfig.secret,
@@ -105,16 +106,16 @@ async function authenticateReader({ identifier, password }) {
     return {
       token,
       reader: {
-        id: reader.id,
-        fullName: reader.full_name,
-        email: reader.email,
-        cardNumber: reader.card_number,
-        plan: reader.plan_name,
-        tierCode: reader.tier_code || 'basic',
-        maxBorrowLimit: reader.max_borrow_limit || 3,
+        id: readerData.id,
+        fullName: readerData.full_name,
+        email: readerData.email,
+        cardNumber: readerData.card_number,
+        plan: effective.plan_name,
+        tierCode: effective.tier_code,
+        maxBorrowLimit: effective.max_books_borrowed,
         entitlements,
-        status: reader.status,
-        isExpired: reader.membership_expires ? (new Date(reader.membership_expires) < new Date()) : false
+        status: readerData.status,
+        isExpired: effective.is_expired
       },
       expiresIn: jwtConfig.expiresIn
     };

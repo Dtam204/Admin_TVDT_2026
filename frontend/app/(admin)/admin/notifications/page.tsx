@@ -39,8 +39,8 @@ export default function NotificationsPage() {
   const [formData, setFormData] = useState({
     title: '',
     body: '',
-    target_type: 'all', // all, basic, premium, vip
-    target_id: '',
+    target_type: 'all', // all, individual, basic, premium, vip
+    member_id: '',
     link: ''
   });
 
@@ -57,8 +57,9 @@ export default function NotificationsPage() {
       method: 'POST',
       body: JSON.stringify({
         title: { vi: data.title },
-        body: { vi: data.body },
+        message: { vi: data.body }, // Đổi từ body -> message cho đồng bộ Backend
         target_type: data.target_type,
+        member_id: data.target_type === 'individual' ? parseInt(data.member_id) : null,
         metadata: { link: data.link }
       })
     }),
@@ -68,7 +69,7 @@ export default function NotificationsPage() {
         title: '',
         body: '',
         target_type: 'all',
-        target_id: '',
+        member_id: '',
         link: ''
       });
       queryClient.invalidateQueries({ queryKey: ['admin-notifications-history'] });
@@ -158,12 +159,26 @@ export default function NotificationsPage() {
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl shadow-2xl p-2 border-slate-100">
                         <SelectItem value="all" className="rounded-xl py-3 cursor-pointer">Tất cả người dùng App</SelectItem>
+                        <SelectItem value="individual" className="rounded-xl py-3 cursor-pointer">Gửi cá nhân (Một hội viên)</SelectItem>
                         <SelectItem value="basic" className="rounded-xl py-3 cursor-pointer">Thành viên Basic (Thường)</SelectItem>
                         <SelectItem value="premium" className="rounded-xl py-3 cursor-pointer">Thành viên Premium</SelectItem>
                         <SelectItem value="vip" className="rounded-xl py-3 cursor-pointer">Thành viên VIP</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {formData.target_type === 'individual' && (
+                    <div className="space-y-3 animate-in zoom-in-95 duration-300">
+                      <Label className="text-sm font-bold text-rose-600 ml-1">ID Hội viên nhận thông báo <span className="text-rose-500">*</span></Label>
+                      <Input 
+                        placeholder="VD: 123 (Xem ID trong danh sách thành viên)"
+                        value={formData.member_id}
+                        onChange={e => setFormData({ ...formData, member_id: e.target.value })}
+                        className="h-14 bg-rose-50 border-none rounded-2xl font-bold px-6 shadow-inner"
+                      />
+                    </div>
+                  )}
+
                   <div className="space-y-3">
                     <Label className="text-sm font-bold text-slate-700 ml-1">Đường dẫn khi nhấn vào (Tùy chọn)</Label>
                     <Input 

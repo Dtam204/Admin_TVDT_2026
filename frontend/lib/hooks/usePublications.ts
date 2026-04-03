@@ -113,6 +113,11 @@ const publicationsApi = {
   // Stats
   getStats: async () => {
     return adminApiCall('/api/admin/publications/dashboard/stats');
+  },
+
+  // Storage Locations
+  getStorageLocations: async () => {
+    return adminApiCall('/api/admin/publications/storage-locations');
   }
 };
 
@@ -222,5 +227,13 @@ export function useAdminPublicationStats() {
     queryKey: ['admin-publication-stats'],
     queryFn: () => publicationsApi.getStats(),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useAdminStorageLocations() {
+  return useQuery({
+    queryKey: ['admin-storage-locations'],
+    queryFn: () => publicationsApi.getStorageLocations(),
+    staleTime: 30 * 60 * 1000,
   });
 }

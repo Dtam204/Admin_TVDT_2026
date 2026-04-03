@@ -1,6 +1,7 @@
 const { pool } = require('../config/database');
 const { logActivity } = require('./member_actions.controller');
 const { generateTransactionId } = require('../utils/id_helper');
+const { getEffectiveMembership } = require('../utils/member_helper');
 
 // ============================================================================
 // CRUD OPERATIONS
@@ -17,7 +18,9 @@ exports.getAll = async (req, res, next) => {
     let query = `
       SELECT 
         m.*, 
-        mp.name->>'vi' as membership_plan_name
+        mp.name->>'vi' as membership_plan_name,
+        mp.max_books_borrowed,
+        mp.tier_code
       FROM members m
       LEFT JOIN membership_plans mp ON m.membership_plan_id = mp.id
       WHERE 1=1`;
@@ -44,6 +47,22 @@ exports.getAll = async (req, res, next) => {
     params.push(parseInt(limit), offset);
 
     const { rows } = await pool.query(query, params);
+
+    // Process effective membership for each member
+    const data = rows.map(row => {
+      const effective = getEffectiveMembership({
+        membership_expires: row.membership_expires,
+        tier_code: row.tier_code || 'basic',
+        plan_name: row.membership_plan_name || 'Cơ bản',
+        max_books_borrowed: row.max_books_borrowed || 3
+      });
+      return {
+        ...row,
+        effective_plan: effective.plan_name,
+        is_expired: effective.is_expired,
+        effective_tier: effective.tier_code
+      };
+    });
 
     // Get total count
     let countQuery = 'SELECT COUNT(*) as total FROM members WHERE 1=1';
@@ -99,6 +118,8 @@ exports.getById = async (req, res, next) => {
       SELECT 
         m.*, 
         mp.name as plan_name_json,
+        mp.tier_code,
+        mp.max_books_borrowed,
         u.status as user_status,
         u.role_id,
         r.name as role_name
@@ -117,9 +138,22 @@ exports.getById = async (req, res, next) => {
     }
 
     const member = rows[0];
+    
+    // Process effective membership
+    const effective = getEffectiveMembership({
+      membership_expires: member.membership_expires,
+      tier_code: member.tier_code || 'basic',
+      plan_name: member.plan_name_json?.vi || member.plan_name_json || 'Cơ bản',
+      max_books_borrowed: member.max_books_borrowed || 3
+    });
+    
+    member.effective_plan = effective.plan_name;
+    member.is_expired = effective.is_expired;
+    member.effective_tier = effective.tier_code;
+
     // Clean up plan name for UI
     member.membership_plan_name = member.plan_name_json?.vi || member.plan_name_json || '';
-
+    
     // Phase 1 Profile 360 UI Stats
     const { rows: loanStats } = await pool.query(`
       SELECT 
@@ -201,9 +235,21 @@ exports.create = async (req, res, next) => {
     const sanitizedPlanId = membership_plan_id && membership_plan_id !== '' && !isNaN(parseInt(membership_plan_id)) 
         ? parseInt(membership_plan_id) : null;
     const sanitizedDob = date_of_birth && date_of_birth !== '' ? date_of_birth : null;
-    const sanitizedExpires = membership_expires && membership_expires !== '' ? membership_expires : null;
     const sanitizedIssued = issued_date && issued_date !== '' ? issued_date : null;
     const sanitizedCardType = card_type_id && card_type_id !== '' ? parseInt(card_type_id) : null;
+
+    // Automatic calculation for new members
+    let finalExpires = membership_expires && membership_expires !== '' ? membership_expires : null;
+    
+    if (!finalExpires && sanitizedPlanId) {
+        const { rows: planRows } = await client.query('SELECT duration_days FROM membership_plans WHERE id = $1', [sanitizedPlanId]);
+        if (planRows.length > 0) {
+            const duration = planRows[0].duration_days || 30;
+            const expDate = new Date();
+            expDate.setDate(expDate.getDate() + duration);
+            finalExpires = expDate.toISOString().split('T')[0];
+        }
+    }
 
     const { rows: memberRows } = await client.query(
       `INSERT INTO members (
@@ -217,7 +263,7 @@ exports.create = async (req, res, next) => {
         userId, full_name, email.toLowerCase(), phone || null, address || null, 
         card_number, sanitizedPlanId, identity_number || null, 
         sanitizedDob, gender || 'other', status || 'active',
-        sanitizedExpires, sanitizedCardType, sanitizedIssued,
+        finalExpires, sanitizedCardType, sanitizedIssued,
         is_verified, balance
       ]
     );
@@ -390,10 +436,21 @@ exports.remove = async (req, res, next) => {
       });
     }
 
+    const member = rows[0];
+
     // Log BEFORE delete (so the record still exists for the FK)
     await logActivity(id, 'delete_account', 'Xóa tài khoản hội viên vĩnh viễn.', req.ip, req.headers['user-agent'], client);
 
+    // 1. Delete membership requests associated with this member
+    await client.query('DELETE FROM membership_requests WHERE member_id = $1', [id]);
+
+    // 2. Delete member record
     await client.query('DELETE FROM members WHERE id = $1', [id]);
+
+    // 3. Delete associated user account if exists
+    if (member.user_id) {
+        await client.query('DELETE FROM users WHERE id = $1', [member.user_id]);
+    }
 
     await client.query('COMMIT');
 
@@ -443,6 +500,10 @@ exports.getStats = async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+const { processMembershipUpgrade } = require('../services/membership_upgrade.service');
+
+// ... (existing code)
+
 /**
  * Admin: Nâng cấp/Gia hạn VIP Hội viên thủ công (Thanh toán tại quầy)
  * POST /api/admin/members/:id/upgrade
@@ -451,64 +512,31 @@ exports.manualUpgrade = async (req, res, next) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
-    const { planId, paymentMethod = 'cash', referenceId, notes } = req.body;
+    const { planId, paymentMethod = 'cash', referenceId, notes, manual_days = 0 } = req.body;
 
     if (!planId) throw new Error('Vui lòng chọn gói hội viên');
 
     await client.query('BEGIN');
 
-    // 1. Lấy thông tin Gói và Hội viên
-    const { rows: plans } = await client.query('SELECT * FROM membership_plans WHERE id = $1', [planId]);
-    if (plans.length === 0) throw new Error('Gói hội viên không tồn tại');
-    const plan = plans[0];
-
-    const { rows: members } = await client.query('SELECT id, membership_expires, status FROM members WHERE id = $1 FOR UPDATE', [id]);
-    if (members.length === 0) throw new Error('Không tìm thấy hội viên');
-    const member = members[0];
-
-    // 2. Tính toán ngày hết hạn mới
-    let baseDate = new Date();
-    if (member.membership_expires && new Date(member.membership_expires) > new Date()) {
-      baseDate = new Date(member.membership_expires);
-    }
-    
-    const duration = plan.duration_days || 30;
-    baseDate.setDate(baseDate.getDate() + duration);
-    const newExpires = baseDate.toISOString().split('T')[0];
-
-    // 3. Tạo bản ghi thanh toán
-    const txnId = referenceId || generateTransactionId('SUB');
-    await client.query(`
-      INSERT INTO payments (
-        member_id, amount, type, status, notes, transaction_id, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-    `, [
-      id, 
-      plan.price || 0, 
-      'plan_subscription', 
-      'completed',
-      notes || `Nâng cấp gói ${plan.name?.vi || plan.name} (${paymentMethod})`,
-      txnId
-    ]);
-
-    // 4. Cập nhật Hội viên
-    await client.query(`
-      UPDATE members 
-      SET membership_plan_id = $1, 
-          membership_expires = $2, 
-          status = 'active'
-      WHERE id = $3
-    `, [planId, newExpires, id]);
+    // Use the shared service to process upgrade
+    const result = await processMembershipUpgrade({
+      memberId: id,
+      planId: planId,
+      manualDays: manual_days ? parseInt(manual_days) : 0,
+      note: notes || `Admin nâng cấp thủ công (${paymentMethod === 'cash' ? 'Tiền mặt' : 'Chuyển khoản'})`,
+      paymentMethod: paymentMethod,
+      paymentStatus: 'completed'
+    }, client);
 
     // 5. Log activity
-    await logActivity(id, 'manual_upgrade', `Admin nâng cấp VIP: Gói ${plan.name?.vi || plan.name}, Hạn mới: ${newExpires}`, req.ip, req.headers['user-agent'], client);
+    await logActivity(id, 'manual_upgrade', `Đã nâng cấp VIP thủ công. Hạn mới: ${result.newExpires}`, req.ip, req.headers['user-agent'], client);
 
     await client.query('COMMIT');
     
     return res.json({
       success: true,
-      message: `Nâng cấp thành công. Hạn mới: ${newExpires}`,
-      data: { newExpires, transaction_id: txnId }
+      message: `Nâng cấp thành công. Hạn mới mới: ${result.newExpires}`,
+      data: result
     });
   } catch (error) {
     if (client) await client.query('ROLLBACK');
@@ -518,3 +546,4 @@ exports.manualUpgrade = async (req, res, next) => {
     client.release();
   }
 };
+

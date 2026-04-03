@@ -7,8 +7,13 @@ const {
   remove,
 } = require('../controllers/bookLoans.controller');
 const requireAuth = require('../middlewares/auth.middleware');
+const { restrictToCMS, checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
+
+// Tất cả các route admin mượn trả đều yêu cầu đăng nhập và thuộc quyền CMS
+router.use(requireAuth);
+router.use(restrictToCMS);
 
 /**
  * @openapi
@@ -50,7 +55,7 @@ const router = express.Router();
  *       201:
  *         description: Created
  */
-router.get('/', requireAuth, getAll);
+router.get('/', checkPermission('book_loans.view'), getAll);
 
 /**
  * @openapi
@@ -102,9 +107,9 @@ router.get('/', requireAuth, getAll);
  *       200:
  *         description: Deleted
  */
-router.get('/:id', requireAuth, getById);
-router.post('/', requireAuth, create);
-router.put('/:id', requireAuth, update);
-router.delete('/:id', requireAuth, remove);
+router.get('/:id', checkPermission('book_loans.view'), getById);
+router.post('/', checkPermission('book_loans.manage'), create);
+router.put('/:id', checkPermission('book_loans.manage'), update);
+router.delete('/:id', checkPermission('book_loans.manage'), remove);
 
 module.exports = router;

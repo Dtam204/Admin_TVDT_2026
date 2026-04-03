@@ -1,0 +1,913 @@
+-- ============================================================================
+-- LIBRARY & COURSES MANAGEMENT SYSTEM - Complete Database Schema
+-- PostgreSQL 14+
+-- ============================================================================
+-- Modules:
+-- 1. Core System (Roles, Users, Permissions)
+-- 2. News Management
+-- 3. Contact Management  
+-- 4. Homepage Management
+-- 5. Media Library
+-- 6. Menu Management
+-- 7. SEO Management
+-- 8. Site Settings
+-- 9. PHASE 1: Books Management (Books, Authors, Publishers, Categories)
+-- 10. PHASE 1: Courses Management (Courses, Instructors, Categories)
+-- 11. PHASE 1: Members Management
+-- 12. PHASE 1: Book Loans
+-- 13. PHASE 1: Payments
+-- ============================================================================
+
+-- ============================================================================
+-- 1. CORE SYSTEM: ROLES, USERS, PERMISSIONS
+-- ============================================================================
+
+-- Function để tự động cập nhật updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Bảng roles (vai trò người dùng)
+CREATE TABLE IF NOT EXISTS roles (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  is_default BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_roles_code ON roles(code);
+CREATE INDEX IF NOT EXISTS idx_roles_active ON roles(is_active);
+
+DROP TRIGGER IF EXISTS update_roles_updated_at ON roles;
+CREATE TRIGGER update_roles_updated_at BEFORE UPDATE ON roles
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Bảng users (người dùng)
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  role_id INTEGER NOT NULL REFERENCES roles(id),
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);
+
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Bảng permissions (quyền chi tiết)
+CREATE TABLE IF NOT EXISTS permissions (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(100) NOT NULL UNIQUE,
+  name VARCHAR(255) NOT NULL,
+  module VARCHAR(100),
+  description TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_permissions_code ON permissions(code);
+CREATE INDEX IF NOT EXISTS idx_permissions_module ON permissions(module);
+CREATE INDEX IF NOT EXISTS idx_permissions_active ON permissions(is_active);
+
+-- Bảng role_permissions (gán quyền cho vai trò)
+CREATE TABLE IF NOT EXISTS role_permissions (
+  id SERIAL PRIMARY KEY,
+  role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  permission_id INTEGER NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(role_id, permission_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_role_permissions_role_id ON role_permissions(role_id);
+CREATE INDEX IF NOT EXISTS idx_role_permissions_permission_id ON role_permissions(permission_id);
+
+-- ============================================================================
+-- 2. NEWS MANAGEMENT
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS news_categories (
+  code VARCHAR(100) PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  parent_code VARCHAR(100) REFERENCES news_categories(code) ON UPDATE CASCADE ON DELETE SET NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_news_categories_parent_code ON news_categories(parent_code);
+
+CREATE TABLE IF NOT EXISTS news (
+  id SERIAL PRIMARY KEY,
+  category_code VARCHAR(100) REFERENCES news_categories(code) ON UPDATE CASCADE ON DELETE SET NULL,
+  author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  author TEXT,
+  title TEXT NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  summary TEXT,
+  content TEXT NOT NULL,
+  image_url VARCHAR(500),
+  read_time TEXT,
+  gradient TEXT,
+  gallery_title TEXT,
+  gallery_images JSONB DEFAULT '[]',
+  gallery_position VARCHAR(20) DEFAULT 'top',
+  show_table_of_contents BOOLEAN DEFAULT TRUE,
+  enable_share_buttons BOOLEAN DEFAULT TRUE,
+  show_author_box BOOLEAN DEFAULT TRUE,
+  views INTEGER DEFAULT 0,
+  is_featured BOOLEAN DEFAULT FALSE,
+  status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
+  published_at TIMESTAMP,
+  published_date DATE DEFAULT CURRENT_DATE,
+  seo_title TEXT,
+  seo_description TEXT,
+  seo_keywords TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Đảm bảo các cột mới tồn tại nếu bảng đã có từ trước
+ALTER TABLE news ADD COLUMN IF NOT EXISTS author TEXT;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);
+ALTER TABLE news ADD COLUMN IF NOT EXISTS read_time TEXT;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS gradient TEXT;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS gallery_title TEXT;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS gallery_images JSONB DEFAULT '[]';
+ALTER TABLE news ADD COLUMN IF NOT EXISTS gallery_position VARCHAR(20) DEFAULT 'top';
+ALTER TABLE news ADD COLUMN IF NOT EXISTS show_table_of_contents BOOLEAN DEFAULT TRUE;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS enable_share_buttons BOOLEAN DEFAULT TRUE;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS show_author_box BOOLEAN DEFAULT TRUE;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS published_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS seo_title TEXT;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS seo_description TEXT;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS seo_keywords TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_news_slug ON news(slug);
+CREATE INDEX IF NOT EXISTS idx_news_category_code ON news(category_code);
+CREATE INDEX IF NOT EXISTS idx_news_author_id ON news(author_id);
+CREATE INDEX IF NOT EXISTS idx_news_status ON news(status);
+CREATE INDEX IF NOT EXISTS idx_news_published_at ON news(published_at DESC) WHERE status = 'published';
+CREATE INDEX IF NOT EXISTS idx_news_published_date ON news(published_date DESC);
+CREATE INDEX IF NOT EXISTS idx_news_is_featured_active ON news(is_featured) WHERE is_featured = TRUE;
+
+DROP TRIGGER IF EXISTS update_news_updated_at ON news;
+CREATE TRIGGER update_news_updated_at BEFORE UPDATE ON news
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- 3. CONTACT MANAGEMENT
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS contact_requests (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(50),
+  company VARCHAR(255),
+  subject VARCHAR(500),
+  message TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'new' CHECK (status IN ('new', 'processing', 'resolved', 'closed')),
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_contact_requests_status ON contact_requests(status);
+CREATE INDEX IF NOT EXISTS idx_contact_requests_created_at ON contact_requests(created_at);
+
+DROP TRIGGER IF EXISTS update_contact_requests_updated_at ON contact_requests;
+CREATE TRIGGER update_contact_requests_updated_at BEFORE UPDATE ON contact_requests
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- 4. HOMEPAGE MANAGEMENT
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS homepage_sections (
+  id SERIAL PRIMARY KEY,
+  section_key VARCHAR(100) NOT NULL UNIQUE,
+  section_type VARCHAR(50) NOT NULL,
+  section_name TEXT NOT NULL,
+  section_data JSONB,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_homepage_sections_key ON homepage_sections(section_key);
+CREATE INDEX IF NOT EXISTS idx_homepage_sections_type ON homepage_sections(section_type);
+CREATE INDEX IF NOT EXISTS idx_homepage_sections_active ON homepage_sections(is_active);
+
+DROP TRIGGER IF EXISTS update_homepage_sections_updated_at ON homepage_sections;
+CREATE TRIGGER update_homepage_sections_updated_at BEFORE UPDATE ON homepage_sections
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- 5. MEDIA LIBRARY
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS media_folders (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) NOT NULL UNIQUE,
+  parent_id INTEGER REFERENCES media_folders(id) ON DELETE CASCADE,
+  description TEXT,
+  total_files INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_folders_parent_id ON media_folders(parent_id);
+CREATE INDEX IF NOT EXISTS idx_media_folders_slug ON media_folders(slug);
+
+DROP TRIGGER IF EXISTS update_media_folders_updated_at ON media_folders;
+CREATE TRIGGER update_media_folders_updated_at BEFORE UPDATE ON media_folders
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TABLE IF NOT EXISTS media_files (
+  id SERIAL PRIMARY KEY,
+  folder_id INTEGER REFERENCES media_folders(id) ON DELETE SET NULL,
+  original_name VARCHAR(500) NOT NULL,
+  filename VARCHAR(500) NOT NULL UNIQUE,
+  file_path VARCHAR(1000) NOT NULL,
+  file_url VARCHAR(1000) NOT NULL,
+  mime_type VARCHAR(100),
+  file_size BIGINT,
+  dimensions VARCHAR(50),
+  alt_text VARCHAR(500),
+  title VARCHAR(500),
+  description TEXT,
+  uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_files_folder_id ON media_files(folder_id);
+CREATE INDEX IF NOT EXISTS idx_media_files_filename ON media_files(filename);
+CREATE INDEX IF NOT EXISTS idx_media_files_mime_type ON media_files(mime_type);
+CREATE INDEX IF NOT EXISTS idx_media_files_uploaded_by ON media_files(uploaded_by);
+
+DROP TRIGGER IF EXISTS update_media_files_updated_at ON media_files;
+CREATE TRIGGER update_media_files_updated_at BEFORE UPDATE ON media_files
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- 6. MENU MANAGEMENT
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS menus (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(100) NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  location VARCHAR(100),
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_menus_code ON menus(code);
+CREATE INDEX IF NOT EXISTS idx_menus_location ON menus(location);
+
+DROP TRIGGER IF EXISTS update_menus_updated_at ON menus;
+CREATE TRIGGER update_menus_updated_at BEFORE UPDATE ON menus
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TABLE IF NOT EXISTS menu_items (
+  id SERIAL PRIMARY KEY,
+  menu_id INTEGER NOT NULL REFERENCES menus(id) ON DELETE CASCADE,
+  parent_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  url VARCHAR(500),
+  target VARCHAR(20) DEFAULT '_self',
+  icon VARCHAR(100),
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_menu_items_menu_id ON menu_items(menu_id);
+CREATE INDEX IF NOT EXISTS idx_menu_items_parent_id ON menu_items(parent_id);
+CREATE INDEX IF NOT EXISTS idx_menu_items_sort_order ON menu_items(sort_order);
+
+DROP TRIGGER IF EXISTS update_menu_items_updated_at ON menu_items;
+CREATE TRIGGER update_menu_items_updated_at BEFORE UPDATE ON menu_items
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- 7. SEO MANAGEMENT
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS seo_pages (
+  id SERIAL PRIMARY KEY,
+  page_path VARCHAR(500) NOT NULL UNIQUE,
+  page_type VARCHAR(50),
+  title TEXT,
+  description TEXT,
+  keywords TEXT,
+  og_title TEXT,
+  og_description TEXT,
+  og_image VARCHAR(500),
+  twitter_title TEXT,
+  twitter_description TEXT,
+  twitter_image VARCHAR(500),
+  canonical_url VARCHAR(500),
+  robots VARCHAR(100) DEFAULT 'index,follow',
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_seo_pages_path ON seo_pages(page_path);
+CREATE INDEX IF NOT EXISTS idx_seo_pages_type ON seo_pages(page_type);
+CREATE INDEX IF NOT EXISTS idx_seo_pages_active ON seo_pages(is_active);
+
+DROP TRIGGER IF EXISTS update_seo_pages_updated_at ON seo_pages;
+CREATE TRIGGER update_seo_pages_updated_at BEFORE UPDATE ON seo_pages
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- 8. SITE SETTINGS
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS site_settings (
+  id SERIAL PRIMARY KEY,
+  setting_key VARCHAR(100) NOT NULL UNIQUE,
+  setting_value TEXT,
+  setting_type VARCHAR(50) DEFAULT 'text',
+  description TEXT,
+  category VARCHAR(50) DEFAULT 'general',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_site_settings_key ON site_settings(setting_key);
+CREATE INDEX IF NOT EXISTS idx_site_settings_category ON site_settings(category);
+
+DROP TRIGGER IF EXISTS update_site_settings_updated_at ON site_settings;
+CREATE TRIGGER update_site_settings_updated_at BEFORE UPDATE ON site_settings
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- 9. PHASE 1: BOOKS MANAGEMENT
+-- ============================================================================
+
+-- 9.1. Publishers (Nhà xuất bản)
+CREATE TABLE IF NOT EXISTS publishers (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  logo VARCHAR(500),
+  description TEXT,
+  address TEXT,
+  phone VARCHAR(50),
+  email VARCHAR(255),
+  website VARCHAR(500),
+  total_books INTEGER DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_publishers_slug ON publishers(slug);
+CREATE INDEX IF NOT EXISTS idx_publishers_status ON publishers(status);
+
+DROP TRIGGER IF EXISTS update_publishers_updated_at ON publishers;
+CREATE TRIGGER update_publishers_updated_at BEFORE UPDATE ON publishers
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 9.2. Authors (Tác giả)
+CREATE TABLE IF NOT EXISTS authors (
+  id SERIAL PRIMARY KEY,
+  name JSONB NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  pseudonyms JSONB,
+  professional_title VARCHAR(255),
+  gender VARCHAR(20),
+  bio JSONB,
+  avatar VARCHAR(500),
+  cover_image VARCHAR(500),
+  birth_year INTEGER,
+  death_year INTEGER,
+  nationality VARCHAR(100),
+  birth_place VARCHAR(255),
+  education JSONB,
+  awards JSONB,
+  career_highlights JSONB,
+  website VARCHAR(500),
+  social_links JSONB,
+  total_books INTEGER DEFAULT 0,
+  featured BOOLEAN DEFAULT false,
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_authors_slug ON authors(slug);
+CREATE INDEX IF NOT EXISTS idx_authors_featured ON authors(featured) WHERE featured = true;
+CREATE INDEX IF NOT EXISTS idx_authors_status ON authors(status);
+
+DROP TRIGGER IF EXISTS update_authors_updated_at ON authors;
+CREATE TRIGGER update_authors_updated_at BEFORE UPDATE ON authors
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 9.3. Book Categories (Thể loại sách)
+CREATE TABLE IF NOT EXISTS book_categories (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(50) UNIQUE NOT NULL,
+  name JSONB NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  description JSONB,
+  icon VARCHAR(100),
+  parent_id INTEGER REFERENCES book_categories(id) ON DELETE SET NULL,
+  sort_order INTEGER DEFAULT 0,
+  total_books INTEGER DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_book_categories_slug ON book_categories(slug);
+CREATE INDEX IF NOT EXISTS idx_book_categories_code ON book_categories(code);
+CREATE INDEX IF NOT EXISTS idx_book_categories_parent ON book_categories(parent_id);
+CREATE INDEX IF NOT EXISTS idx_book_categories_status ON book_categories(status);
+
+DROP TRIGGER IF EXISTS update_book_categories_updated_at ON book_categories;
+CREATE TRIGGER update_book_categories_updated_at BEFORE UPDATE ON book_categories
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 9.4. Books (Sách)
+CREATE TABLE IF NOT EXISTS books (
+  id SERIAL PRIMARY KEY,
+  isbn VARCHAR(50) UNIQUE NOT NULL,
+  title JSONB NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  author TEXT,
+  publisher_id INTEGER REFERENCES publishers(id) ON DELETE SET NULL,
+  description JSONB,
+  cover_image VARCHAR(500),
+  publication_year INTEGER,
+  language VARCHAR(10) DEFAULT 'vi',
+  pages INTEGER,
+  format VARCHAR(20) DEFAULT 'paperback' CHECK (format IN ('hardcover', 'paperback', 'ebook', 'audiobook')),
+  quantity INTEGER DEFAULT 0,
+  available_quantity INTEGER DEFAULT 0,
+  price DECIMAL(10,2) DEFAULT 0,
+  rental_price DECIMAL(10,2) DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'available' CHECK (status IN ('available', 'out_of_stock', 'discontinued')),
+  cooperation_status VARCHAR(50) DEFAULT 'cooperating', -- Trạng thái hợp tác bản quyền
+  featured BOOLEAN DEFAULT false,
+  rating_average DECIMAL(3,2) DEFAULT 0,
+  total_reviews INTEGER DEFAULT 0,
+  total_borrowed INTEGER DEFAULT 0,
+  location VARCHAR(100),
+  metadata JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE books ADD COLUMN IF NOT EXISTS author TEXT;
+ALTER TABLE books ADD COLUMN IF NOT EXISTS cooperation_status VARCHAR(50) DEFAULT 'cooperating';
+ALTER TABLE books ADD COLUMN IF NOT EXISTS rating_average DECIMAL(3,2) DEFAULT 0;
+ALTER TABLE books ADD COLUMN IF NOT EXISTS total_reviews INTEGER DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS idx_books_isbn ON books(isbn);
+CREATE INDEX IF NOT EXISTS idx_books_slug ON books(slug);
+CREATE INDEX IF NOT EXISTS idx_books_publisher ON books(publisher_id);
+CREATE INDEX IF NOT EXISTS idx_books_status_featured ON books(status, featured);
+CREATE INDEX IF NOT EXISTS idx_books_title_gin ON books USING gin(title);
+
+DROP TRIGGER IF EXISTS update_books_updated_at ON books;
+CREATE TRIGGER update_books_updated_at BEFORE UPDATE ON books
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 9.5. Book Authors Junction (Many-to-Many)
+CREATE TABLE IF NOT EXISTS book_authors (
+  book_id INTEGER REFERENCES books(id) ON DELETE CASCADE,
+  author_id INTEGER REFERENCES authors(id) ON DELETE CASCADE,
+  sort_order INTEGER DEFAULT 0,
+  PRIMARY KEY (book_id, author_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_book_authors_book ON book_authors(book_id);
+CREATE INDEX IF NOT EXISTS idx_book_authors_author ON book_authors(author_id);
+
+-- 9.6. Book Category Books Junction (Many-to-Many)
+CREATE TABLE IF NOT EXISTS book_category_books (
+  book_id INTEGER REFERENCES books(id) ON DELETE CASCADE,
+  category_id INTEGER REFERENCES book_categories(id) ON DELETE CASCADE,
+  PRIMARY KEY (book_id, category_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_book_category_books_book ON book_category_books(book_id);
+CREATE INDEX IF NOT EXISTS idx_book_category_books_category ON book_category_books(category_id);
+
+-- ============================================================================
+-- 10. PHASE 1: COURSES MANAGEMENT
+-- ============================================================================
+
+-- 10.1. Course Categories (Danh mục khóa học)
+CREATE TABLE IF NOT EXISTS course_categories (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(50) UNIQUE NOT NULL,
+  name JSONB NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  description JSONB,
+  icon VARCHAR(100),
+  parent_id INTEGER REFERENCES course_categories(id) ON DELETE SET NULL,
+  sort_order INTEGER DEFAULT 0,
+  total_courses INTEGER DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_course_categories_slug ON course_categories(slug);
+CREATE INDEX IF NOT EXISTS idx_course_categories_code ON course_categories(code);
+CREATE INDEX IF NOT EXISTS idx_course_categories_parent ON course_categories(parent_id);
+CREATE INDEX IF NOT EXISTS idx_course_categories_status ON course_categories(status);
+
+DROP TRIGGER IF EXISTS update_course_categories_updated_at ON course_categories;
+CREATE TRIGGER update_course_categories_updated_at BEFORE UPDATE ON course_categories
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 10.2. Instructors (Giảng viên)
+CREATE TABLE IF NOT EXISTS instructors (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  name JSONB NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  title VARCHAR(255),
+  bio JSONB,
+  avatar VARCHAR(500),
+  expertise JSONB,
+  social_links JSONB,
+  total_courses INTEGER DEFAULT 0,
+  total_students INTEGER DEFAULT 0,
+  rating_average DECIMAL(3,2) DEFAULT 0,
+  featured BOOLEAN DEFAULT false,
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_instructors_slug ON instructors(slug);
+CREATE INDEX IF NOT EXISTS idx_instructors_user ON instructors(user_id);
+CREATE INDEX IF NOT EXISTS idx_instructors_featured ON instructors(featured) WHERE featured = true;
+CREATE INDEX IF NOT EXISTS idx_instructors_status ON instructors(status);
+
+DROP TRIGGER IF EXISTS update_instructors_updated_at ON instructors;
+CREATE TRIGGER update_instructors_updated_at BEFORE UPDATE ON instructors
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 10.3. Courses (Khóa học)
+CREATE TABLE IF NOT EXISTS courses (
+  id SERIAL PRIMARY KEY,
+  title JSONB NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  description JSONB,
+  content JSONB,
+  thumbnail VARCHAR(500),
+  preview_video VARCHAR(500),
+  level VARCHAR(20) DEFAULT 'beginner' CHECK (level IN ('beginner', 'intermediate', 'advanced')),
+  language VARCHAR(10) DEFAULT 'vi',
+  duration_hours DECIMAL(5,2) DEFAULT 0,
+  total_lessons INTEGER DEFAULT 0,
+  price DECIMAL(10,2) DEFAULT 0,
+  discount_price DECIMAL(10,2) DEFAULT 0,
+  is_free BOOLEAN DEFAULT false,
+  certificate BOOLEAN DEFAULT false,
+  requirements JSONB,
+  what_you_learn JSONB,
+  target_audience JSONB,
+  status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
+  featured BOOLEAN DEFAULT false,
+  rating_average DECIMAL(3,2) DEFAULT 0,
+  total_reviews INTEGER DEFAULT 0,
+  total_enrolled INTEGER DEFAULT 0,
+  total_completed INTEGER DEFAULT 0,
+  metadata JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_courses_slug ON courses(slug);
+CREATE INDEX IF NOT EXISTS idx_courses_status_featured ON courses(status, featured);
+CREATE INDEX IF NOT EXISTS idx_courses_title_gin ON courses USING gin(title);
+CREATE INDEX IF NOT EXISTS idx_courses_level ON courses(level);
+
+DROP TRIGGER IF EXISTS update_courses_updated_at ON courses;
+CREATE TRIGGER update_courses_updated_at BEFORE UPDATE ON courses
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 10.4. Course Instructors Junction (Many-to-Many)
+CREATE TABLE IF NOT EXISTS course_instructors (
+  course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+  instructor_id INTEGER REFERENCES instructors(id) ON DELETE CASCADE,
+  sort_order INTEGER DEFAULT 0,
+  PRIMARY KEY (course_id, instructor_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_course_instructors_course ON course_instructors(course_id);
+CREATE INDEX IF NOT EXISTS idx_course_instructors_instructor ON course_instructors(instructor_id);
+
+-- 10.5. Course Category Courses Junction (Many-to-Many)
+CREATE TABLE IF NOT EXISTS course_category_courses (
+  course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+  category_id INTEGER REFERENCES course_categories(id) ON DELETE CASCADE,
+  PRIMARY KEY (course_id, category_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_course_category_courses_course ON course_category_courses(course_id);
+CREATE INDEX IF NOT EXISTS idx_course_category_courses_category ON course_category_courses(category_id);
+
+-- ============================================================================
+-- 11. PHASE 1: MEMBERS MANAGEMENT
+-- ============================================================================
+
+-- 11.1. Membership Plans (Gói thành viên)
+CREATE TABLE IF NOT EXISTS membership_plans (
+  id SERIAL PRIMARY KEY,
+  name JSONB NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  description JSONB,
+  price DECIMAL(10,2) DEFAULT 0,
+  duration_days INTEGER DEFAULT 30,
+  features JSONB,
+  max_books_borrowed INTEGER DEFAULT 3,
+  max_concurrent_courses INTEGER DEFAULT 1,
+  max_renewal_limit INTEGER DEFAULT 1, -- Giới hạn số lần gia hạn
+  allow_digital_read BOOLEAN DEFAULT TRUE,
+  allow_download BOOLEAN DEFAULT FALSE,
+  discount_percentage DECIMAL(5,2) DEFAULT 0,
+  priority_support BOOLEAN DEFAULT false,
+  sort_order INTEGER DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_membership_plans_slug ON membership_plans(slug);
+CREATE INDEX IF NOT EXISTS idx_membership_plans_status ON membership_plans(status);
+
+DROP TRIGGER IF EXISTS update_membership_plans_updated_at ON membership_plans;
+CREATE TRIGGER update_membership_plans_updated_at BEFORE UPDATE ON membership_plans
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 11.2. Members (Độc giả/Học viên)
+CREATE TABLE IF NOT EXISTS members (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  full_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  phone VARCHAR(50),
+  avatar VARCHAR(500),
+  date_of_birth DATE,
+  gender VARCHAR(10) CHECK (gender IN ('male', 'female', 'other')),
+  address TEXT,
+  card_number VARCHAR(50) UNIQUE, -- Số thẻ thư viện điện tử
+  identity_number VARCHAR(50), -- CCCD/CMND
+  card_type_id INTEGER,
+  issued_date DATE,
+  is_verified BOOLEAN DEFAULT FALSE,
+  membership_plan_id INTEGER REFERENCES membership_plans(id) ON DELETE SET NULL,
+  membership_expires DATE,
+  total_books_borrowed INTEGER DEFAULT 0,
+  total_courses_enrolled INTEGER DEFAULT 0,
+  total_courses_completed INTEGER DEFAULT 0,
+  wallet_balance DECIMAL(15,2) DEFAULT 0, -- Tăng độ chính xác lên 15,2
+  points INTEGER DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'banned')),
+  last_activity_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE members ADD COLUMN IF NOT EXISTS card_number VARCHAR(50) UNIQUE;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS identity_number VARCHAR(50);
+ALTER TABLE members ADD COLUMN IF NOT EXISTS card_type_id INTEGER;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS issued_date DATE;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE members ALTER COLUMN wallet_balance TYPE DECIMAL(15,2);
+
+CREATE INDEX IF NOT EXISTS idx_members_email ON members(email);
+CREATE INDEX IF NOT EXISTS idx_members_user ON members(user_id);
+CREATE INDEX IF NOT EXISTS idx_members_plan ON members(membership_plan_id);
+CREATE INDEX IF NOT EXISTS idx_members_status ON members(status);
+
+DROP TRIGGER IF EXISTS update_members_updated_at ON members;
+CREATE TRIGGER update_members_updated_at BEFORE UPDATE ON members
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 11.3. Reader Entitlements (Quyền truy cập tài nguyên)
+CREATE TABLE IF NOT EXISTS reader_entitlements (
+    id SERIAL PRIMARY KEY,
+    reader_id INTEGER REFERENCES members(id) ON DELETE CASCADE,
+    plan_id INTEGER REFERENCES membership_plans(id) ON DELETE SET NULL,
+    resource_type VARCHAR(50), -- 'book', 'course', 'collection'
+    resource_id INTEGER, -- ID của sách hoặc khóa học
+    start_date DATE DEFAULT CURRENT_DATE,
+    expire_date DATE,
+    extra_borrow_limit INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_entitlements_reader ON reader_entitlements(reader_id);
+
+-- 11.4. Interaction Logs (Nhật ký tương tác chi tiết)
+CREATE TABLE IF NOT EXISTS interaction_logs (
+    id SERIAL PRIMARY KEY,
+    reader_id INTEGER REFERENCES members(id) ON DELETE SET NULL,
+    resource_type VARCHAR(50), -- 'book', 'news', 'course'
+    resource_id INTEGER,
+    action_type VARCHAR(50), -- 'read', 'download', 'favorite', 'comment'
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_interaction_logs_reader ON interaction_logs(reader_id);
+CREATE INDEX IF NOT EXISTS idx_interaction_logs_resource ON interaction_logs(resource_type, resource_id);
+
+-- ============================================================================
+-- 12. PHASE 1: BOOK LOANS
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS book_loans (
+  id SERIAL PRIMARY KEY,
+  member_id INTEGER REFERENCES members(id) ON DELETE CASCADE,
+  book_id INTEGER REFERENCES books(id) ON DELETE CASCADE,
+  copy_id UUID, -- Liên kết tới publication_copies (nếu có)
+  loan_date DATE, -- Cho phép NULL cho trạng thái pending
+  due_date DATE, -- Cho phép NULL cho trạng thái pending
+  registration_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Ngày đăng ký mượn
+  approved_at TIMESTAMP WITH TIME ZONE, -- Ngày Admin duyệt cho mượn
+  return_date DATE,
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'borrowing', 'returned', 'overdue', 'lost', 'rejected')),
+  late_fee DECIMAL(10,2) DEFAULT 0,
+  ma_dang_ky_ca_biet VARCHAR(100),
+  notes TEXT,
+  staff_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_book_loans_member ON book_loans(member_id);
+CREATE INDEX IF NOT EXISTS idx_book_loans_book ON book_loans(book_id);
+CREATE INDEX IF NOT EXISTS idx_book_loans_status_due ON book_loans(status, due_date);
+CREATE INDEX IF NOT EXISTS idx_book_loans_staff ON book_loans(staff_id);
+
+DROP TRIGGER IF EXISTS update_book_loans_updated_at ON book_loans;
+CREATE TRIGGER update_book_loans_updated_at BEFORE UPDATE ON book_loans
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- 13. PHASE 1: PAYMENTS
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS payments (
+  id SERIAL PRIMARY KEY,
+  transaction_id VARCHAR(255) UNIQUE NOT NULL,
+  member_id INTEGER REFERENCES members(id) ON DELETE SET NULL,
+  type VARCHAR(50) NOT NULL CHECK (type IN ('course', 'membership', 'book_rental', 'late_fee', 'deposit')),
+  related_id INTEGER,
+  amount DECIMAL(15,2) NOT NULL, -- Tăng độ chính xác
+  currency VARCHAR(10) DEFAULT 'VND',
+  payment_method VARCHAR(50) CHECK (payment_method IN ('card', 'bank_transfer', 'momo', 'zalopay', 'wallet')),
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
+  payment_gateway VARCHAR(50),
+  gateway_response JSONB,
+  notes TEXT,
+  paid_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_payments_transaction ON payments(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_payments_member ON payments(member_id);
+CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
+CREATE INDEX IF NOT EXISTS idx_payments_type ON payments(type);
+CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at);
+
+DROP TRIGGER IF EXISTS update_payments_updated_at ON payments;
+CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON payments
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- 13.5. NEW INTERACTION & WORKFLOW TABLES (From Migrations)
+-- ============================================================================
+
+-- Bảng yêu cầu đăng ký/gia hạn gói hội viên (Phê duyệt flow)
+CREATE TABLE IF NOT EXISTS membership_requests (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    plan_id INTEGER REFERENCES membership_plans(id) ON DELETE SET NULL,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    amount DECIMAL(15, 2), -- Số tiền chốt tại thời điểm đăng ký
+    transaction_id VARCHAR(100), -- Mã giao dịch từ SePay/Ngân hàng
+    gateway VARCHAR(50),
+    request_note TEXT,
+    admin_note TEXT,
+    manual_days_approved INTEGER,
+    processed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    processed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Logic đồng bộ cột cho membership_requests
+ALTER TABLE membership_requests ADD COLUMN IF NOT EXISTS amount DECIMAL(15, 2);
+ALTER TABLE membership_requests ADD COLUMN IF NOT EXISTS transaction_id VARCHAR(100);
+ALTER TABLE membership_requests ADD COLUMN IF NOT EXISTS gateway VARCHAR(50);
+ALTER TABLE membership_requests ADD COLUMN IF NOT EXISTS manual_days_approved INTEGER;
+
+CREATE INDEX IF NOT EXISTS idx_membership_requests_txn ON membership_requests(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_membership_requests_member ON membership_requests(member_id);
+CREATE INDEX IF NOT EXISTS idx_membership_requests_status ON membership_requests(status);
+
+DROP TRIGGER IF EXISTS update_membership_requests_updated_at ON membership_requests;
+CREATE TRIGGER update_membership_requests_updated_at BEFORE UPDATE ON membership_requests
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Bảng quản lý đặt giữ chỗ (Reservations)
+CREATE TABLE IF NOT EXISTS book_reservations (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'notified', 'fulfilled', 'cancelled', 'expired')),
+    requested_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    notified_at TIMESTAMP WITH TIME ZONE,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_reservations_book_id ON book_reservations(book_id, status);
+
+-- Bảng Nhật ký hoạt động & Giao dịch thẻ hội viên
+CREATE TABLE IF NOT EXISTS member_activities (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    activity_type VARCHAR(50) NOT NULL,
+    description TEXT,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS member_transactions (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    amount DECIMAL(15, 2) NOT NULL,
+    transaction_type VARCHAR(50) NOT NULL, -- 'deposit', 'membership_fee', 'fine', 'refund'
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'completed',
+    processed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bảng Bình luận & Phản hồi (Tiered System)
+CREATE TABLE IF NOT EXISTS comments (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  object_id INTEGER NOT NULL,
+  object_type VARCHAR(50) NOT NULL, -- 'book', 'news', 'course'
+  parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+  reply_to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  content TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected', 'hidden', 'deleted')),
+  is_featured BOOLEAN DEFAULT FALSE,
+  likes_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_comments_object ON comments(object_type, object_id);
+
+DROP TRIGGER IF EXISTS update_comments_updated_at ON comments;
+CREATE TRIGGER update_comments_updated_at BEFORE UPDATE ON comments
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
