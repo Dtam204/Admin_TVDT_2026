@@ -18,7 +18,7 @@ export default function CreateNewsPage() {
       // Delay nhỏ để toast hiển thị trước khi redirect
       setTimeout(() => {
         router.push("/admin/news");
-      }, 100);
+      }, 500);
     } catch (error: any) {
       toast.error(error?.message || "Có lỗi xảy ra khi tạo bài viết");
       // Silently fail

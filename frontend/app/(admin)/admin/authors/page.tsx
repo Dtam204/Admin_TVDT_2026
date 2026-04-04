@@ -18,6 +18,9 @@ import { Plus, Search, Edit, Trash2, User, Sparkles, Globe, Calendar, CheckCircl
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { cn } from '@/components/ui/utils';
+import { getCleanValue } from '@/lib/utils/locale-admin';
+
+// Removed local helpers, using centralized getCleanValue
 
 export default function AuthorsPage() {
   const [page, setPage] = useState(1);
@@ -40,14 +43,8 @@ export default function AuthorsPage() {
     onError: (err: any) => toast.error(err.message || 'Lỗi khi xóa tác giả')
   });
 
-  const getDisplayName = (name: any) => {
-    if (!name) return 'N/A';
-    if (typeof name === 'string') return name;
-    return name.vi || name.en || Object.values(name)[0] || 'N/A';
-  };
-
   const handleDelete = (id: string, name: any) => {
-    if (confirm(`Bạn có chắc muốn xóa tác giả "${getDisplayName(name)}"?`)) {
+    if (confirm(`Bạn có chắc muốn xóa tác giả "${getCleanValue(name)}"?`)) {
       deleteMutation.mutate(id);
     }
   };
@@ -150,23 +147,23 @@ export default function AuthorsPage() {
                   <TableCell className="pl-6">
                     <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 border-2 border-slate-200 shadow-sm transition-transform group-hover:scale-110">
                       {author.avatar ? (
-                        <img src={author.avatar} alt="" className="w-full h-full object-cover" />
+                        <img src={typeof author.avatar === 'string' ? getCleanValue(author.avatar) : ''} alt="" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50 font-black text-xs">
-                          {(getDisplayName(author.name) || '?').charAt(0).toUpperCase()}
+                          {(getCleanValue(author.name) || '?').charAt(0).toUpperCase()}
                         </div>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-bold text-slate-900 uppercase text-[12px] tracking-tight group-hover:text-blue-600 transition-colors">{getDisplayName(author.name)}</div>
+                    <div className="font-bold text-slate-900 uppercase text-[12px] tracking-tight group-hover:text-blue-600 transition-colors">{getCleanValue(author.name)}</div>
                     <div className="text-[10px] text-slate-500 flex items-center gap-1 font-medium italic mt-0.5">
-                      <Globe className="w-2.5 h-2.5" /> {typeof author.nationality === 'string' ? author.nationality : (author.nationality?.vi || author.nationality?.en || 'Chưa rõ')}
+                      <Globe className="w-2.5 h-2.5" /> {getCleanValue(author.nationality) || 'Chưa rõ'}
                     </div>
                   </TableCell>
                   <TableCell className="max-w-[250px]">
                     <p className="text-[11px] text-slate-500 font-medium line-clamp-1 italic leading-relaxed">
-                       {typeof author.bio === 'string' ? author.bio : (author.bio?.vi || author.bio?.en || 'Chưa cập nhật tiểu sử...')}
+                       {getCleanValue(author.bio) || 'Chưa cập nhật tiểu sử...'}
                     </p>
                   </TableCell>
                   <TableCell className="text-center">

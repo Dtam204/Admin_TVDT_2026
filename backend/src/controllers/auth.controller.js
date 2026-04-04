@@ -1,5 +1,9 @@
 const { auth } = require('../services/admin');
 
+/**
+ * Auth Controller - Admin System
+ * Chuẩn hóa phản hồi RESTful: success, message, data, code
+ */
 exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body || {};
@@ -7,7 +11,8 @@ exports.login = async (req, res, next) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email và mật khẩu là bắt buộc',
+        message: 'Vui lòng cung cấp đầy đủ email và mật khẩu',
+        code: 400
       });
     }
 
@@ -16,17 +21,19 @@ exports.login = async (req, res, next) => {
     if (result) {
       return res.json({
         success: true,
-        ...result,
+        message: 'Đăng nhập hệ thống quản trị thành công',
+        data: result,
+        code: 0
       });
     }
 
     return res.status(401).json({
       success: false,
-      message: 'Email hoặc mật khẩu không đúng hoặc tài khoản bị khoá',
+      message: 'Email hoặc mật khẩu không chính xác hoặc tài khoản đã bị khoá',
+      code: 401
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Admin Login error:', error);
     return next(error);
   }
 };
-

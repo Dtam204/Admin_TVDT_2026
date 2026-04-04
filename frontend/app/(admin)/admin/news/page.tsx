@@ -9,8 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { adminApiCall, AdminEndpoints } from "@/lib/api/admin";
-import { getLocalizedText } from "@/lib/utils/i18n";
-import { useTranslationControls } from "@/lib/hooks/useTranslationControls";
+import { getCleanValue } from "@/lib/utils/locale-admin";
 import {
   Select,
   SelectContent,
@@ -21,17 +20,17 @@ import {
 import { cn } from "@/components/ui/utils";
 
 type NewsStatus = "draft" | "published";
-type Locale = 'vi' | 'en' | 'ja';
+// type Locale = 'vi' | 'en' | 'ja'; // Removed unused Locale type
 
 interface NewsItem {
   id: number;
-  title: string | Record<Locale, string>;
-  excerpt?: string | Record<Locale, string>;
+  title: string;
+  excerpt?: string;
   status: NewsStatus | string;
   createdAt: string;
   imageUrl?: string;
-  author?: string | Record<Locale, string>;
-  readTime?: string | Record<Locale, string>;
+  author?: string;
+  readTime?: string;
   slug?: string;
   isFeatured?: boolean;
   commentsCount?: number;
@@ -42,11 +41,6 @@ const PAGE_SIZE = 10;
 
 export default function AdminNewsPage() {
   const router = useRouter();
-  
-  // Use translation controls hook
-  const {
-    globalLocale,
-  } = useTranslationControls();
   
   const [news, setNews] = useState<NewsItem[]>([]);
   const [search, setSearch] = useState("");
@@ -82,8 +76,8 @@ export default function AdminNewsPage() {
     const searchLower = search.toLowerCase();
 
     return news.filter((item) => {
-      const titleStr = typeof item.title === 'string' ? item.title : (item.title?.vi || item.title?.en || item.title?.ja || '');
-      const excerptStr = typeof item.excerpt === 'string' ? item.excerpt : (item.excerpt?.vi || item.excerpt?.en || item.excerpt?.ja || '');
+      const titleStr = getCleanValue(item.title);
+      const excerptStr = getCleanValue(item.excerpt);
 
       const matchesSearch =
         !searchLower ||
@@ -302,16 +296,13 @@ export default function AdminNewsPage() {
                       )}
                       <div className="min-w-0">
                         <div className="font-black text-slate-800 uppercase text-[12px] group-hover:text-indigo-600 transition-colors tracking-tight line-clamp-1">
-                          {typeof item.title === 'string' ? item.title : getLocalizedText(item.title, globalLocale)}
+                          {getCleanValue(item.title)}
                         </div>
                         <div className="text-[10px] text-slate-400 line-clamp-1 mt-1 italic font-medium max-w-[400px]">
-                          {(() => {
-                            const excerptStr = typeof item.excerpt === 'string' ? item.excerpt : getLocalizedText(item.excerpt, globalLocale) || '';
-                            return excerptStr;
-                          })()}
+                          {getCleanValue(item.excerpt)}
                         </div>
                         <div className="flex items-center gap-2 mt-1.5 grayscale group-hover:grayscale-0 opacity-60 group-hover:opacity-100 transition-all">
-                           <Badge className="bg-slate-100 text-slate-500 rounded px-1.5 py-0 text-[8px] font-bold uppercase">{item.author ? (typeof item.author === 'string' ? item.author : getLocalizedText(item.author, globalLocale)) : 'ADMIN'}</Badge>
+                           <Badge className="bg-slate-100 text-slate-500 rounded px-1.5 py-0 text-[8px] font-bold uppercase">{getCleanValue(item.author) || 'ADMIN'}</Badge>
                            <span className="text-[9px] text-slate-400 font-mono">/ {item.slug}</span>
                         </div>
                       </div>
@@ -352,7 +343,9 @@ export default function AdminNewsPage() {
                     </button>
                   </td>
                   <td className="text-center">
-                    <div className="text-[10px] text-slate-500 font-bold font-mono uppercase truncate">{item.createdAt.split(' ')[0]}</div>
+                    <div className="text-[10px] text-slate-500 font-bold font-mono uppercase truncate">
+                      {item.createdAt ? item.createdAt.split(' ')[0] : '---'}
+                    </div>
                   </td>
                   <td className="pr-6 text-right">
                     <div className="flex justify-end gap-1">

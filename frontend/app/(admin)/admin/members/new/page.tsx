@@ -117,7 +117,10 @@ export default function NewMemberPage() {
     create(formData, {
       onSuccess: () => {
         toast.success(existingUser ? 'Đã liên kết và tạo Bạn đọc thành công!' : 'Đã tạo tài khoản và Bạn đọc thành công!');
-        router.push('/admin/members');
+        // Delay nhỏ để tránh lỗi unmount và hiển thị toast
+        setTimeout(() => {
+          router.push('/admin/members');
+        }, 500);
       },
       onError: (error: any) => {
         toast.error(error.message || 'Lỗi khi tạo Bạn đọc');

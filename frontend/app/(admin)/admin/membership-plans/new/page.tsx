@@ -13,7 +13,10 @@ export default function NewMembershipPlanPage() {
     create(data, {
       onSuccess: () => {
         toast.success('Đã tạo Gói Bạn Đọc thành công!');
-        router.push('/admin/membership-plans');
+        // Delay nhỏ để tránh lỗi unmount và hiển thị toast
+        setTimeout(() => {
+          router.push('/admin/membership-plans');
+        }, 500);
       },
       onError: (err: any) => {
         toast.error(err.message || 'Lỗi khi tạo gói.');

@@ -9,12 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { adminApiCall, AdminEndpoints } from "@/lib/api/admin";
-import { LocaleInput } from "@/components/admin/LocaleInput";
-import { getLocaleValue, setLocaleValue, migrateObjectToLocale } from "@/lib/utils/locale-admin";
-import { getLocalizedText } from "@/lib/utils/i18n";
-import { useTranslationControls } from "@/lib/hooks/useTranslationControls";
-import { AIProviderSelector } from "@/components/admin/AIProviderSelector";
-type Locale = 'vi' | 'en' | 'ja';
+import { getCleanValue } from "@/lib/utils/locale-admin";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import * as LucideIcons from "lucide-react";
 import ImageUpload from "@/components/admin/ImageUpload";
@@ -42,12 +37,12 @@ import {
 // Interfaces
 interface HeroData {
   id?: number;
-  badge: string | Record<Locale, string>;
+  badge: string;
   title: {
-    prefix: string | Record<Locale, string>;
-    highlight: string | Record<Locale, string>;
+    prefix: string;
+    highlight: string;
   };
-  description: string | Record<Locale, string>;
+  description: string;
   iconName: string;
   image: string;
   isActive: boolean;
@@ -56,8 +51,8 @@ interface HeroData {
 interface InfoCardItem {
   id?: number;
   iconName: string;
-  title: string | Record<Locale, string>;
-  content: string | Record<Locale, string>;
+  title: string;
+  content: string;
   link: string | null;
   gradient: string;
   sortOrder: number;
@@ -72,29 +67,29 @@ interface InfoCardsData {
 
 interface FormData {
   id?: number;
-  header: string | Record<Locale, string>;
-  description: string | Record<Locale, string>;
+  header: string;
+  description: string;
   fields: {
-    name: { label: string | Record<Locale, string>; placeholder: string | Record<Locale, string> };
-    email: { label: string | Record<Locale, string>; placeholder: string | Record<Locale, string> };
-    phone: { label: string | Record<Locale, string>; placeholder: string | Record<Locale, string> };
-    company: { label: string | Record<Locale, string>; placeholder: string | Record<Locale, string> };
-    service: { label: string | Record<Locale, string>; placeholder: string | Record<Locale, string> };
-    message: { label: string | Record<Locale, string>; placeholder: string | Record<Locale, string> };
+    name: { label: string; placeholder: string };
+    email: { label: string; placeholder: string };
+    phone: { label: string; placeholder: string };
+    company: { label: string; placeholder: string };
+    service: { label: string; placeholder: string };
+    message: { label: string; placeholder: string };
   };
   button: {
-    submit: string | Record<Locale, string>;
-    success: string | Record<Locale, string>;
+    submit: string;
+    success: string;
   };
-  services: (string | Record<Locale, string>)[];
+  services: string[];
   isActive: boolean;
 }
 
 interface OfficeItem {
   id?: number;
-  title?: string | Record<Locale, string>;
-  city: string | Record<Locale, string>;
-  address: string | Record<Locale, string>;
+  title?: string;
+  city: string;
+  address: string;
   phone: string;
   email: string;
   sortOrder: number;
@@ -105,7 +100,7 @@ interface SocialItem {
   id?: number;
   iconName: string;
   href: string;
-  label: string | Record<Locale, string>;
+  label: string;
   gradient: string;
   sortOrder: number;
   isActive: boolean;
@@ -114,22 +109,22 @@ interface SocialItem {
 interface SidebarData {
   id?: number;
   quickActions: {
-    title: string | Record<Locale, string>;
-    description: string | Record<Locale, string>;
+    title: string;
+    description: string;
     buttons: {
-      hotline: { label: string | Record<Locale, string>; value: string; href: string };
-      appointment: { label: string | Record<Locale, string>; value: string | Record<Locale, string>; href: string };
+      hotline: { label: string; value: string; href: string };
+      appointment: { label: string; value: string; href: string };
     };
   };
   offices: OfficeItem[];
-  officesTitle?: string | Record<Locale, string>;
+  officesTitle?: string;
   socials: SocialItem[];
   isActive: boolean;
 }
 
 interface MapData {
   id?: number;
-  address: string | Record<Locale, string>;
+  address: string;
   iframeSrc: string;
   isActive: boolean;
 }
@@ -154,17 +149,6 @@ const GRADIENT_OPTIONS = [
 ];
 
 export default function AdminContactPage() {
-  // Use translation controls hook
-  const {
-    globalLocale,
-    setGlobalLocale,
-    aiProvider,
-    setAiProvider,
-    translatingAll,
-    translateSourceLang,
-    setTranslateSourceLang,
-    translateData
-  } = useTranslationControls();
 
   // Hero State
   const [heroData, setHeroData] = useState<HeroData>({
@@ -203,7 +187,7 @@ export default function AdminContactPage() {
     isActive: true,
   });
   const [loadingForm, setLoadingForm] = useState(false);
-  const [newService, setNewService] = useState<Record<Locale, string>>({ vi: "", en: "", ja: "" });
+  const [newService, setNewService] = useState<string>("");
 
   // Sidebar State
   const [sidebarData, setSidebarData] = useState<SidebarData>({
@@ -228,7 +212,7 @@ export default function AdminContactPage() {
 
   // Map State
   const [mapData, setMapData] = useState<MapData>({
-    address: { vi: "", en: "", ja: "" },
+    address: "",
     iframeSrc: "",
     isActive: true,
   });
@@ -242,16 +226,7 @@ export default function AdminContactPage() {
         AdminEndpoints.contact.hero.get,
       );
       if (data?.data) {
-        // Normalize dữ liệu để đảm bảo các field luôn là locale object
-        const normalizedHero = migrateObjectToLocale(data.data);
-        // Normalize nested title object
-        if (normalizedHero.title && typeof normalizedHero.title === 'object' && !Array.isArray(normalizedHero.title)) {
-          normalizedHero.title = {
-            prefix: migrateObjectToLocale(normalizedHero.title.prefix || ''),
-            highlight: migrateObjectToLocale(normalizedHero.title.highlight || '')
-          };
-        }
-        setHeroData(normalizedHero);
+        setHeroData(data.data);
       }
     } catch (error: any) {
       toast.error(error?.message || "Không thể tải hero");
@@ -267,24 +242,7 @@ export default function AdminContactPage() {
         AdminEndpoints.contact.infoCards.get,
       );
       if (data?.data) {
-        // Normalize dữ liệu để đảm bảo các field luôn là locale object
-        const normalizedInfoCards = migrateObjectToLocale(data.data);
-        // Normalize items
-        if (normalizedInfoCards.items && Array.isArray(normalizedInfoCards.items)) {
-          normalizedInfoCards.items = normalizedInfoCards.items.map((item: any) => {
-            const normalizedItem = migrateObjectToLocale(item);
-            // Giữ nguyên iconName, link, gradient, sortOrder, isActive
-            return {
-              ...normalizedItem,
-              iconName: item.iconName || 'MessageCircle',
-              link: item.link || null,
-              gradient: item.gradient || GRADIENT_OPTIONS[0].value,
-              sortOrder: item.sortOrder ?? 0,
-              isActive: item.isActive ?? true
-            };
-          });
-        }
-        setInfoCardsData(normalizedInfoCards);
+        setInfoCardsData(data.data);
       }
     } catch (error: any) {
       toast.error(error?.message || "Không thể tải info cards");
@@ -300,32 +258,7 @@ export default function AdminContactPage() {
         AdminEndpoints.contact.form.get,
       );
       if (data?.data) {
-        // Normalize dữ liệu để đảm bảo các field luôn là locale object
-        const normalizedForm = migrateObjectToLocale(data.data);
-        // Normalize nested fields object
-        if (normalizedForm.fields && typeof normalizedForm.fields === 'object') {
-          Object.keys(normalizedForm.fields).forEach((key) => {
-            const field = (normalizedForm.fields as any)[key];
-            if (field && typeof field === 'object') {
-              (normalizedForm.fields as any)[key] = {
-                label: migrateObjectToLocale(field.label || ''),
-                placeholder: migrateObjectToLocale(field.placeholder || '')
-              };
-            }
-          });
-        }
-        // Normalize button object
-        if (normalizedForm.button && typeof normalizedForm.button === 'object') {
-          normalizedForm.button = {
-            submit: migrateObjectToLocale(normalizedForm.button.submit || ''),
-            success: migrateObjectToLocale(normalizedForm.button.success || '')
-          };
-        }
-        // Normalize services array
-        if (normalizedForm.services && Array.isArray(normalizedForm.services)) {
-          normalizedForm.services = normalizedForm.services.map((service: any) => migrateObjectToLocale(service));
-        }
-        setFormData(normalizedForm);
+        setFormData(data.data);
       }
     } catch (error: any) {
       toast.error(error?.message || "Không thể tải form");
@@ -341,72 +274,7 @@ export default function AdminContactPage() {
         AdminEndpoints.contact.sidebar.get,
       );
       if (data?.data) {
-        // Normalize dữ liệu để đảm bảo các field luôn là locale object
-        const normalizedSidebar = migrateObjectToLocale(data.data);
-        // Normalize nested quickActions object
-        if (normalizedSidebar.quickActions && typeof normalizedSidebar.quickActions === 'object') {
-          normalizedSidebar.quickActions = {
-            title: migrateObjectToLocale(normalizedSidebar.quickActions.title || ''),
-            description: migrateObjectToLocale(normalizedSidebar.quickActions.description || ''),
-            buttons: {
-              hotline: {
-                label: migrateObjectToLocale((normalizedSidebar.quickActions.buttons?.hotline?.label || '')),
-                value: (normalizedSidebar.quickActions.buttons?.hotline?.value || ''),
-                href: (normalizedSidebar.quickActions.buttons?.hotline?.href || '')
-              },
-              appointment: {
-                label: migrateObjectToLocale((normalizedSidebar.quickActions.buttons?.appointment?.label || '')),
-                value: migrateObjectToLocale((normalizedSidebar.quickActions.buttons?.appointment?.value || '')),
-                href: (normalizedSidebar.quickActions.buttons?.appointment?.href || '')
-              }
-            }
-          };
-        }
-        // Normalize offices và socials - city và address hỗ trợ locale, phone và email giữ nguyên string
-        if (normalizedSidebar.offices && Array.isArray(normalizedSidebar.offices)) {
-          normalizedSidebar.offices = normalizedSidebar.offices.map((office: any) => {
-            // Đảm bảo phone và email là string
-            const getStringValue = (value: any): string => {
-              if (typeof value === 'string') return value;
-              if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                if ('vi' in value || 'en' in value || 'ja' in value) {
-                  return (value as any).vi || (value as any).en || (value as any).ja || '';
-                }
-              }
-              return '';
-            };
-            return {
-              ...office,
-              title: office.title ? migrateObjectToLocale(office.title) : undefined,
-              city: migrateObjectToLocale(office.city || ''),
-              address: migrateObjectToLocale(office.address || ''),
-              phone: getStringValue(office.phone),
-              email: getStringValue(office.email),
-              sortOrder: office.sortOrder ?? 0,
-              isActive: office.isActive ?? true
-            };
-          });
-        }
-        if (normalizedSidebar.socials && Array.isArray(normalizedSidebar.socials)) {
-          normalizedSidebar.socials = normalizedSidebar.socials.map((social: any) => {
-            // Đảm bảo label là locale object (có thể dịch), nhưng iconName, href, gradient là string
-            const normalizedSocial = migrateObjectToLocale(social);
-            // Đảm bảo label là locale object nếu chưa phải
-            const label = typeof normalizedSocial.label === 'object' && !Array.isArray(normalizedSocial.label) && ('vi' in normalizedSocial.label || 'en' in normalizedSocial.label || 'ja' in normalizedSocial.label)
-              ? normalizedSocial.label
-              : migrateObjectToLocale(normalizedSocial.label || '');
-            return {
-              ...normalizedSocial,
-              label,
-              iconName: typeof social.iconName === 'string' ? social.iconName : (social.iconName || 'Facebook'),
-              href: typeof social.href === 'string' ? social.href : (social.href || ''),
-              gradient: typeof social.gradient === 'string' ? social.gradient : (social.gradient || GRADIENT_OPTIONS[0].value),
-              sortOrder: social.sortOrder ?? 0,
-              isActive: social.isActive ?? true
-            };
-          });
-        }
-        setSidebarData(normalizedSidebar);
+        setSidebarData(data.data);
       }
     } catch (error: any) {
       toast.error(error?.message || "Không thể tải sidebar");
@@ -422,12 +290,7 @@ export default function AdminContactPage() {
         AdminEndpoints.contact.map.get,
       );
       if (data?.data) {
-        // Normalize address để đảm bảo luôn là locale object
-        const normalizedMap = {
-          ...data.data,
-          address: migrateObjectToLocale(data.data.address || '')
-        };
-        setMapData(normalizedMap);
+        setMapData(data.data);
       }
     } catch (error: any) {
       toast.error(error?.message || "Không thể tải map");
@@ -656,31 +519,12 @@ export default function AdminContactPage() {
 
   // Form service handlers
   const handleAddService = () => {
-    // Kiểm tra xem có giá trị ở locale hiện tại hoặc bất kỳ locale nào không
-    let serviceText = '';
-    if (typeof newService === 'string') {
-      serviceText = newService;
-    } else if (newService && typeof newService === 'object' && !Array.isArray(newService)) {
-      // Nếu là locale object
-      if ('vi' in newService || 'en' in newService || 'ja' in newService) {
-        const text = getLocalizedText(newService, globalLocale);
-        serviceText = typeof text === 'string' ? text : String(text || '');
-      } else {
-        serviceText = String(newService || '');
-      }
-    } else {
-      serviceText = String(newService || '');
-    }
-
-    // Đảm bảo serviceText là string trước khi gọi trim
-    serviceText = String(serviceText || '');
-
-    if (serviceText && serviceText.trim()) {
+    if (newService && newService.trim()) {
       setFormData({
         ...formData,
-        services: [...formData.services, { ...newService }],
+        services: [...formData.services, newService.trim()],
       });
-      setNewService({ vi: "", en: "", ja: "" });
+      setNewService("");
     } else {
       toast.error("Vui lòng nhập tên dịch vụ");
     }
@@ -691,142 +535,6 @@ export default function AdminContactPage() {
     setFormData({ ...formData, services: newServices });
   };
 
-  // Translation handlers for sections
-  const handleTranslateSection = async (section: 'hero' | 'info-cards' | 'form' | 'sidebar') => {
-    let dataToTranslate: any;
-    let updateCallback: (translatedData: any) => void;
-    let sectionName: string;
-
-    // Prepare data and update callback based on section
-    if (section === 'hero') {
-      // Loại bỏ các trường không cần dịch: iconName, image, isActive
-      const { iconName, image, isActive, ...dataToTranslateFields } = heroData;
-      // Normalize title object
-      const titleToTranslate = {
-        prefix: dataToTranslateFields.title?.prefix || '',
-        highlight: dataToTranslateFields.title?.highlight || ''
-      };
-      dataToTranslate = {
-        ...dataToTranslateFields,
-        title: titleToTranslate
-      };
-      updateCallback = (translated: any) => {
-        setHeroData({
-          ...translated,
-          iconName,
-          image,
-          isActive,
-        });
-      };
-      sectionName = 'Hero Banner';
-    } else if (section === 'info-cards') {
-      // Loại bỏ các trường không cần dịch: iconName, link, gradient, sortOrder, isActive từ items
-      const { items, ...dataToTranslateFields } = infoCardsData;
-      const translatedItems = items.map((item: any) => {
-        const { iconName, link, gradient, sortOrder, isActive, ...itemFields } = item;
-        return itemFields;
-      });
-      dataToTranslate = {
-        ...dataToTranslateFields,
-        items: translatedItems
-      };
-      updateCallback = (translated: any) => {
-        // Giữ nguyên iconName, link, gradient, sortOrder, isActive của items
-        const updatedItems = translated.items.map((item: any, index: number) => ({
-          ...item,
-          iconName: items[index]?.iconName || 'MessageCircle',
-          link: items[index]?.link || null,
-          gradient: items[index]?.gradient || GRADIENT_OPTIONS[0].value,
-          sortOrder: items[index]?.sortOrder ?? index,
-          isActive: items[index]?.isActive ?? true
-        }));
-        setInfoCardsData({
-          ...translated,
-          items: updatedItems
-        });
-      };
-      sectionName = 'Info Cards';
-    } else if (section === 'form') {
-      // Loại bỏ các trường không cần dịch: services (services là array of strings), isActive
-      const { services, isActive, ...dataToTranslateFields } = formData;
-      dataToTranslate = dataToTranslateFields;
-      updateCallback = (translated: any) => {
-        setFormData({
-          ...translated,
-          services,
-          isActive
-        });
-      };
-      sectionName = 'Contact Form';
-    } else if (section === 'sidebar') {
-      // Loại bỏ các trường không cần dịch: offices (offices không có field cần dịch), socials (socials có iconName, href, gradient), isActive
-      // Loại bỏ value và href từ quickActions.buttons
-      const { offices, socials, isActive, quickActions, ...dataToTranslateFields } = sidebarData;
-      const translatedQuickActions = {
-        title: quickActions?.title || '',
-        description: quickActions?.description || '',
-        buttons: {
-          hotline: {
-            label: quickActions?.buttons?.hotline?.label || ''
-            // value và href không được dịch, sẽ được giữ nguyên
-          },
-          appointment: {
-            label: quickActions?.buttons?.appointment?.label || '',
-            value: quickActions?.buttons?.appointment?.value || ''
-            // href không được dịch, sẽ được giữ nguyên
-          }
-        }
-      };
-      const translatedSocials = socials.map((social: any) => {
-        const { iconName, href, gradient, sortOrder, isActive: socialIsActive, ...socialFields } = social;
-        return socialFields;
-      });
-      dataToTranslate = {
-        ...dataToTranslateFields,
-        quickActions: translatedQuickActions,
-        socials: translatedSocials
-      };
-      updateCallback = (translated: any) => {
-        // Giữ nguyên value và href của quickActions.buttons
-        const updatedQuickActions = {
-          ...translated.quickActions,
-          buttons: {
-            hotline: {
-              ...translated.quickActions.buttons.hotline,
-              value: quickActions?.buttons?.hotline?.value || '',
-              href: quickActions?.buttons?.hotline?.href || ''
-            },
-            appointment: {
-              ...translated.quickActions.buttons.appointment,
-              href: quickActions?.buttons?.appointment?.href || ''
-            }
-          }
-        };
-        // Giữ nguyên iconName, href, gradient, sortOrder, isActive của socials
-        const updatedSocials = translated.socials.map((social: any, index: number) => ({
-          ...social,
-          iconName: socials[index]?.iconName || 'Facebook',
-          href: socials[index]?.href || '',
-          gradient: socials[index]?.gradient || GRADIENT_OPTIONS[0].value,
-          sortOrder: socials[index]?.sortOrder ?? index,
-          isActive: socials[index]?.isActive ?? true
-        }));
-        setSidebarData({
-          ...translated,
-          quickActions: updatedQuickActions,
-          offices,
-          socials: updatedSocials,
-          isActive
-        });
-      };
-      sectionName = 'Sidebar';
-    } else {
-      return;
-    }
-
-    // Use translateData from hook
-    await translateData(dataToTranslate, updateCallback, sectionName);
-  };
 
   // Active main tab state
   const [activeMainTab, setActiveMainTab] = useState<string>("hero");
@@ -870,120 +578,13 @@ export default function AdminContactPage() {
     setActiveMainTab(value);
   };
 
-  // Transform data for preview
-  const getPreviewData = () => {
-    const Icon = (LucideIcons as any)[heroData.iconName] || MessageCircle;
-    return {
-      hero: {
-        ...heroData,
-        badge: getLocalizedText(heroData.badge, globalLocale),
-        title: {
-          prefix: getLocalizedText(heroData.title.prefix, globalLocale),
-          highlight: getLocalizedText(heroData.title.highlight, globalLocale),
-        },
-        description: getLocalizedText(heroData.description, globalLocale),
-        icon: Icon,
-      },
-      infoCards: infoCardsData.items
-        .filter(item => item.isActive)
-        .map(item => ({
-          ...item,
-          title: getLocalizedText(item.title, globalLocale),
-          content: getLocalizedText(item.content, globalLocale),
-          icon: (LucideIcons as any)[item.iconName] || MapPin,
-        })),
-      form: {
-        ...formData,
-        header: getLocalizedText(formData.header, globalLocale),
-        description: getLocalizedText(formData.description, globalLocale),
-        fields: {
-          name: {
-            label: getLocalizedText(formData.fields.name.label, globalLocale),
-            placeholder: getLocalizedText(formData.fields.name.placeholder, globalLocale),
-          },
-          email: {
-            label: getLocalizedText(formData.fields.email.label, globalLocale),
-            placeholder: getLocalizedText(formData.fields.email.placeholder, globalLocale),
-          },
-          phone: {
-            label: getLocalizedText(formData.fields.phone.label, globalLocale),
-            placeholder: getLocalizedText(formData.fields.phone.placeholder, globalLocale),
-          },
-          company: {
-            label: getLocalizedText(formData.fields.company.label, globalLocale),
-            placeholder: getLocalizedText(formData.fields.company.placeholder, globalLocale),
-          },
-          service: {
-            label: getLocalizedText(formData.fields.service.label, globalLocale),
-            placeholder: getLocalizedText(formData.fields.service.placeholder, globalLocale),
-          },
-          message: {
-            label: getLocalizedText(formData.fields.message.label, globalLocale),
-            placeholder: getLocalizedText(formData.fields.message.placeholder, globalLocale),
-          },
-        },
-        button: {
-          submit: getLocalizedText(formData.button.submit, globalLocale),
-          success: getLocalizedText(formData.button.success, globalLocale),
-        },
-        services: formData.services.map(service => getLocalizedText(service, globalLocale)),
-      },
-      sidebar: {
-        ...sidebarData,
-        quickActions: {
-          title: getLocalizedText(sidebarData.quickActions.title, globalLocale),
-          description: getLocalizedText(sidebarData.quickActions.description, globalLocale),
-          buttons: {
-            hotline: {
-              label: getLocalizedText(sidebarData.quickActions.buttons.hotline.label, globalLocale),
-              value: sidebarData.quickActions.buttons.hotline.value,
-              href: sidebarData.quickActions.buttons.hotline.href,
-            },
-            appointment: {
-              label: getLocalizedText(sidebarData.quickActions.buttons.appointment.label, globalLocale),
-              value: typeof sidebarData.quickActions.buttons.appointment.value === 'string'
-                ? sidebarData.quickActions.buttons.appointment.value
-                : getLocalizedText(sidebarData.quickActions.buttons.appointment.value, globalLocale),
-              href: sidebarData.quickActions.buttons.appointment.href,
-            },
-          },
-        },
-        offices: sidebarData.offices
-          .filter((item: OfficeItem) => item.isActive)
-          .map((item: OfficeItem) => ({
-            ...item,
-            title: item.title ? getLocalizedText(item.title, globalLocale) : undefined,
-            city: getLocalizedText(item.city, globalLocale),
-            address: getLocalizedText(item.address, globalLocale),
-          })),
-        socials: sidebarData.socials
-          .filter(item => item.isActive)
-          .map(item => ({
-            ...item,
-            label: getLocalizedText(item.label, globalLocale),
-            icon: (LucideIcons as any)[item.iconName] || Facebook,
-          })),
-      },
-      map: {
-        ...mapData,
-        address: getLocalizedText(mapData.address, globalLocale),
-      },
-    };
-  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Quản lý trang Liên hệ</h1>
-          <p className="text-gray-600 mt-1">Cấu hình và quản lý nội dung trang liên hệ</p>
-        </div>
-        <div className="flex items-center gap-4">
-          {/* AI Provider Selector */}
-          <AIProviderSelector
-            value={aiProvider}
-            onChange={setAiProvider}
-          />
+          <p className="text-gray-600 mt-1">Cấu hình và quản lý nội dung trang liên hệ (Tiếng Việt)</p>
         </div>
       </div>
 
@@ -1049,68 +650,10 @@ export default function AdminContactPage() {
             </TabsList>
 
             <TabsContent value="config" className="space-y-4 mt-4">
-              {/* Tab Controls - Locale Selector và Translate Button */}
+              {/* Tab Controls - Locale Selector và Translate Button
               <Card className="mb-4">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex items-center gap-4">
-                      {/* Locale Selector */}
-                      <div className="flex items-center gap-2">
-                        <Languages className="h-4 w-4 text-gray-500" />
-                        <Label className="text-sm text-gray-600 whitespace-nowrap">Hiển thị:</Label>
-                        <Select value={globalLocale} onValueChange={(value: 'vi' | 'en' | 'ja') => setGlobalLocale(value)}>
-                          <SelectTrigger className="w-[150px]" suppressHydrationWarning>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="vi">🇻🇳 Tiếng Việt</SelectItem>
-                            <SelectItem value="en">🇬🇧 English</SelectItem>
-                            <SelectItem value="ja">🇯🇵 日本語</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Translate Controls */}
-                    <div className="flex items-center gap-2">
-                      {/* Source Language Selector */}
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm text-gray-600 whitespace-nowrap">Dịch từ:</Label>
-                        <Select value={translateSourceLang} onValueChange={(value: 'vi' | 'en' | 'ja') => setTranslateSourceLang(value)}>
-                          <SelectTrigger className="w-[150px]" suppressHydrationWarning>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="vi">🇻🇳 Tiếng Việt</SelectItem>
-                            <SelectItem value="en">🇬🇧 English</SelectItem>
-                            <SelectItem value="ja">🇯🇵 日本語</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Translate Button */}
-                      <Button
-                        onClick={() => handleTranslateSection('hero')}
-                        disabled={translatingAll}
-                        variant="outline"
-                        className="gap-2"
-                      >
-                        {translatingAll ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span>Đang dịch...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4" />
-                            <span>Dịch khối này</span>
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                ...
+              </Card> */}
 
               <Card>
                 <CardHeader className="p-0">
@@ -1138,56 +681,35 @@ export default function AdminContactPage() {
                 {!collapsedBlocks.heroSection && (
                   <CardContent className="space-y-4 px-6 py-4">
                   <div>
-                    <LocaleInput
-                      label="Badge"
-                      value={getLocaleValue(heroData, 'badge')}
-                      onChange={(value) => {
-                        const updated = setLocaleValue(heroData, 'badge', value);
-                        setHeroData(updated);
-                      }}
+                    <Label>Badge</Label>
+                    <Input
+                      value={heroData.badge}
+                      onChange={(e) => setHeroData({ ...heroData, badge: e.target.value })}
                       placeholder="LIÊN HỆ VỚI CHÚNG TÔI"
-                      defaultLocale={globalLocale}
-                      aiProvider={aiProvider}
                     />
                   </div>
                   <div>
-                    <LocaleInput
-                      label="Title Prefix"
-                      value={getLocaleValue(heroData.title, 'prefix')}
-                      onChange={(value) => {
-                        const updatedTitle = setLocaleValue(heroData.title, 'prefix', value);
-                        setHeroData({ ...heroData, title: updatedTitle });
-                      }}
+                    <Label>Title Prefix</Label>
+                    <Input
+                      value={heroData.title.prefix}
+                      onChange={(e) => setHeroData({ ...heroData, title: { ...heroData.title, prefix: e.target.value } })}
                       placeholder="Hãy để chúng tôi"
-                      defaultLocale={globalLocale}
-                      aiProvider={aiProvider}
                     />
                   </div>
                   <div>
-                    <LocaleInput
-                      label="Title Highlight"
-                      value={getLocaleValue(heroData.title, 'highlight')}
-                      onChange={(value) => {
-                        const updatedTitle = setLocaleValue(heroData.title, 'highlight', value);
-                        setHeroData({ ...heroData, title: updatedTitle });
-                      }}
+                    <Label>Title Highlight</Label>
+                    <Input
+                      value={heroData.title.highlight}
+                      onChange={(e) => setHeroData({ ...heroData, title: { ...heroData.title, highlight: e.target.value } })}
                       placeholder="hỗ trợ bạn"
-                      defaultLocale={globalLocale}
-                      aiProvider={aiProvider}
                     />
                   </div>
                   <div>
-                    <LocaleInput
-                      label="Description"
-                      value={getLocaleValue(heroData, 'description')}
-                      onChange={(value) => {
-                        const updated = setLocaleValue(heroData, 'description', value);
-                        setHeroData(updated);
-                      }}
+                    <Label>Description</Label>
+                    <Textarea
+                      value={heroData.description}
+                      onChange={(e) => setHeroData({ ...heroData, description: e.target.value })}
                       placeholder="Đội ngũ chuyên gia của chúng tôi luôn sẵn sàng tư vấn và hỗ trợ bạn 24/7"
-                      multiline={true}
-                      defaultLocale={globalLocale}
-                      aiProvider={aiProvider}
                     />
                   </div>
                   <div>
@@ -1225,24 +747,6 @@ export default function AdminContactPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="preview" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Preview Hero Section</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-muted-foreground p-4 text-center">
-                    Preview không khả dụng - Public pages đã bị xóa
-                  </div>
-                  {/* Preview removed - public pages deleted */}
-                  {/* {heroData.isActive && (
-                    <div className="border rounded-lg p-4">
-                      <ContactHero data={getPreviewData().hero} />
-                    </div>
-                  )} */}
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         </TabsContent>
 
@@ -1309,8 +813,8 @@ export default function AdminContactPage() {
                         </div>
                         <div className="space-y-2">
                           <p><strong>Icon:</strong> {item.iconName}</p>
-                          <p><strong>Title:</strong> {getLocalizedText(item.title, globalLocale)}</p>
-                          <p><strong>Content:</strong> {getLocalizedText(item.content, globalLocale)}</p>
+                          <p><strong>Title:</strong> {item.title}</p>
+                          <p><strong>Content:</strong> {item.content}</p>
                           <p><strong>Link:</strong> {item.link || "N/A"}</p>
                         </div>
                       </CardContent>
@@ -1350,30 +854,19 @@ export default function AdminContactPage() {
                         </Select>
                       </div>
                       <div>
-                        <LocaleInput
-                          label="Title"
-                          value={getLocaleValue(infoCardFormData, 'title')}
-                          onChange={(value) => {
-                            const updated = setLocaleValue(infoCardFormData, 'title', value);
-                            setInfoCardFormData(updated);
-                          }}
+                        <Label>Title</Label>
+                        <Input
+                          value={infoCardFormData.title}
+                          onChange={(e) => setInfoCardFormData({ ...infoCardFormData, title: e.target.value })}
                           placeholder="Tiêu đề"
-                          defaultLocale={globalLocale}
-                          aiProvider={aiProvider}
                         />
                       </div>
                       <div>
-                        <LocaleInput
-                          label="Content"
-                          value={getLocaleValue(infoCardFormData, 'content')}
-                          onChange={(value) => {
-                            const updated = setLocaleValue(infoCardFormData, 'content', value);
-                            setInfoCardFormData(updated);
-                          }}
+                        <Label>Content</Label>
+                        <Textarea
+                          value={infoCardFormData.content}
+                          onChange={(e) => setInfoCardFormData({ ...infoCardFormData, content: e.target.value })}
                           placeholder="Nội dung"
-                          multiline={true}
-                          defaultLocale={globalLocale}
-                          aiProvider={aiProvider}
                         />
                       </div>
                       <div>
@@ -1425,24 +918,6 @@ export default function AdminContactPage() {
               </Dialog>
             </TabsContent>
 
-            <TabsContent value="preview" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Preview Info Cards</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-muted-foreground p-4 text-center">
-                    Preview không khả dụng - Public pages đã bị xóa
-                  </div>
-                  {/* Preview removed - public pages deleted */}
-                  {/* {infoCardsData.isActive && (
-                    <div className="border rounded-lg p-4">
-                      <ContactInfoCards data={getPreviewData().infoCards} />
-                    </div>
-                  )} */}
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         </TabsContent>
 
@@ -1455,68 +930,10 @@ export default function AdminContactPage() {
             </TabsList>
 
             <TabsContent value="config" className="space-y-4 mt-4">
-              {/* Tab Controls - Locale Selector và Translate Button */}
+              {/* Tab Controls - Locale Selector và Translate Button
               <Card className="mb-4">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex items-center gap-4">
-                      {/* Locale Selector */}
-                      <div className="flex items-center gap-2">
-                        <Languages className="h-4 w-4 text-gray-500" />
-                        <Label className="text-sm text-gray-600 whitespace-nowrap">Hiển thị:</Label>
-                        <Select value={globalLocale} onValueChange={(value: 'vi' | 'en' | 'ja') => setGlobalLocale(value)}>
-                          <SelectTrigger className="w-[150px]" suppressHydrationWarning>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="vi">🇻🇳 Tiếng Việt</SelectItem>
-                            <SelectItem value="en">🇬🇧 English</SelectItem>
-                            <SelectItem value="ja">🇯🇵 日本語</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Translate Controls */}
-                    <div className="flex items-center gap-2">
-                      {/* Source Language Selector */}
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm text-gray-600 whitespace-nowrap">Dịch từ:</Label>
-                        <Select value={translateSourceLang} onValueChange={(value: 'vi' | 'en' | 'ja') => setTranslateSourceLang(value)}>
-                          <SelectTrigger className="w-[150px]" suppressHydrationWarning>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="vi">🇻🇳 Tiếng Việt</SelectItem>
-                            <SelectItem value="en">🇬🇧 English</SelectItem>
-                            <SelectItem value="ja">🇯🇵 日本語</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Translate Button */}
-                      <Button
-                        onClick={() => handleTranslateSection('form')}
-                        disabled={translatingAll}
-                        variant="outline"
-                        className="gap-2"
-                      >
-                        {translatingAll ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span>Đang dịch...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4" />
-                            <span>Dịch khối này</span>
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                ...
+              </Card> */}
 
               <Card>
                 <CardHeader className="p-0">
@@ -1544,267 +961,186 @@ export default function AdminContactPage() {
                 {!collapsedBlocks.contactForm && (
                   <CardContent className="space-y-4 px-6 py-4">
                   <div>
-                    <LocaleInput
-                      label="Header"
-                      value={getLocaleValue(formData, 'header')}
-                      onChange={(value) => {
-                        const updated = setLocaleValue(formData, 'header', value);
-                        setFormData(updated);
-                      }}
+                    <Label>Header</Label>
+                    <Input
+                      value={formData.header}
+                      onChange={(e) => setFormData({ ...formData, header: e.target.value })}
                       placeholder="Gửi yêu cầu tư vấn"
-                      defaultLocale={globalLocale}
-                      aiProvider={aiProvider}
                     />
                   </div>
                   <div>
-                    <LocaleInput
-                      label="Description"
-                      value={getLocaleValue(formData, 'description')}
-                      onChange={(value) => {
-                        const updated = setLocaleValue(formData, 'description', value);
-                        setFormData(updated);
-                      }}
+                    <Label>Description</Label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="Điền thông tin bên dưới..."
-                      multiline={true}
-                      defaultLocale={globalLocale}
-                      aiProvider={aiProvider}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <LocaleInput
-                        label="Name Label"
-                        value={getLocaleValue(formData.fields.name, 'label')}
-                        onChange={(value) => {
-                          const updatedField = setLocaleValue(formData.fields.name, 'label', value);
-                          setFormData({
-                            ...formData,
-                            fields: { ...formData.fields, name: { ...formData.fields.name, label: updatedField.label } },
-                          });
-                        }}
+                      <Label>Name Label</Label>
+                      <Input
+                        value={formData.fields.name.label}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          fields: { ...formData.fields, name: { ...formData.fields.name, label: e.target.value } },
+                        })}
                         placeholder="Họ và tên"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                     <div>
-                      <LocaleInput
-                        label="Name Placeholder"
-                        value={getLocaleValue(formData.fields.name, 'placeholder')}
-                        onChange={(value) => {
-                          const updatedField = setLocaleValue(formData.fields.name, 'placeholder', value);
-                          setFormData({
-                            ...formData,
-                            fields: { ...formData.fields, name: { ...formData.fields.name, placeholder: updatedField.placeholder } },
-                          });
-                        }}
+                      <Label>Name Placeholder</Label>
+                      <Input
+                        value={formData.fields.name.placeholder}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          fields: { ...formData.fields, name: { ...formData.fields.name, placeholder: e.target.value } },
+                        })}
                         placeholder="Nhập họ và tên"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <LocaleInput
-                        label="Email Label"
-                        value={getLocaleValue(formData.fields.email, 'label')}
-                        onChange={(value) => {
-                          const updatedField = setLocaleValue(formData.fields.email, 'label', value);
-                          setFormData({
-                            ...formData,
-                            fields: { ...formData.fields, email: { ...formData.fields.email, label: updatedField.label } },
-                          });
-                        }}
+                      <Label>Email Label</Label>
+                      <Input
+                        value={formData.fields.email.label}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          fields: { ...formData.fields, email: { ...formData.fields.email, label: e.target.value } },
+                        })}
                         placeholder="Email"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                     <div>
-                      <LocaleInput
-                        label="Email Placeholder"
-                        value={getLocaleValue(formData.fields.email, 'placeholder')}
-                        onChange={(value) => {
-                          const updatedField = setLocaleValue(formData.fields.email, 'placeholder', value);
-                          setFormData({
-                            ...formData,
-                            fields: { ...formData.fields, email: { ...formData.fields.email, placeholder: updatedField.placeholder } },
-                          });
-                        }}
+                      <Label>Email Placeholder</Label>
+                      <Input
+                        value={formData.fields.email.placeholder}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          fields: { ...formData.fields, email: { ...formData.fields.email, placeholder: e.target.value } },
+                        })}
                         placeholder="Nhập email"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <LocaleInput
-                        label="Phone Label"
-                        value={getLocaleValue(formData.fields.phone, 'label')}
-                        onChange={(value) => {
-                          const updatedField = setLocaleValue(formData.fields.phone, 'label', value);
-                          setFormData({
-                            ...formData,
-                            fields: { ...formData.fields, phone: { ...formData.fields.phone, label: updatedField.label } },
-                          });
-                        }}
+                      <Label>Phone Label</Label>
+                      <Input
+                        value={formData.fields.phone.label}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          fields: { ...formData.fields, phone: { ...formData.fields.phone, label: e.target.value } },
+                        })}
                         placeholder="Số điện thoại"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                     <div>
-                      <LocaleInput
-                        label="Phone Placeholder"
-                        value={getLocaleValue(formData.fields.phone, 'placeholder')}
-                        onChange={(value) => {
-                          const updatedField = setLocaleValue(formData.fields.phone, 'placeholder', value);
-                          setFormData({
-                            ...formData,
-                            fields: { ...formData.fields, phone: { ...formData.fields.phone, placeholder: updatedField.placeholder } },
-                          });
-                        }}
+                      <Label>Phone Placeholder</Label>
+                      <Input
+                        value={formData.fields.phone.placeholder}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          fields: { ...formData.fields, phone: { ...formData.fields.phone, placeholder: e.target.value } },
+                        })}
                         placeholder="Nhập số điện thoại"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <LocaleInput
-                        label="Company Label"
-                        value={getLocaleValue(formData.fields.company, 'label')}
-                        onChange={(value) => {
-                          const updatedField = setLocaleValue(formData.fields.company, 'label', value);
-                          setFormData({
-                            ...formData,
-                            fields: { ...formData.fields, company: { ...formData.fields.company, label: updatedField.label } },
-                          });
-                        }}
+                      <Label>Company Label</Label>
+                      <Input
+                        value={formData.fields.company.label}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          fields: { ...formData.fields, company: { ...formData.fields.company, label: e.target.value } },
+                        })}
                         placeholder="Công ty"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                     <div>
-                      <LocaleInput
-                        label="Company Placeholder"
-                        value={getLocaleValue(formData.fields.company, 'placeholder')}
-                        onChange={(value) => {
-                          const updatedField = setLocaleValue(formData.fields.company, 'placeholder', value);
-                          setFormData({
-                            ...formData,
-                            fields: { ...formData.fields, company: { ...formData.fields.company, placeholder: updatedField.placeholder } },
-                          });
-                        }}
+                      <Label>Company Placeholder</Label>
+                      <Input
+                        value={formData.fields.company.placeholder}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          fields: { ...formData.fields, company: { ...formData.fields.company, placeholder: e.target.value } },
+                        })}
                         placeholder="Nhập tên công ty"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <LocaleInput
-                        label="Service Label"
-                        value={getLocaleValue(formData.fields.service, 'label')}
-                        onChange={(value) => {
-                          const updatedField = setLocaleValue(formData.fields.service, 'label', value);
-                          setFormData({
-                            ...formData,
-                            fields: { ...formData.fields, service: { ...formData.fields.service, label: updatedField.label } },
-                          });
-                        }}
+                      <Label>Service Label</Label>
+                      <Input
+                        value={formData.fields.service.label}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          fields: { ...formData.fields, service: { ...formData.fields.service, label: e.target.value } },
+                        })}
                         placeholder="Dịch vụ"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                     <div>
-                      <LocaleInput
-                        label="Service Placeholder"
-                        value={getLocaleValue(formData.fields.service, 'placeholder')}
-                        onChange={(value) => {
-                          const updatedField = setLocaleValue(formData.fields.service, 'placeholder', value);
-                          setFormData({
-                            ...formData,
-                            fields: { ...formData.fields, service: { ...formData.fields.service, placeholder: updatedField.placeholder } },
-                          });
-                        }}
+                      <Label>Service Placeholder</Label>
+                      <Input
+                        value={formData.fields.service.placeholder}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          fields: { ...formData.fields, service: { ...formData.fields.service, placeholder: e.target.value } },
+                        })}
                         placeholder="Chọn dịch vụ"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <LocaleInput
-                        label="Message Label"
-                        value={getLocaleValue(formData.fields.message, 'label')}
-                        onChange={(value) => {
-                          const updatedField = setLocaleValue(formData.fields.message, 'label', value);
-                          setFormData({
-                            ...formData,
-                            fields: { ...formData.fields, message: { ...formData.fields.message, label: updatedField.label } },
-                          });
-                        }}
+                      <Label>Message Label</Label>
+                      <Input
+                        value={formData.fields.message.label}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          fields: { ...formData.fields, message: { ...formData.fields.message, label: e.target.value } },
+                        })}
                         placeholder="Tin nhắn"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                     <div>
-                      <LocaleInput
-                        label="Message Placeholder"
-                        value={getLocaleValue(formData.fields.message, 'placeholder')}
-                        onChange={(value) => {
-                          const updatedField = setLocaleValue(formData.fields.message, 'placeholder', value);
-                          setFormData({
-                            ...formData,
-                            fields: { ...formData.fields, message: { ...formData.fields.message, placeholder: updatedField.placeholder } },
-                          });
-                        }}
+                      <Label>Message Placeholder</Label>
+                      <Input
+                        value={formData.fields.message.placeholder}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          fields: { ...formData.fields, message: { ...formData.fields.message, placeholder: e.target.value } },
+                        })}
                         placeholder="Nhập tin nhắn"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <LocaleInput
-                        label="Button Submit"
-                        value={getLocaleValue(formData.button, 'submit')}
-                        onChange={(value) => {
-                          const updatedButton = setLocaleValue(formData.button, 'submit', value);
-                          setFormData({
-                            ...formData,
-                            button: { ...formData.button, submit: updatedButton.submit },
-                          });
-                        }}
+                      <Label>Button Submit</Label>
+                      <Input
+                        value={formData.button.submit}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          button: { ...formData.button, submit: e.target.value },
+                        })}
                         placeholder="Gửi"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                     <div>
-                      <LocaleInput
-                        label="Button Success"
-                        value={getLocaleValue(formData.button, 'success')}
-                        onChange={(value) => {
-                          const updatedButton = setLocaleValue(formData.button, 'success', value);
-                          setFormData({
-                            ...formData,
-                            button: { ...formData.button, success: updatedButton.success },
-                          });
-                        }}
+                      <Label>Button Success</Label>
+                      <Input
+                        value={formData.button.success}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          button: { ...formData.button, success: e.target.value },
+                        })}
                         placeholder="Gửi thành công"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                   </div>
@@ -1812,88 +1148,32 @@ export default function AdminContactPage() {
                     <Label>Services</Label>
                     <div className="flex gap-2 mb-2">
                       <div className="flex-1">
-                        <LocaleInput
-                          label="Tên dịch vụ"
+                        <Input
                           value={newService}
-                          onChange={(value) => {
-                            // value là locale object đầy đủ từ LocaleInput
-                            // Đảm bảo tất cả các locale đều có giá trị
-                            setNewService({
-                              vi: value.vi || '',
-                              en: value.en || '',
-                              ja: value.ja || ''
-                            });
-                          }}
+                          onChange={(e) => setNewService(e.target.value)}
                           placeholder="Thêm dịch vụ mới"
-                          defaultLocale={globalLocale}
-                          aiProvider={aiProvider}
                         />
                       </div>
                       <Button onClick={handleAddService} type="button" className="mt-6">Thêm</Button>
                     </div>
                     <div className="grid grid-cols-3 gap-3">
-                      {formData.services.map((service, index) => {
-                        // Lấy giá trị cho từng ngôn ngữ
-                        let viText = '';
-                        let enText = '';
-                        let jaText = '';
-
-                        if (typeof service === 'string') {
-                          // Nếu là string, hiển thị cho tất cả ngôn ngữ
-                          viText = service;
-                          enText = service;
-                          jaText = service;
-                        } else if (service && typeof service === 'object' && !Array.isArray(service)) {
-                          // Nếu là locale object
-                          if ('vi' in service || 'en' in service || 'ja' in service) {
-                            // Lấy giá trị, xử lý cả trường hợp null, undefined, hoặc empty string
-                            viText = (service.vi && typeof service.vi === 'string') ? service.vi.trim() : '';
-                            enText = (service.en && typeof service.en === 'string') ? service.en.trim() : '';
-                            jaText = (service.ja && typeof service.ja === 'string') ? service.ja.trim() : '';
-                          } else {
-                            // Không phải locale object, thử lấy giá trị đầu tiên
-                            const firstValue = Object.values(service).find(v => typeof v === 'string' && v);
-                            if (firstValue) {
-                              viText = String(firstValue);
-                              enText = String(firstValue);
-                              jaText = String(firstValue);
-                            }
-                          }
-                        }
-
-                        return (
-                          <div key={index} className="border border-gray-200 rounded-lg p-3 bg-white hover:bg-gray-50 transition-colors relative">
-                            <Button
-                              onClick={() => handleDeleteService(index)}
-                              size="icon"
-                              variant="ghost"
-                              className="absolute top-2 right-2 h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                            <div className="flex flex-col gap-2 pr-8">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-gray-500 w-6">🇻🇳</span>
-                                <span className="text-sm text-gray-900 flex-1 truncate" title={viText}>
-                                  {viText ? viText : <span className="text-gray-400 italic">(Chưa có)</span>}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-gray-500 w-6">🇬🇧</span>
-                                <span className="text-sm text-gray-900 flex-1 truncate" title={enText}>
-                                  {enText ? enText : <span className="text-gray-400 italic">(Chưa có)</span>}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-gray-500 w-6">🇯🇵</span>
-                                <span className="text-sm text-gray-900 flex-1 truncate" title={jaText}>
-                                  {jaText ? jaText : <span className="text-gray-400 italic">(Chưa có)</span>}
-                                </span>
-                              </div>
-                            </div>
+                      {formData.services.map((service, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-3 bg-white hover:bg-gray-50 transition-colors relative">
+                          <Button
+                            onClick={() => handleDeleteService(index)}
+                            size="icon"
+                            variant="ghost"
+                            className="absolute top-2 right-2 h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                          <div className="flex flex-col gap-2 pr-8">
+                            <span className="text-sm text-gray-900 truncate" title={service}>
+                              {service}
+                            </span>
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
@@ -1908,24 +1188,6 @@ export default function AdminContactPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="preview" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Preview Form</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-muted-foreground p-4 text-center">
-                    Preview không khả dụng - Public pages đã bị xóa
-                  </div>
-                  {/* Preview removed - public pages deleted */}
-                  {/* {formData.isActive && (
-                    <div className="border rounded-lg p-4">
-                      <ContactForm data={getPreviewData().form} />
-                    </div>
-                  )} */}
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         </TabsContent>
 
@@ -1934,72 +1196,13 @@ export default function AdminContactPage() {
           <Tabs defaultValue="config" className="w-full">
             <TabsList>
               <TabsTrigger value="config">Cấu hình</TabsTrigger>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
             </TabsList>
 
             <TabsContent value="config" className="space-y-4 mt-4">
-              {/* Tab Controls - Locale Selector và Translate Button */}
+              {/* Tab Controls - Locale Selector và Translate Button
               <Card className="mb-4">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex items-center gap-4">
-                      {/* Locale Selector */}
-                      <div className="flex items-center gap-2">
-                        <Languages className="h-4 w-4 text-gray-500" />
-                        <Label className="text-sm text-gray-600 whitespace-nowrap">Hiển thị:</Label>
-                        <Select value={globalLocale} onValueChange={(value: 'vi' | 'en' | 'ja') => setGlobalLocale(value)}>
-                          <SelectTrigger className="w-[150px]" suppressHydrationWarning>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="vi">🇻🇳 Tiếng Việt</SelectItem>
-                            <SelectItem value="en">🇬🇧 English</SelectItem>
-                            <SelectItem value="ja">🇯🇵 日本語</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Translate Controls */}
-                    <div className="flex items-center gap-2">
-                      {/* Source Language Selector */}
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm text-gray-600 whitespace-nowrap">Dịch từ:</Label>
-                        <Select value={translateSourceLang} onValueChange={(value: 'vi' | 'en' | 'ja') => setTranslateSourceLang(value)}>
-                          <SelectTrigger className="w-[150px]" suppressHydrationWarning>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="vi">🇻🇳 Tiếng Việt</SelectItem>
-                            <SelectItem value="en">🇬🇧 English</SelectItem>
-                            <SelectItem value="ja">🇯🇵 日本語</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Translate Button */}
-                      <Button
-                        onClick={() => handleTranslateSection('sidebar')}
-                        disabled={translatingAll}
-                        variant="outline"
-                        className="gap-2"
-                      >
-                        {translatingAll ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span>Đang dịch...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4" />
-                            <span>Dịch khối này</span>
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                ...
+              </Card> */}
 
               <Card>
                 <CardHeader>
@@ -2027,59 +1230,43 @@ export default function AdminContactPage() {
                 {!collapsedBlocks.sidebar && (
                   <CardContent className="space-y-6">
                   <div>
-                    <LocaleInput
-                      label="Quick Actions Title"
-                      value={getLocaleValue(sidebarData.quickActions, 'title')}
-                      onChange={(value) => {
-                        const updatedQuickActions = setLocaleValue(sidebarData.quickActions, 'title', value);
-                        setSidebarData({
-                          ...sidebarData,
-                          quickActions: { ...sidebarData.quickActions, title: updatedQuickActions.title },
-                        });
-                      }}
+                    <Label>Quick Actions Title</Label>
+                    <Input
+                      value={sidebarData.quickActions.title}
+                      onChange={(e) => setSidebarData({
+                        ...sidebarData,
+                        quickActions: { ...sidebarData.quickActions, title: e.target.value },
+                      })}
                       placeholder="Tiêu đề"
-                      defaultLocale={globalLocale}
-                      aiProvider={aiProvider}
                     />
                   </div>
                   <div>
-                    <LocaleInput
-                      label="Quick Actions Description"
-                      value={getLocaleValue(sidebarData.quickActions, 'description')}
-                      onChange={(value) => {
-                        const updatedQuickActions = setLocaleValue(sidebarData.quickActions, 'description', value);
-                        setSidebarData({
-                          ...sidebarData,
-                          quickActions: { ...sidebarData.quickActions, description: updatedQuickActions.description },
-                        });
-                      }}
+                    <Label>Quick Actions Description</Label>
+                    <Textarea
+                      value={sidebarData.quickActions.description}
+                      onChange={(e) => setSidebarData({
+                        ...sidebarData,
+                        quickActions: { ...sidebarData.quickActions, description: e.target.value },
+                      })}
                       placeholder="Mô tả"
-                      multiline={true}
-                      defaultLocale={globalLocale}
-                      aiProvider={aiProvider}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <LocaleInput
-                        label="Hotline Label"
-                        value={getLocaleValue(sidebarData.quickActions.buttons.hotline, 'label')}
-                        onChange={(value) => {
-                          const updatedHotline = setLocaleValue(sidebarData.quickActions.buttons.hotline, 'label', value);
-                          setSidebarData({
-                            ...sidebarData,
-                            quickActions: {
-                              ...sidebarData.quickActions,
-                              buttons: {
-                                ...sidebarData.quickActions.buttons,
-                                hotline: { ...sidebarData.quickActions.buttons.hotline, label: updatedHotline.label },
-                              },
+                      <Label>Hotline Label</Label>
+                      <Input
+                        value={sidebarData.quickActions.buttons.hotline.label}
+                        onChange={(e) => setSidebarData({
+                          ...sidebarData,
+                          quickActions: {
+                            ...sidebarData.quickActions,
+                            buttons: {
+                              ...sidebarData.quickActions.buttons,
+                              hotline: { ...sidebarData.quickActions.buttons.hotline, label: e.target.value },
                             },
-                          });
-                        }}
+                          },
+                        })}
                         placeholder="Hotline"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                     <div>
@@ -2117,47 +1304,37 @@ export default function AdminContactPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <LocaleInput
-                        label="Appointment Label"
-                        value={getLocaleValue(sidebarData.quickActions.buttons.appointment, 'label')}
-                        onChange={(value) => {
-                          const updatedAppointment = setLocaleValue(sidebarData.quickActions.buttons.appointment, 'label', value);
-                          setSidebarData({
-                            ...sidebarData,
-                            quickActions: {
-                              ...sidebarData.quickActions,
-                              buttons: {
-                                ...sidebarData.quickActions.buttons,
-                                appointment: { ...sidebarData.quickActions.buttons.appointment, label: updatedAppointment.label },
-                              },
+                      <Label>Appointment Label</Label>
+                      <Input
+                        value={sidebarData.quickActions.buttons.appointment.label}
+                        onChange={(e) => setSidebarData({
+                          ...sidebarData,
+                          quickActions: {
+                            ...sidebarData.quickActions,
+                            buttons: {
+                              ...sidebarData.quickActions.buttons,
+                              appointment: { ...sidebarData.quickActions.buttons.appointment, label: e.target.value },
                             },
-                          });
-                        }}
+                          },
+                        })}
                         placeholder="Đặt lịch"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                     <div>
-                      <LocaleInput
-                        label="Appointment Value"
-                        value={getLocaleValue(sidebarData.quickActions.buttons.appointment, 'value')}
-                        onChange={(value) => {
-                          const updatedAppointment = setLocaleValue(sidebarData.quickActions.buttons.appointment, 'value', value);
-                          setSidebarData({
-                            ...sidebarData,
-                            quickActions: {
-                              ...sidebarData.quickActions,
-                              buttons: {
-                                ...sidebarData.quickActions.buttons,
-                                appointment: { ...sidebarData.quickActions.buttons.appointment, value: updatedAppointment.value },
-                              },
+                      <Label>Appointment Value</Label>
+                      <Input
+                        value={sidebarData.quickActions.buttons.appointment.value}
+                        onChange={(e) => setSidebarData({
+                          ...sidebarData,
+                          quickActions: {
+                            ...sidebarData.quickActions,
+                            buttons: {
+                              ...sidebarData.quickActions.buttons,
+                              appointment: { ...sidebarData.quickActions.buttons.appointment, value: e.target.value },
                             },
-                          });
-                        }}
+                          },
+                        })}
                         placeholder="Giá trị đặt lịch"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                     <div>
@@ -2190,10 +1367,10 @@ export default function AdminContactPage() {
                           <div className="flex items-center justify-between">
                             <div>
                               {office.title && (
-                                <p className="text-xs text-blue-600 mb-1">{getLocalizedText(office.title, globalLocale)}</p>
+                                <p className="text-xs text-blue-600 mb-1">{office.title}</p>
                               )}
-                              <p><strong>{getLocalizedText(office.city, globalLocale)}</strong></p>
-                              <p className="text-sm text-gray-600">{getLocalizedText(office.address, globalLocale)}</p>
+                              <p><strong>{office.city}</strong></p>
+                              <p className="text-sm text-gray-600">{office.address}</p>
                             </div>
                             <div className="flex gap-2">
                               <Button onClick={() => handleEditOffice(index)} size="sm" variant="outline">
@@ -2220,7 +1397,7 @@ export default function AdminContactPage() {
                         <CardContent className="pt-6">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p><strong>{getLocalizedText(social.label, globalLocale)}</strong></p>
+                              <p><strong>{social.label}</strong></p>
                               <p className="text-sm text-gray-600">{social.href}</p>
                             </div>
                             <div className="flex gap-2">
@@ -2260,40 +1437,30 @@ export default function AdminContactPage() {
                   </DialogHeader>
                   {officeFormData && (
                     <div className="space-y-4">
-                      <LocaleInput
-                        value={getLocaleValue(officeFormData, 'title')}
-                        onChange={(value) => {
-                          const updated = setLocaleValue(officeFormData, 'title', value);
-                          setOfficeFormData(updated);
-                        }}
-                        label="Tiêu đề"
-                        placeholder="Văn phòng chi nhánh"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
-                      />
-                      <LocaleInput
-                        value={getLocaleValue(officeFormData, 'city')}
-                        onChange={(value) => {
-                          const updated = setLocaleValue(officeFormData, 'city', value);
-                          setOfficeFormData(updated);
-                        }}
-                        label="City"
-                        placeholder="Hà Nội"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
-                      />
-                      <LocaleInput
-                        value={getLocaleValue(officeFormData, 'address')}
-                        onChange={(value) => {
-                          const updated = setLocaleValue(officeFormData, 'address', value);
-                          setOfficeFormData(updated);
-                        }}
-                        label="Address"
-                        placeholder="Địa chỉ..."
-                        multiline={true}
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
-                      />
+                      <div>
+                        <Label>Tiêu đề</Label>
+                        <Input
+                          value={officeFormData.title}
+                          onChange={(e) => setOfficeFormData({ ...officeFormData, title: e.target.value })}
+                          placeholder="Văn phòng chi nhánh"
+                        />
+                      </div>
+                      <div>
+                        <Label>Thành phố</Label>
+                        <Input
+                          value={officeFormData.city}
+                          onChange={(e) => setOfficeFormData({ ...officeFormData, city: e.target.value })}
+                          placeholder="Hà Nội"
+                        />
+                      </div>
+                      <div>
+                        <Label>Địa chỉ</Label>
+                        <Textarea
+                          value={officeFormData.address}
+                          onChange={(e) => setOfficeFormData({ ...officeFormData, address: e.target.value })}
+                          placeholder="Địa chỉ..."
+                        />
+                      </div>
                       <div>
                         <Label>Phone</Label>
                         <Input
@@ -2354,9 +1521,7 @@ export default function AdminContactPage() {
                       <div>
                         <Label>Label</Label>
                         <Input
-                          value={typeof socialFormData.label === 'string'
-                            ? socialFormData.label
-                            : (socialFormData.label?.vi || socialFormData.label?.en || socialFormData.label?.ja || '')}
+                          value={socialFormData.label}
                           onChange={(e) => setSocialFormData({ ...socialFormData, label: e.target.value })}
                           placeholder="Label"
                         />
@@ -2399,24 +1564,6 @@ export default function AdminContactPage() {
               </Dialog>
             </TabsContent>
 
-            <TabsContent value="preview" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Preview Sidebar</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-muted-foreground p-4 text-center">
-                    Preview không khả dụng - Public pages đã bị xóa
-                  </div>
-                  {/* Preview removed - public pages deleted */}
-                  {/* {sidebarData.isActive && (
-                    <div className="border rounded-lg p-4">
-                      <ContactSidebar data={getPreviewData().sidebar} />
-                    </div>
-                  )} */}
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         </TabsContent>
 
@@ -2425,7 +1572,6 @@ export default function AdminContactPage() {
           <Tabs defaultValue="config" className="w-full">
             <TabsList>
               <TabsTrigger value="config">Cấu hình</TabsTrigger>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
             </TabsList>
 
             <TabsContent value="config" className="space-y-4 mt-4">
@@ -2455,17 +1601,11 @@ export default function AdminContactPage() {
                 {!collapsedBlocks.mapSection && (
                   <CardContent className="space-y-4 px-6 py-4">
                   <div>
-                    <LocaleInput
-                      label="Address"
-                      value={typeof mapData.address === 'string'
-                        ? { vi: mapData.address, en: '', ja: '' }
-                        : mapData.address}
-                      onChange={(value) => {
-                        setMapData({ ...mapData, address: value });
-                      }}
+                    <Label>Address</Label>
+                    <Input
+                      value={mapData.address}
+                      onChange={(e) => setMapData({ ...mapData, address: e.target.value })}
                       placeholder="Địa chỉ..."
-                      defaultLocale={globalLocale}
-                      aiProvider={aiProvider}
                     />
                   </div>
                   <div>
@@ -2489,24 +1629,6 @@ export default function AdminContactPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="preview" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Preview Map</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-muted-foreground p-4 text-center">
-                    Preview không khả dụng - Public pages đã bị xóa
-                  </div>
-                  {/* Preview removed - public pages deleted */}
-                  {/* {mapData.isActive && (
-                    <div className="border rounded-lg p-4">
-                      <ContactMap data={mapData} />
-                    </div>
-                  )} */}
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         </TabsContent>
       </Tabs>

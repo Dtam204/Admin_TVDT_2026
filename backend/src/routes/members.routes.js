@@ -18,81 +18,68 @@ const router = express.Router();
  * @openapi
  * /api/admin/members/dashboard-stats:
  *   get:
- *     tags:
- *       - Admin Members
- *     summary: Lấy thống kê số lượng hội viên (Tổng số & VIP)
+ *     tags: [Admin Members]
+ *     summary: Thống kê hội viên tổng quan
+ *     description: Lấy số lượng tổng hội viên, hội viên VIP và người dùng hệ thống cho Dashboard.
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Thống kê thành công
+ *         description: Thành công
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: object
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
  *                   properties:
- *                     totalMembers:
- *                       type: integer
- *                     vipMembers:
- *                       type: integer
- *                     totalUsers:
- *                       type: integer
- * */
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         totalMembers: { type: 'integer' }
+ *                         vipMembers: { type: 'integer' }
+ *                         totalUsers: { type: 'integer' }
+ */
 router.get('/dashboard-stats', requireAuth, restrictToCMS, checkPermission('members.view'), getStats);
 
 /**
  * @openapi
  * /api/admin/members/stats:
  *   get:
- *     tags:
- *       - Admin Members
- *     summary: Lấy thống kê số lượng hội viên (Alias cho /dashboard-stats)
+ *     tags: [Admin Members]
+ *     summary: Thống kê hội viên (Alias)
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Thống kê thành công
+ *         description: Thành công
  */
 router.get('/stats', requireAuth, restrictToCMS, checkPermission('members.view'), getStats);
-
 
 /**
  * @openapi
  * /api/admin/members:
  *   get:
- *     tags:
- *       - Admin Members
- *     summary: Lấy danh sách bạn đọc (Phân trang & Tìm kiếm)
- *     description: Hỗ trợ tìm kiếm theo tên, email hoặc mã số thẻ.
+ *     tags: [Admin Members]
+ *     summary: Danh sách bạn đọc
+ *     description: Lấy danh sách hội viên với khả năng tìm kiếm nâng cao và phân trang.
  *     parameters:
  *       - in: query
  *         name: search
- *         schema:
- *           type: string
+ *         schema: { type: 'string' }
  *         description: Tìm theo tên, email hoặc mã số thẻ
  *       - in: query
  *         name: status
- *         schema:
- *           type: string
- *           enum: [active, inactive, all]
+ *         schema: { type: 'string', enum: [active, inactive, all] }
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
- *           default: 1
+ *         schema: { type: 'integer', default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
+ *         schema: { type: 'integer', default: 10 }
  *     responses:
  *       200:
- *         description: Danh sách bạn đọc
+ *         description: Thành công
  *         content:
  *           application/json:
  *             schema:
@@ -102,10 +89,8 @@ router.get('/stats', requireAuth, restrictToCMS, checkPermission('members.view')
  *                   properties:
  *                     data:
  *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Member'
- *                     pagination:
- *                       $ref: '#/components/schemas/Pagination'
+ *                       items: { $ref: '#/components/schemas/Member' }
+ *                     pagination: { $ref: '#/components/schemas/Pagination' }
  */
 router.get('/', requireAuth, restrictToCMS, checkPermission('members.view'), getAll);
 
@@ -113,27 +98,24 @@ router.get('/', requireAuth, restrictToCMS, checkPermission('members.view'), get
  * @openapi
  * /api/admin/members/{id}:
  *   get:
- *     tags:
- *       - Admin Members
+ *     tags: [Admin Members]
  *     summary: Chi tiết bạn đọc
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: integer
+ *         schema: { type: 'integer' }
  *     responses:
  *       200:
- *         description: Thông tin chi tiết bạn đọc
+ *         description: Thành công
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   $ref: '#/components/schemas/Member'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/Member' }
  */
 router.get('/:id', requireAuth, restrictToCMS, checkPermission('members.view'), getById);
 
@@ -141,61 +123,30 @@ router.get('/:id', requireAuth, restrictToCMS, checkPermission('members.view'), 
  * @openapi
  * /api/admin/members:
  *   post:
- *     tags:
- *       - Admin Members
- *     summary: Tạo bạn đọc mới (Admin)
- *     description: Tự động tạo cả tài khoản đăng nhập (User) và thực thể Bạn đọc (Member).
+ *     tags: [Admin Members]
+ *     summary: Tạo hội viên mới
+ *     description: Đăng ký hội viên mới, hệ thống tự động tạo tài khoản đăng nhập đi kèm.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - email
- *               - full_name
- *               - card_number
+ *             required: [email, full_name, card_number]
  *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *                 default: "123456"
- *               full_name:
- *                 type: string
- *               card_number:
- *                 type: string
- *               membership_plan_id:
- *                 type: integer
- *               balance:
- *                 type: number
- *                 description: Số dư nạp khởi tạo
- *               issued_date:
- *                 type: string
- *                 format: date
- *               membership_expires:
- *                 type: string
- *                 format: date
- *               identity_number:
- *                 type: string
- *               phone:
- *                 type: string
- *               address:
- *                 type: string
- *               date_of_birth:
- *                 type: string
- *                 format: date
- *               gender:
- *                 type: string
- *                 enum: [male, female, other]
- *               status:
- *                 type: string
- *                 enum: [active, inactive]
+ *               email: { type: 'string' }
+ *               password: { type: 'string', default: '123456' }
+ *               full_name: { type: 'string' }
+ *               card_number: { type: 'string' }
+ *               membership_plan_id: { type: 'integer' }
+ *               balance: { type: 'number', description: 'Số dư nạp ban đầu' }
+ *               status: { type: 'string', enum: [active, inactive] }
  *     responses:
  *       201:
  *         description: Tạo thành công
- *       400:
- *         description: Trùng email hoặc mã thẻ
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  */
 router.post('/', requireAuth, restrictToCMS, checkPermission('members.manage'), auditLog('members'), create);
 
@@ -203,23 +154,24 @@ router.post('/', requireAuth, restrictToCMS, checkPermission('members.manage'), 
  * @openapi
  * /api/admin/members/{id}:
  *   put:
- *     tags:
- *       - Admin Members
- *     summary: Cập nhật thông tin bạn đọc
+ *     tags: [Admin Members]
+ *     summary: Cập nhật thông tin hội viên
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: integer
+ *         schema: { type: 'integer' }
  *     requestBody:
+ *       required: true
  *       content:
  *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Member'
+ *           schema: { $ref: '#/components/schemas/Member' }
  *     responses:
  *       200:
  *         description: Cập nhật thành công
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  */
 router.put('/:id', requireAuth, restrictToCMS, checkPermission('members.manage'), auditLog('members'), update);
 
@@ -227,18 +179,19 @@ router.put('/:id', requireAuth, restrictToCMS, checkPermission('members.manage')
  * @openapi
  * /api/admin/members/{id}:
  *   delete:
- *     tags:
- *       - Admin Members
- *     summary: Xóa bạn đọc
+ *     tags: [Admin Members]
+ *     summary: Xóa hội viên
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: integer
+ *         schema: { type: 'integer' }
  *     responses:
  *       200:
  *         description: Xóa thành công
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  */
 router.delete('/:id', requireAuth, restrictToCMS, checkPermission('members.manage'), auditLog('members'), remove);
 
@@ -246,18 +199,19 @@ router.delete('/:id', requireAuth, restrictToCMS, checkPermission('members.manag
  * @openapi
  * /api/admin/members/{id}/upgrade:
  *   post:
- *     tags:
- *       - Admin Members
- *     summary: Nâng cấp VIP/Gia hạn hội viên thủ công
+ *     tags: [Admin Members]
+ *     summary: Nâng cấp VIP / Gia hạn thủ công
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: integer
+ *         schema: { type: 'integer' }
  *     responses:
  *       200:
- *         description: Nâng cấp thành công
+ *         description: Thực hiện thành công
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  */
 router.post('/:id/upgrade', requireAuth, restrictToCMS, checkPermission('members.manage'), auditLog('members'), manualUpgrade);
 

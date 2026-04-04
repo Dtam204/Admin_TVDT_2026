@@ -19,7 +19,7 @@ class DashboardService {
       
       // 2. Thống kê nâng cao theo yêu cầu
       totalViews: "SELECT COUNT(*) FROM interaction_logs WHERE action_type IN ('read', 'view', 'download')",
-      totalRevenue: "SELECT SUM(ABS(amount)) FROM payments WHERE type IN ('wallet_deposit', 'plan_subscription', 'manual_payment', 'service_fee') AND status = 'completed'",
+      totalRevenue: "SELECT SUM(ABS(amount)) FROM payments WHERE type IN ('wallet_deposit', 'membership', 'book_rental', 'fee_penalty', 'course') AND status = 'completed'",
       totalFavorites: "SELECT COUNT(*) FROM interaction_logs WHERE action_type = 'favorite'",
       totalBorrows: "SELECT COUNT(*) FROM book_loans",
       totalOverdueLoans: "SELECT COUNT(*) FROM book_loans WHERE status = 'overdue' OR (status = 'borrowing' AND due_date < CURRENT_DATE)",
@@ -70,7 +70,7 @@ class DashboardService {
   static async getRecentActivities() {
     // 5 phiếu mượn mới nhất
     const { rows: loans } = await pool.query(`
-      SELECT bl.*, m.full_name as member_name, b.title->>'vi' as book_title
+      SELECT bl.*, m.full_name as member_name, b.title as book_title
       FROM book_loans bl
       JOIN members m ON bl.member_id = m.id
       JOIN books b ON bl.book_id = b.id
@@ -80,7 +80,7 @@ class DashboardService {
     
     // 5 bình luận/đánh giá mới nhất
     const { rows: reviews } = await pool.query(`
-      SELECT c.*, u.name as user_name, b.title->>'vi' as book_title
+      SELECT c.*, u.name as user_name, b.title as book_title
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
       JOIN books b ON c.object_id = b.id

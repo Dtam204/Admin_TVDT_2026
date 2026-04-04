@@ -8,6 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 
+import { getCleanValue } from "@/lib/utils/locale-admin";
+
 interface MembershipPlanFormProps {
   initialData?: any;
   onSubmit: (data: any) => void;
@@ -19,7 +21,7 @@ export function MembershipPlanForm({ initialData = {}, onSubmit, isSubmitting }:
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const data = {
-      name: JSON.stringify({ vi: formData.get("name")?.toString() || "" }),
+      name: formData.get("name")?.toString() || "", // Gửi chuỗi trực tiếp
       slug: formData.get("slug")?.toString() || "",
       tier_code: formData.get("tier_code")?.toString() || "basic",
       price: Number(formData.get("price")) || 0,
@@ -31,19 +33,6 @@ export function MembershipPlanForm({ initialData = {}, onSubmit, isSubmitting }:
       allow_download: formData.get("allow_download") === "on",
     };
     onSubmit(data);
-  };
-
-  const parseName = (name: any) => {
-    if (!name) return "";
-    if (typeof name === "string") {
-      try {
-        const parsed = JSON.parse(name);
-        return parsed.vi || name;
-      } catch {
-        return name;
-      }
-    }
-    return name.vi || "";
   };
 
   return (
@@ -68,7 +57,7 @@ export function MembershipPlanForm({ initialData = {}, onSubmit, isSubmitting }:
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label htmlFor="name">Tên hiển thị (Tiếng Việt)</Label>
-            <Input id="name" name="name" defaultValue={parseName(initialData.name)} required />
+            <Input id="name" name="name" defaultValue={getCleanValue(initialData.name)} required />
           </div>
 
           <div className="space-y-2">

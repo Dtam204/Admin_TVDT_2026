@@ -13,6 +13,7 @@ import { useAuthorsSelect, usePublishersSelect } from '@/lib/hooks/useBooks';
 import { usePublishers } from '@/lib/hooks/usePublishers';
 import { useBookLoans } from '@/lib/hooks/useBookLoans';
 import { useState, useEffect } from 'react';
+import { getCleanValue, normalizeLocaleValue } from '@/lib/utils/locale-admin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -168,21 +169,7 @@ export default function EditBookPage() {
   const { data: storageLocationsRes } = useAdminStorageLocations();
   const storageLocations = storageLocationsRes?.data || [];
 
-  const getDisplayValue = (val: any) => {
-    if (!val) return 'N/A';
-    if (typeof val === 'string') {
-      try {
-        const parsed = JSON.parse(val);
-        return parsed.vi || parsed.en || Object.values(parsed)[0] || val;
-      } catch {
-        return val;
-      }
-    }
-    if (typeof val === 'object') {
-      return val.vi || val.en || Object.values(val)[0] || 'N/A';
-    }
-    return String(val);
-  };
+  // Đã chuyển sang dùng getCleanValue từ locale-admin.ts
 
   const [digitalMode, setDigitalMode] = useState<'url' | 'pdf' | 'text'>('pdf');
 
@@ -216,12 +203,12 @@ export default function EditBookPage() {
       setFormData({
         publication: {
           code: d.code || '',
-          title: getDisplayValue(d.title),
+          title: getCleanValue(d.title),
           author: (typeof d.author === 'string' && d.author !== 'Nhiều tác giả' ? d.author : (d.authors_list?.[0]?.name || d.author || '')),
           author_ids: d.authors_list?.map((a: any) => a.id) || [],
           publisher_id: (d.publisher_id || d.publisher?.id || '').toString(),
           collection_id: d.collection_id?.toString() || '',
-          description: getDisplayValue(d.description),
+          description: getCleanValue(d.description),
           thumbnail: d.cover_image || d.thumbnail || '',
           publicationYear: d.publication_year || new Date().getFullYear(),
           language: d.language || 'vi',
@@ -240,8 +227,8 @@ export default function EditBookPage() {
           volume: d.volume || '',
           dimensions: d.dimensions || '',
           keywords: Array.isArray(d.keywords) ? d.keywords : (typeof d.keywords === 'string' ? d.keywords.split(',').map((k: string) => k.trim()) : []),
-          digitalContent: d.digital_content || d.digitalContent || { segments: [] },
-          toc: d.toc || [],
+          digitalContent: Array.isArray(d.digital_content) ? d.digital_content : (typeof d.digital_content === 'string' ? JSON.parse(d.digital_content) : (d.digitalContent || { segments: [] })),
+          toc: Array.isArray(d.toc) ? d.toc : (typeof d.toc === 'string' ? JSON.parse(d.toc) : []),
           access_policy: d.access_policy || 'basic',
           cooperation_status: d.cooperation_status || 'cooperating',
           media_type: d.media_type || (d.is_digital ? 'Digital' : 'Physical')
@@ -297,13 +284,13 @@ export default function EditBookPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Đóng gói lại thành JSONB trước khi gửi lên API
+    // Gửi trực tiếp dưới dạng chuỗi (Plain String) để đồng bộ với DB phẳng
     const submissionData = {
       ...formData,
       publication: {
         ...formData.publication,
-        title: { vi: formData.publication.title },
-        description: { vi: formData.publication.description },
+        title: formData.publication.title,
+        description: formData.publication.description,
         keywords: Array.isArray(formData.publication.keywords) ? formData.publication.keywords : formData.publication.keywords.split(',').map((k: string) => k.trim()),
         toc: formData.publication.toc || [],
         access_policy: formData.publication.access_policy || 'basic',
@@ -323,9 +310,15 @@ export default function EditBookPage() {
     updatePublication({ id, data: submissionData }, {
       onSuccess: () => {
         toast.success('Đã cập nhật ấn phẩm thành công!');
-        router.push('/admin/books');
+        // Delay nhỏ để tránh lỗi unmount và hiển thị toast
+        setTimeout(() => {
+          router.push('/admin/books');
+        }, 500);
       },
-      onError: (err: any) => toast.error(err.message)
+      onError: (err: any) => {
+        console.error('Update publication error:', err);
+        toast.error(err.message || 'Có lỗi xảy ra khi lưu dữ liệu');
+      }
     });
   };
 
@@ -456,7 +449,7 @@ export default function EditBookPage() {
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-none shadow-2xl">
                         {publishers.map((p: any) => (
-                          <SelectItem key={p.id} value={p.id.toString()}>{getDisplayValue(p.name)}</SelectItem>
+                          <SelectItem key={p.id} value={p.id.toString()}>{getCleanValue(p.name)}</SelectItem>
                         ))}
                         {publishers.length === 0 && (
                           <div className="p-2 text-center text-xs text-slate-400">Chưa có dữ liệu</div>
@@ -743,7 +736,8 @@ export default function EditBookPage() {
                       </Button>
                       <Button 
                         onClick={() => {
-                          const newToc = [...(formData.publication.toc || [])];
+                          const currentToc = Array.isArray(formData.publication.toc) ? formData.publication.toc : [];
+                          const newToc = [...currentToc];
                           newToc.push({ title: '', page: 1, level: 1 });
                           setFormData({...formData, publication: {...formData.publication, toc: newToc}});
                         }} 
@@ -764,7 +758,7 @@ export default function EditBookPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {formData.publication.toc?.map((item: any, idx: number) => (
+                      {Array.isArray(formData.publication.toc) && formData.publication.toc.map((item: any, idx: number) => (
                         <TableRow key={idx} className="border-slate-50 hover:bg-slate-100/50 group">
                           <TableCell className="px-6 py-2">
                             <Input 
@@ -772,7 +766,8 @@ export default function EditBookPage() {
                               placeholder="VD: Chương 1..."
                               value={item.title} 
                               onChange={e => {
-                                const newToc = [...formData.publication.toc];
+                                const currentToc = Array.isArray(formData.publication.toc) ? formData.publication.toc : [];
+                                const newToc = [...currentToc];
                                 newToc[idx].title = e.target.value;
                                 setFormData({...formData, publication: {...formData.publication, toc: newToc}});
                               }} 
@@ -785,7 +780,8 @@ export default function EditBookPage() {
                                   type="number"
                                   value={item.page} 
                                   onChange={e => {
-                                    const newToc = [...formData.publication.toc];
+                                     const currentToc = Array.isArray(formData.publication.toc) ? formData.publication.toc : [];
+                                    const newToc = [...currentToc];
                                     newToc[idx].page = parseInt(e.target.value);
                                     setFormData({...formData, publication: {...formData.publication, toc: newToc}});
                                   }} 
@@ -816,7 +812,8 @@ export default function EditBookPage() {
                               variant="ghost" 
                               size="icon" 
                               onClick={() => {
-                                const newToc = formData.publication.toc.filter((_: any, i: number) => i !== idx);
+                                const currentToc = Array.isArray(formData.publication.toc) ? formData.publication.toc : [];
+                                const newToc = currentToc.filter((_: any, i: number) => i !== idx);
                                 setFormData({...formData, publication: {...formData.publication, toc: newToc}});
                               }} 
                               className="text-slate-300 hover:text-rose-500 h-8 w-8"
@@ -908,7 +905,7 @@ export default function EditBookPage() {
                           </Button>
                         </div>
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                           {formData.publication.digitalContent?.segments?.map((s: any, i: number) => (
+                           {Array.isArray(formData.publication.digitalContent?.segments) && formData.publication.digitalContent.segments.map((s: any, i: number) => (
                              <Badge key={i} variant="secondary" className="bg-white border-indigo-100 text-indigo-700 justify-start py-2 px-3">
                                 {s.title}: {s.start_page}-{s.end_page}
                              </Badge>
@@ -1026,7 +1023,7 @@ export default function EditBookPage() {
                 <div className="flex gap-4">
                   <div className="w-20 h-28 bg-slate-100 rounded-xl overflow-hidden shadow-sm flex-shrink-0 border border-slate-100">
                     {formData.publication.thumbnail ? (
-                      <img src={formData.publication.thumbnail.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000'}${formData.publication.thumbnail}` : formData.publication.thumbnail} className="w-full h-full object-cover" />
+                      <img src={typeof formData.publication.thumbnail === 'string' && formData.publication.thumbnail.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000'}${formData.publication.thumbnail}` : (typeof formData.publication.thumbnail === 'string' ? formData.publication.thumbnail : '')} className="w-full h-full object-cover" />
                     ) : (
                       <Image className="w-6 h-6 text-slate-300 m-4" />
                     )}

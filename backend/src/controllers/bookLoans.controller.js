@@ -77,7 +77,7 @@ exports.getById = async (req, res, next) => {
     const query = `
       SELECT bl.*, 
              m.full_name as member_name, m.card_number as member_card, m.email as member_email, m.phone as member_phone,
-             b.title->>'vi' as book_title, b.author as book_author, b.cover_image, b.media_type, b.access_policy,
+             b.title as book_title, b.author as book_author, b.cover_image, b.media_type, b.access_policy,
              c.barcode as copy_barcode, c.condition as copy_condition
       FROM book_loans bl
       JOIN members m ON bl.member_id = m.id
@@ -118,7 +118,7 @@ exports.create = async (req, res, next) => {
 
     // 1. Kiểm tra trạng thái thẻ & Hạn mức thực tế (Đồng bộ hóa Expiry)
     const { rows: members } = await client.query(`
-      SELECT m.*, mp.max_books_borrowed, mp.tier_code, mp.name->>'vi' as plan_name
+      SELECT m.*, mp.max_books_borrowed, mp.tier_code, mp.name as plan_name
       FROM members m
       LEFT JOIN membership_plans mp ON m.membership_plan_id = mp.id
       WHERE m.id = $1

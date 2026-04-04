@@ -86,7 +86,7 @@ router.post('/transactions', requireAuth, controller.createTransaction);
  *   post:
  *     tags: [Admin MemberActions]
  *     summary: Tạo phiếu phạt
- *     description: Ghi nhận phiếu phạt cho hội viên (VD: Làm hỏng sách, Nội quy...).
+ *     description: "Ghi nhận phiếu phạt cho hội viên (VD: Làm hỏng sách, Nội quy...)."
  *     security:
  *       - bearerAuth: []
  *     requestBody:

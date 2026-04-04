@@ -1,224 +1,350 @@
-const { authenticateReader } = require('../services/reader/auth.service');
+const readerAuthService = require('../services/reader/auth.service');
+const readerService = require('../services/reader/reader.service');
 const { pool } = require('../config/database');
-const { getEffectiveMembership } = require('../utils/member_helper');
 
 /**
- * Reader Controller
- * Handles requests for portal readers (members) 
+ * Reader Controller - CHUẨN HÓA RESTFUL CHUYÊN NGHIỆP
+ * Đảm bảo: Response đồng nhất, mã trạng thái chuẩn, thông điệp lịch sự.
  */
 
-// Đăng nhập
+// 1. Đăng nhập (Thẻ hoặc Email)
 exports.login = async (req, res, next) => {
   try {
-    const { identifier, password } = req.body || {};
-    if (!identifier || !password) return res.status(400).json({ success: false, message: 'Thiếu thông tin đăng nhập', code: 400 });
+    const { identifier, password } = req.body;
+    if (!identifier || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Vui lòng cung cấp đầy đủ mã thẻ/email và mật khẩu', 
+        code: 400 
+      });
+    }
 
-    const result = await authenticateReader({ identifier, password });
-    if (result) return res.json({ success: true, ...result, code: 0 });
+    const result = await readerAuthService.authenticateReader({ identifier, password });
+    if (!result) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Thông tin tài khoản hoặc mật khẩu không chính xác', 
+        code: 401 
+      });
+    }
 
-    return res.status(401).json({ success: false, message: 'Sai thông tin đăng nhập hoặc tài khoản bị khoá', code: 401 });
-  } catch (error) {
-    console.error('Reader login error:', error);
-    return res.status(500).json({ success: false, message: error.message, code: 500 });
-  }
-};
-
-// Lấy thông tin cá nhân (Profile 360)
-exports.getProfile = async (req, res) => {
-  try {
-    const readerId = req.user.id; // Lấy từ middleware verifyToken
-    const { rows } = await pool.query(`
-      SELECT 
-        m.id, m.full_name as fullName, m.email, m.phone, m.card_number as cardNumber, 
-        m.membership_expires, m.status, m.balance,
-        mp.name->>'vi' as planName, mp.tier_code, mp.max_books_borrowed,
-        (SELECT COUNT(*) FROM book_loans WHERE member_id = m.id AND status IN ('borrowing', 'overdue')) as currentLoansCount,
-        (SELECT COALESCE(SUM(late_fee), 0) FROM book_loans WHERE member_id = m.id) as totalFines
-      FROM members m 
-      LEFT JOIN membership_plans mp ON m.membership_plan_id = mp.id
-      WHERE m.id = $1
-    `, [readerId]);
-
-    if (rows.length === 0) return res.status(404).json({ success: false, message: "Không tìm thấy người dùng", code: 404 });
-
-    const member = rows[0];
-    
-    // 1. Tính toán quyền lợi thực tế (Đồng bộ logic Expiry)
-    const effective = getEffectiveMembership({
-      membership_expires: member.membership_expires,
-      tier_code: member.tier_code || 'basic',
-      plan_name: member.planName || 'Cơ bản',
-      max_books_borrowed: member.max_books_borrowed || 3
-    });
-
-    res.json({ 
+    return res.json({ 
       success: true, 
-      data: {
-        ...member,
-        planName: effective.plan_name,
-        tierCode: effective.tier_code,
-        maxBorrowLimit: effective.max_books_borrowed,
-        isExpired: effective.is_expired
-      }, 
+      message: 'Đăng nhập thành công', 
+      data: result, 
       code: 0 
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message, code: 500 });
+    return next(error);
   }
 };
 
-// Lấy lịch sử mượn trả
-exports.getBorrowHistory = async (req, res) => {
+// 2. Lấy thông tin cá nhân (Profile 360)
+exports.getProfile = async (req, res, next) => {
   try {
-    const readerId = req.user.id;
-    const { type } = req.query; // 'digital' hoặc 'physical'
+    const readerId = req.user.sub;
+    const profile = await readerService.getProfile(readerId);
+    
+    if (!profile) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Tài khoản không tồn tại trên hệ thống", 
+        code: 404 
+      });
+    }
 
-    let query = `
-      SELECT bl.id as loanId, bl.loan_date as borrowDate, bl.return_date as returnDate, 
-             bl.due_date as dueDate, bl.status, bl.late_fee as lateFee,
-             b.title->>'vi' as title, b.author, b.is_digital as isDigital, b.cover_image as thumbnail,
+    return res.json({ 
+      success: true, 
+      message: "Lấy thông tin hồ sơ thành công",
+      data: profile, 
+      code: 0 
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// 3. Cập nhật thông tin cá nhân
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const readerId = req.user.sub;
+    const { fullName, phone, email, gender, birthday, address } = req.body;
+
+    const data = await readerService.updateProfile(readerId, { 
+      fullName, phone, email, gender, birthday, address 
+    });
+
+    return res.json({ 
+      success: true, 
+      message: "Hồ sơ của bạn đã được cập nhật thành công", 
+      data, 
+      code: 0 
+    });
+  } catch (error) {
+    const status = error.message.includes('đã được sử dụng') || error.message.includes('định dạng') ? 400 : 500;
+    return res.status(status).json({ 
+      success: false, 
+      message: error.message, 
+      code: status 
+    });
+  }
+};
+
+// 4. Đăng xuất (Thu hồi Refresh Token)
+exports.logout = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Yêu cầu không hợp lệ. Vui lòng cung cấp mã xác thực.", 
+        code: 400 
+      });
+    }
+
+    await readerAuthService.revokeRefreshToken(refreshToken);
+    return res.json({ 
+      success: true, 
+      message: "Đăng xuất thành công", 
+      code: 0 
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// 4.1. Đăng xuất khỏi tất cả thiết bị
+exports.logoutAllDevices = async (req, res, next) => {
+  try {
+    const readerId = req.user.sub;
+    
+    const { rows: member } = await pool.query('SELECT user_id FROM members WHERE id = $1', [readerId]);
+    if (member.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Không tìm thấy thông tin định danh bạn đọc", 
+        code: 404 
+      });
+    }
+
+    await readerAuthService.logoutAllDevices(member[0].user_id);
+    return res.json({ 
+      success: true, 
+      message: "Bạn đã đăng xuất khỏi tất cả các thiết bị thành công", 
+      code: 0 
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// 5. Luồng Quên mật khẩu & OTP
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const result = await readerService.generateOTP(email);
+    return res.json({ 
+      success: true, 
+      message: "Mã OTP xác thực đã được gửi đến email của bạn", 
+      data: result, 
+      code: 0 
+    });
+  } catch (error) {
+    return res.status(400).json({ 
+      success: false, 
+      message: error.message, 
+      code: 400 
+    });
+  }
+};
+
+exports.verifyOTP = async (req, res, next) => {
+  try {
+    const { email, otpCode } = req.body;
+    await readerService.verifyOTP(email, otpCode);
+    return res.json({ 
+      success: true, 
+      message: "Xác thực mã OTP thành công", 
+      code: 0 
+    });
+  } catch (error) {
+    return res.status(400).json({ 
+      success: false, 
+      message: error.message, 
+      code: 400 
+    });
+  }
+};
+
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { email, newPassword, confirmPassword } = req.body;
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Mật khẩu xác nhận không khớp", 
+        code: 400 
+      });
+    }
+    await readerService.resetPassword(email, newPassword);
+    return res.json({ 
+      success: true, 
+      message: "Đặt lại mật khẩu thành công. Vui lòng sử dụng mật khẩu mới để đăng nhập.", 
+      code: 0 
+    });
+  } catch (error) {
+    return res.status(400).json({ 
+      success: false, 
+      message: error.message, 
+      code: 400 
+    });
+  }
+};
+
+// 6. Đổi mật khẩu ngay trong App
+exports.changePassword = async (req, res, next) => {
+  try {
+    const readerId = req.user.sub;
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Mật khẩu mới và mật khẩu xác nhận không trùng khớp", 
+        code: 400 
+      });
+    }
+
+    await readerService.changePassword(readerId, oldPassword, newPassword);
+    return res.json({ 
+      success: true, 
+      message: "Mật khẩu của bạn đã được thay đổi thành công", 
+      code: 0 
+    });
+  } catch (error) {
+    return res.status(400).json({ 
+      success: false, 
+      message: error.message, 
+      code: 400 
+    });
+  }
+};
+
+// 7. Lịch sử Mượn trả (Physical Loans)
+exports.getBorrowHistory = async (req, res, next) => {
+  try {
+    const readerId = req.user.sub;
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const query = `
+      SELECT bl.id, bl.loan_date as "borrowDate", bl.return_date as "returnDate", 
+             bl.due_date as "dueDate", bl.status, bl.late_fee as "lateFee",
+             b.title, b.author, b.cover_image as thumbnail,
              c.barcode
       FROM book_loans bl
       JOIN books b ON bl.book_id = b.id
       LEFT JOIN publication_copies c ON bl.copy_id = c.id
-      WHERE bl.member_id = $1
+      WHERE bl.member_id = $1 AND b.is_digital = false
+      ORDER BY bl.loan_date DESC
+      LIMIT $2 OFFSET $3
     `;
-    const params = [readerId];
+    
+    const { rows } = await pool.query(query, [readerId, limit, offset]);
 
-    if (type === 'digital') {
-      query += ` AND b.is_digital = true`;
-    } else if (type === 'physical') {
-      query += ` AND b.is_digital = false`;
-    }
+    const { rows: countRes } = await pool.query(
+      'SELECT COUNT(*) FROM book_loans bl JOIN books b ON bl.book_id = b.id WHERE bl.member_id = $1 AND b.is_digital = false',
+      [readerId]
+    );
+    const totalItems = parseInt(countRes[0].count);
 
-    query += ` ORDER BY bl.loan_date DESC`;
-    const { rows } = await pool.query(query, params);
-
-    res.json({ success: true, data: rows, code: 0 });
+    return res.json({ 
+      success: true, 
+      message: "Lấy danh sách lịch sử mượn trả thành công",
+      data: rows, 
+      pagination: {
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: parseInt(page),
+        limit: parseInt(limit)
+      },
+      code: 0 
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message, code: 500 });
+    return next(error);
   }
 };
 
-// Lịch sử giao dịch ví & thanh toán SePay
-exports.getTransactions = async (req, res) => {
+// 8. Lịch sử Tài chính (Transactions)
+exports.getTransactions = async (req, res, next) => {
   try {
-    const readerId = req.user.id;
+    const readerId = req.user.sub;
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
     const { rows } = await pool.query(`
-      SELECT id, amount, type, status, notes as description, transaction_id as txnId, created_at as createdAt
+      SELECT id, ABS(amount) as amount, type, status, notes as description, transaction_id as "txnId", created_at as "createdAt"
       FROM payments
       WHERE member_id = $1
       ORDER BY created_at DESC
-      LIMIT 50
-    `, [readerId]);
+      LIMIT $2 OFFSET $3
+    `, [readerId, limit, offset]);
 
-    res.json({ success: true, data: rows, code: 0 });
+    const { rows: countRes } = await pool.query('SELECT COUNT(*) FROM payments WHERE member_id = $1', [readerId]);
+    const totalItems = parseInt(countRes[0].count);
+
+    return res.json({ 
+      success: true, 
+      message: "Lấy danh sách giao dịch tài chính thành công",
+      data: rows, 
+      pagination: {
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: parseInt(page),
+        limit: parseInt(limit)
+      },
+      code: 0 
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message, code: 500 });
+    return next(error);
   }
 };
 
-// Theo dõi yêu cầu nâng cấp/gia hạn thẻ
-exports.getMembershipRequests = async (req, res) => {
+// 9. Lịch sử Thẻ (Membership Requests)
+exports.getMembershipRequests = async (req, res, next) => {
   try {
-    const readerId = req.user.id;
+    const readerId = req.user.sub;
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
     const { rows } = await pool.query(`
       SELECT 
         mr.id, mr.status, mr.amount, mr.request_note as note, 
-        mr.created_at as createdAt, mr.external_txn_id as txnId,
-        mp.name->>'vi' as planName
+        mr.created_at as "createdAt", mr.transaction_id as "txnId",
+        mp.name as "planName"
       FROM membership_requests mr
       JOIN membership_plans mp ON mr.plan_id = mp.id
       WHERE mr.member_id = $1
       ORDER BY mr.created_at DESC
-    `, [readerId]);
+      LIMIT $2 OFFSET $3
+    `, [readerId, limit, offset]);
 
-    res.json({ success: true, data: rows, code: 0 });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message, code: 500 });
-  }
-};
+    const { rows: countRes } = await pool.query('SELECT COUNT(*) FROM membership_requests WHERE member_id = $1', [readerId]);
+    const totalItems = parseInt(countRes[0].count);
 
-// Gia hạn thẻ (Tạo yêu cầu gia hạn trực tuyến)
-exports.renewCard = async (req, res) => {
-  const client = await pool.connect();
-  try {
-    const readerId = req.user.id;
-    const { planId, requestNote } = req.body;
-    
-    if (!planId) {
-      return res.status(400).json({ success: false, message: "Vui lòng chọn gói hội viên", code: 400 });
-    }
-
-    await client.query('BEGIN');
-
-    // 1. Lấy thông tin giá gói hiện tại để chốt đơn (Tuân thủ số tiền của gói)
-    const { rows: plans } = await client.query(
-      'SELECT id, price, name->> \'vi\' as planName FROM membership_plans WHERE id = $1 AND status = \'active\'',
-      [planId]
-    );
-
-    if (plans.length === 0) {
-      throw new Error("Gói hội viên không tồn tại hoặc đã ngừng cung cấp");
-    }
-
-    const plan = plans[0];
-
-    // 2. Tạo yêu cầu gia hạn mới
-    const { rows: requests } = await client.query(`
-      INSERT INTO membership_requests (
-        member_id, plan_id, status, amount, request_note, created_at
-      ) VALUES ($1, $2, 'pending', $3, $4, CURRENT_TIMESTAMP)
-      RETURNING id
-    `, [readerId, planId, plan.price, requestNote || `Đăng ký gói ${plan.planName}`]);
-
-    const requestId = requests[0].id;
-
-    await client.query('COMMIT');
-
-    res.json({ 
+    return res.json({ 
       success: true, 
-      message: "Yêu cầu gia hạn đã được gửi. Vui lòng thanh toán để kích hoạt.", 
-      data: {
-        requestId,
-        amount: plan.price,
-        planName: plan.planName,
-        paymentContent: `TVDT ${requestId}` // Hướng dẫn nội dung cho SePay
-      }, 
+      message: "Lấy danh sách yêu cầu đăng ký/gia hạn thành công",
+      data: rows, 
+      pagination: {
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: parseInt(page),
+        limit: parseInt(limit)
+      },
       code: 0 
     });
   } catch (error) {
-    if (client) await client.query('ROLLBACK');
-    res.status(500).json({ success: false, message: error.message, code: 500 });
-  } finally {
-    client.release();
-  }
-};
-
-// Cập nhật thông tin profile
-exports.updateProfile = async (req, res) => {
-  try {
-    const readerId = req.user.id;
-    const { fullName, phone } = req.body;
-
-    const { rows } = await pool.query(`
-      UPDATE members SET full_name = COALESCE($1, full_name), phone = COALESCE($2, phone)
-      WHERE id = $3 RETURNING id, full_name as fullName, phone
-    `, [fullName, phone, readerId]);
-
-    res.json({ success: true, message: "Cập nhật thành công", data: rows[0], code: 0 });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message, code: 500 });
-  }
-};
-
-// Quên mật khẩu
-exports.forgotPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
-    // Mock gửi email: trong thực tế sẽ tạo token lưu vào DB
-    res.json({ success: true, message: "Đã gửi mã xác minh đến email của bạn", code: 0 });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message, code: 500 });
+    return next(error);
   }
 };

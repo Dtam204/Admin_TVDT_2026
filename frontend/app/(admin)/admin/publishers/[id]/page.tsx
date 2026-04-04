@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, Building2, Mail, Phone, Globe, MapPin, Save, Trash2, Info } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { getCleanValue } from '@/lib/utils/locale-admin';
 
 export default function EditPublisherPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -36,17 +37,10 @@ export default function EditPublisherPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     if (data?.data) {
       const p = data.data;
-      
-      const getValue = (val: any) => {
-        if (!val) return '';
-        if (typeof val === 'string') return val;
-        return val.vi || val.en || Object.values(val)[0] || '';
-      };
-
       setFormData({
-        name: getValue(p.name),
+        name: getCleanValue(p.name),
         slug: p.slug || '',
-        description: getValue(p.description),
+        description: getCleanValue(p.description),
         address: p.address || '',
         phone: p.phone || '',
         email: p.email || '',
@@ -65,8 +59,11 @@ export default function EditPublisherPage({ params }: { params: Promise<{ id: st
 
     update(formData, {
       onSuccess: () => {
-        toast.success('Cập nhật thành công!');
-        router.push('/admin/publishers');
+        toast.success('Cập nhật nhà xuất bản thành công');
+        // Delay nhỏ để tránh lỗi unmount và hiển thị toast
+        setTimeout(() => {
+          router.push('/admin/publishers');
+        }, 500);
       },
       onError: (error: any) => {
         toast.error(error.message || 'Có lỗi xảy ra');

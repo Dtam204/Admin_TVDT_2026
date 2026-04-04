@@ -11,6 +11,7 @@ import {
 } from '@/lib/hooks/usePublications';
 import { useAuthorsSelect, usePublishersSelect } from '@/lib/hooks/useBooks';
 import { useState } from 'react';
+import { getCleanValue } from '@/lib/utils/locale-admin';
 import { usePublishers } from '@/lib/hooks/usePublishers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,21 +57,7 @@ export default function NewBookPage() {
   const { data: storageLocationsRes } = useAdminStorageLocations();
   const storageLocations = storageLocationsRes?.data || [];
 
-  const getDisplayValue = (val: any) => {
-    if (!val) return 'N/A';
-    if (typeof val === 'string') {
-      try {
-        const parsed = JSON.parse(val);
-        return parsed.vi || parsed.en || Object.values(parsed)[0] || val;
-      } catch {
-        return val;
-      }
-    }
-    if (typeof val === 'object') {
-      return val.vi || val.en || Object.values(val)[0] || 'N/A';
-    }
-    return String(val);
-  };
+  // Đã chuyển sang dùng getCleanValue
 
   const [digitalMode, setDigitalMode] = useState<'url' | 'pdf' | 'text'>('pdf');
 
@@ -162,8 +149,8 @@ export default function NewBookPage() {
       ...formData,
       publication: {
         ...formData.publication,
-        title: { vi: formData.publication.title },
-        description: { vi: formData.publication.description },
+        title: formData.publication.title,
+        description: formData.publication.description,
         keywords: Array.isArray(formData.publication.keywords) ? formData.publication.keywords : (formData.publication.keywords as string).split(',').map(k => k.trim()),
         toc: formData.publication.toc || [],
         access_policy: formData.publication.access_policy || 'basic',
@@ -180,10 +167,16 @@ export default function NewBookPage() {
     };
     createPublication(submissionData, {
       onSuccess: () => {
-        toast.success('Hệ thống đã lưu Ấn phẩm và các Bản sao thành công!');
-        router.push('/admin/books');
+        toast.success('Đã tạo ấn phẩm thành công!');
+        // Delay nhỏ để tránh lỗi unmount và hiển thị toast
+        setTimeout(() => {
+          router.push('/admin/books');
+        }, 500);
       },
-      onError: (err: any) => toast.error(err.message)
+      onError: (err: any) => {
+        console.error('Create publication error:', err);
+        toast.error(err.message || 'Có lỗi xảy ra khi tạo ấn phẩm');
+      }
     });
   };
 
@@ -309,7 +302,7 @@ export default function NewBookPage() {
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-none shadow-2xl">
                         {publishers.map((p: any) => (
-                          <SelectItem key={p.id} value={p.id.toString()}>{getDisplayValue(p.name)}</SelectItem>
+                          <SelectItem key={p.id} value={p.id.toString()}>{getCleanValue(p.name)}</SelectItem>
                         ))}
                         {publishers.length === 0 && (
                           <div className="p-2 text-center text-xs text-slate-400">Chưa có dữ liệu</div>
@@ -812,7 +805,7 @@ export default function NewBookPage() {
                 <div className="flex gap-4">
                   <div className="w-20 h-28 bg-slate-100 rounded-xl overflow-hidden shadow-sm flex-shrink-0 flex items-center justify-center border border-slate-100">
                     {formData.publication.thumbnail ? (
-                      <img src={formData.publication.thumbnail.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000'}${formData.publication.thumbnail}` : formData.publication.thumbnail} className="w-full h-full object-cover" />
+                      <img src={typeof formData.publication.thumbnail === 'string' && formData.publication.thumbnail.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000'}${formData.publication.thumbnail}` : (typeof formData.publication.thumbnail === 'string' ? formData.publication.thumbnail : '')} className="w-full h-full object-cover" />
                     ) : (
                       <Image className="w-8 h-8 text-slate-300" />
                     )}

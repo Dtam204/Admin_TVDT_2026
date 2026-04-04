@@ -7,53 +7,34 @@ const router = express.Router();
  * @openapi
  * /api/auth/login:
  *   post:
- *     tags:
- *       - Public Auth
- *     summary: Đăng nhập CMS Thư viện TN
+ *     tags: [Admin System]
+ *     summary: Đăng nhập vào hệ thống quản trị
+ *     description: Xác thực người dùng và trả về JWT token để truy cập các API bảo mật.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [email, password]
  *             properties:
- *               email:
- *                 type: string
- *                 example: admin@gmail.com
- *               password:
- *                 type: string
- *                 example: admin123
+ *               email: { type: 'string', example: 'admin@gmail.com' }
+ *               password: { type: 'string', example: 'admin123' }
  *     responses:
  *       200:
  *         description: Đăng nhập thành công
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 token:
- *                   type: string
- *                   example: eyJhbGciOi...
- *                 user:
- *                   type: object
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
  *                   properties:
- *                     name:
- *                       type: string
- *                       example: Administrator
- *                     email:
- *                       type: string
- *                       example: admin@gmail.com
+ *                     token: { type: 'string', example: 'eyJhbGciOi...' }
+ *                     user: { type: 'object' }
  *       401:
- *         description: Sai email hoặc mật khẩu
+ *         description: Sai thông tin đăng nhập
  */
-// Note: Auth controller đã có validation riêng, không cần Joi validation ở route level
 router.post('/login', login);
 
 module.exports = router;
-
-
-
-

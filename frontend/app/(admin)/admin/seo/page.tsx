@@ -13,10 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { getSeoPageByPath, updateSeoPage, SeoPageData } from "@/lib/api/seo";
 import ImageUpload from "@/components/admin/ImageUpload";
-import { LocaleInput } from "@/components/admin/LocaleInput";
-import { getLocaleValue, setLocaleValue, migrateObjectToLocale } from "@/lib/utils/locale-admin";
-import { useTranslationControls } from "@/lib/hooks/useTranslationControls";
-import { AIProviderSelector } from "@/components/admin/AIProviderSelector";
+import { getCleanValue } from "@/lib/utils/locale-admin";
 
 type Locale = 'vi' | 'en' | 'ja';
 
@@ -31,14 +28,6 @@ const PAGE_OPTIONS = [
 ];
 
 export default function AdminSeoPage() {
-  // Use translation controls hook
-  const {
-    globalLocale,
-    setGlobalLocale,
-    aiProvider,
-    setAiProvider,
-  } = useTranslationControls();
-
   const [selectedPath, setSelectedPath] = useState<string>('/');
   const [seoData, setSeoData] = useState<Partial<SeoPageData>>({});
   const [loading, setLoading] = useState(false);
@@ -53,11 +42,17 @@ export default function AdminSeoPage() {
       setLoading(true);
       const data = await getSeoPageByPath(selectedPath);
       if (data) {
-        // Normalize dữ liệu để đảm bảo các field luôn là locale object
-        const normalizedData = migrateObjectToLocale(data);
-        setSeoData(normalizedData);
+        setSeoData({
+          ...data,
+          title: getCleanValue(data.title),
+          description: getCleanValue(data.description),
+          keywords: getCleanValue(data.keywords),
+          og_title: getCleanValue(data.og_title),
+          og_description: getCleanValue(data.og_description),
+          twitter_title: getCleanValue(data.twitter_title),
+          twitter_description: getCleanValue(data.twitter_description),
+        });
       } else {
-        // Reset to defaults if not found
         const pageOption = PAGE_OPTIONS.find(p => p.path === selectedPath);
         setSeoData({
           page_path: selectedPath,
@@ -74,8 +69,9 @@ export default function AdminSeoPage() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await updateSeoPage(selectedPath, seoData);
+      await updateSeoPage(selectedPath, seoData as SeoPageData);
       toast.success('Đã lưu cấu hình SEO thành công');
+      await new Promise(resolve => setTimeout(resolve, 500));
       void loadSeoData();
     } catch (error: any) {
       toast.error(error?.message || 'Không thể lưu cấu hình SEO');
@@ -88,56 +84,26 @@ export default function AdminSeoPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl text-gray-900">Quản lý SEO</h1>
+          <h1 className="text-3xl text-gray-900 font-bold">Quản lý SEO</h1>
           <p className="text-gray-500 mt-1">
-            Cấu hình SEO cho các trang của website
+            Cấu hình SEO cho các trang của website (Vietnamese Only)
           </p>
-        </div>
-        <div className="flex items-center gap-4">
-          {/* AI Provider Selector */}
-          <AIProviderSelector
-            value={aiProvider}
-            onChange={setAiProvider}
-          />
         </div>
       </div>
 
-      {/* Translation Controls */}
-      <Card className="mb-4">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            {/* Locale Selector */}
-            <div className="flex items-center gap-2">
-              <Languages className="h-4 w-4 text-gray-500" />
-              <Label className="text-sm text-gray-600 whitespace-nowrap">Hiển thị:</Label>
-              <Select value={globalLocale} onValueChange={(value: 'vi' | 'en' | 'ja') => setGlobalLocale(value)}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="vi">🇻🇳 Tiếng Việt</SelectItem>
-                  <SelectItem value="en">🇬🇧 English</SelectItem>
-                  <SelectItem value="ja">🇯🇵 日本語</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
+      <Card className="border-0 shadow-sm rounded-2xl">
         <CardHeader>
-          <CardTitle>Chọn trang cần cấu hình</CardTitle>
+          <CardTitle className="text-lg">Chọn trang cần cấu hình</CardTitle>
           <CardDescription>
             Chọn trang bạn muốn cấu hình SEO
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Select value={selectedPath} onValueChange={setSelectedPath}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full h-12 rounded-xl">
               <SelectValue placeholder="Chọn trang" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-xl">
               {PAGE_OPTIONS.map((page) => (
                 <SelectItem key={page.path} value={page.path}>
                   {page.label}
@@ -149,202 +115,155 @@ export default function AdminSeoPage() {
       </Card>
 
       {loading ? (
-        <div className="text-center py-8">Đang tải...</div>
+        <div className="text-center py-20 text-slate-400 animate-pulse">Đang tải dữ liệu SEO...</div>
       ) : (
-        <Tabs defaultValue="basic" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="basic">SEO Cơ bản</TabsTrigger>
-            <TabsTrigger value="social">Mạng xã hội</TabsTrigger>
-            <TabsTrigger value="advanced">Nâng cao</TabsTrigger>
+        <Tabs defaultValue="basic" className="space-y-6">
+          <TabsList className="bg-slate-100 p-1 rounded-xl">
+            <TabsTrigger value="basic" className="rounded-lg px-6">SEO Cơ bản</TabsTrigger>
+            <TabsTrigger value="social" className="rounded-lg px-6">Mạng xã hội</TabsTrigger>
+            <TabsTrigger value="advanced" className="rounded-lg px-6">Nâng cao</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="basic" className="space-y-4">
-            <Card>
+          <TabsContent value="basic" className="space-y-6">
+            <Card className="border-0 shadow-sm rounded-2xl">
               <CardHeader>
-                <CardTitle>Thông tin SEO cơ bản</CardTitle>
+                <CardTitle className="text-lg">Thông tin SEO cơ bản</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <LocaleInput
-                    label="Tiêu đề (Title)"
-                    value={getLocaleValue(seoData, 'title')}
-                    onChange={(value) => {
-                      const updated = setLocaleValue(seoData, 'title', value);
-                      setSeoData(updated as Partial<SeoPageData>);
-                    }}
+                  <Label className="text-slate-600 font-bold">Tiêu đề (Title)</Label>
+                  <Input
+                    value={seoData.title || ''}
+                    onChange={(e) => setSeoData({ ...seoData, title: e.target.value })}
                     placeholder="Tiêu đề trang (50-60 ký tự)"
-                    defaultLocale={globalLocale}
-                    aiProvider={aiProvider}
+                    className="h-12 rounded-xl"
                   />
-                  <p className="text-xs text-gray-500">
-                    {(() => {
-                      const titleValue = typeof seoData.title === 'string' ? seoData.title : (getLocaleValue(seoData, 'title') || '');
-                      return typeof titleValue === 'string' ? titleValue.length : 0;
-                    })()}/60 ký tự
+                  <p className="text-[10px] text-gray-500 text-right">
+                    {(seoData.title || '').length}/60 ký tự
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <LocaleInput
-                    label="Mô tả (Description)"
-                    value={getLocaleValue(seoData, 'description')}
-                    onChange={(value) => {
-                      const updated = setLocaleValue(seoData, 'description', value);
-                      setSeoData(updated as Partial<SeoPageData>);
-                    }}
+                  <Label className="text-slate-600 font-bold">Mô tả (Description)</Label>
+                  <Textarea
+                    value={seoData.description || ''}
+                    onChange={(e) => setSeoData({ ...seoData, description: e.target.value })}
                     placeholder="Mô tả trang (150-160 ký tự)"
-                    multiline={true}
-                    defaultLocale={globalLocale}
-                    aiProvider={aiProvider}
+                    className="min-h-[120px] rounded-xl"
                   />
-                  <p className="text-xs text-gray-500">
-                    {(() => {
-                      const descValue = typeof seoData.description === 'string' ? seoData.description : (getLocaleValue(seoData, 'description') || '');
-                      return typeof descValue === 'string' ? descValue.length : 0;
-                    })()}/160 ký tự
+                  <p className="text-[10px] text-gray-500 text-right">
+                    {(seoData.description || '').length}/160 ký tự
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <LocaleInput
-                    label="Từ khóa (Keywords)"
-                    value={getLocaleValue(seoData, 'keywords')}
-                    onChange={(value) => {
-                      const updated = setLocaleValue(seoData, 'keywords', value);
-                      setSeoData(updated as Partial<SeoPageData>);
-                    }}
+                   <Label className="text-slate-600 font-bold">Từ khóa (Keywords)</Label>
+                   <Input
+                    value={seoData.keywords || ''}
+                    onChange={(e) => setSeoData({ ...seoData, keywords: e.target.value })}
                     placeholder="từ khóa 1, từ khóa 2, từ khóa 3"
-                    defaultLocale={globalLocale}
-                    aiProvider={aiProvider}
+                    className="h-12 rounded-xl"
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-[10px] text-gray-500">
                     Phân cách bằng dấu phẩy
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="canonical">Canonical URL</Label>
+                  <Label htmlFor="canonical" className="text-slate-600 font-bold">Canonical URL</Label>
                   <Input
                     id="canonical"
                     value={seoData.canonical_url || ''}
                     onChange={(e) => setSeoData({ ...seoData, canonical_url: e.target.value })}
                     placeholder="https://thuvien-tn.vn/..."
+                    className="h-12 rounded-xl"
                   />
-                  <p className="text-xs text-gray-500">
-                    URL chính thức của trang này. Dùng để tránh duplicate content khi có nhiều URL trỏ đến cùng nội dung.
-                    <br />
-                    Ví dụ: Nếu trang có thể truy cập qua cả <code className="text-xs bg-gray-100 px-1 rounded">/products</code> và <code className="text-xs bg-gray-100 px-1 rounded">/products/</code>, 
-                    hãy đặt canonical là <code className="text-xs bg-gray-100 px-1 rounded">https://thuvien-tn.vn/products</code>
+                  <p className="text-[10px] text-gray-500">
+                    URL chính thức của trang này. Dùng để tránh duplicate content.
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Ảnh SEO</Label>
+                  <Label className="text-slate-600 font-bold">Ảnh SEO Mặc định</Label>
                   <ImageUpload
                     currentImage={(seoData as any).image || ''}
                     onImageSelect={(imageUrl) => setSeoData({ ...seoData, image: imageUrl } as Partial<SeoPageData>)}
                   />
-                  <p className="text-xs text-gray-500">
-                    Ảnh SEO chung cho trang này. Sẽ được dùng làm fallback cho OG Image và Twitter Image nếu chưa được cấu hình riêng.
-                    <br />
-                    Kích thước khuyến nghị: 1200x630px
+                  <p className="text-[10px] text-gray-500">
+                    Ảnh SEO chung (Fallback). Kích thước: 1200x630px
                   </p>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="social" className="space-y-4">
-            <Card>
+          <TabsContent value="social" className="space-y-6">
+            <Card className="border-0 shadow-sm rounded-2xl">
               <CardHeader>
-                <CardTitle>Open Graph (Facebook, LinkedIn)</CardTitle>
+                <CardTitle className="text-lg text-blue-600">Open Graph (Facebook, LinkedIn)</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <LocaleInput
-                    label="OG Title"
-                    value={getLocaleValue(seoData, 'og_title')}
-                    onChange={(value) => {
-                      const updated = setLocaleValue(seoData, 'og_title', value);
-                      setSeoData(updated as Partial<SeoPageData>);
-                    }}
+                  <Label className="text-slate-600 font-bold">OG Title</Label>
+                  <Input
+                    value={seoData.og_title || ''}
+                    onChange={(e) => setSeoData({ ...seoData, og_title: e.target.value })}
                     placeholder="Tiêu đề khi chia sẻ"
-                    defaultLocale={globalLocale}
-                    aiProvider={aiProvider}
+                    className="h-12 rounded-xl"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <LocaleInput
-                    label="OG Description"
-                    value={getLocaleValue(seoData, 'og_description')}
-                    onChange={(value) => {
-                      const updated = setLocaleValue(seoData, 'og_description', value);
-                      setSeoData(updated as Partial<SeoPageData>);
-                    }}
+                  <Label className="text-slate-600 font-bold">OG Description</Label>
+                  <Textarea
+                    value={seoData.og_description || ''}
+                    onChange={(e) => setSeoData({ ...seoData, og_description: e.target.value })}
                     placeholder="Mô tả khi chia sẻ"
-                    multiline={true}
-                    defaultLocale={globalLocale}
-                    aiProvider={aiProvider}
+                    className="min-h-[100px] rounded-xl"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>OG Image (Open Graph)</Label>
+                  <Label className="text-slate-600 font-bold">OG Image</Label>
                   <ImageUpload
-                    currentImage={seoData.og_image}
+                    currentImage={seoData.og_image || ''}
                     onImageSelect={(imageUrl) => setSeoData({ ...seoData, og_image: imageUrl })}
                   />
-                  <p className="text-xs text-gray-500">
-                    Kích thước khuyến nghị: 1200x630px
-                  </p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-0 shadow-sm rounded-2xl">
               <CardHeader>
-                <CardTitle>Twitter Card</CardTitle>
+                <CardTitle className="text-lg text-sky-500">Twitter Card</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <LocaleInput
-                    label="Twitter Title"
-                    value={getLocaleValue(seoData, 'twitter_title')}
-                    onChange={(value) => {
-                      const updated = setLocaleValue(seoData, 'twitter_title', value);
-                      setSeoData(updated as Partial<SeoPageData>);
-                    }}
+                  <Label className="text-slate-600 font-bold">Twitter Title</Label>
+                  <Input
+                    value={seoData.twitter_title || ''}
+                    onChange={(e) => setSeoData({ ...seoData, twitter_title: e.target.value })}
                     placeholder="Tiêu đề cho Twitter"
-                    defaultLocale={globalLocale}
-                    aiProvider={aiProvider}
+                    className="h-12 rounded-xl"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <LocaleInput
-                    label="Twitter Description"
-                    value={getLocaleValue(seoData, 'twitter_description')}
-                    onChange={(value) => {
-                      const updated = setLocaleValue(seoData, 'twitter_description', value);
-                      setSeoData(updated as Partial<SeoPageData>);
-                    }}
+                  <Label className="text-slate-600 font-bold">Twitter Description</Label>
+                  <Textarea
+                    value={seoData.twitter_description || ''}
+                    onChange={(e) => setSeoData({ ...seoData, twitter_description: e.target.value })}
                     placeholder="Mô tả cho Twitter"
-                    multiline={true}
-                    defaultLocale={globalLocale}
-                    aiProvider={aiProvider}
+                    className="min-h-[100px] rounded-xl"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Twitter Image</Label>
+                  <Label className="text-slate-600 font-bold">Twitter Image</Label>
                   <ImageUpload
-                    currentImage={seoData.twitter_image}
+                    currentImage={seoData.twitter_image || ''}
                     onImageSelect={(imageUrl) => setSeoData({ ...seoData, twitter_image: imageUrl })}
                   />
-                  <p className="text-xs text-gray-500">
-                    Kích thước khuyến nghị: 1200x630px
-                  </p>
                 </div>
               </CardContent>
             </Card>

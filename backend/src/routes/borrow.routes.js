@@ -9,8 +9,9 @@ const router = express.Router();
  * @openapi
  * /api/Borrow/register:
  *   post:
- *     tags: [Admin Borrow]
- *     summary: Đăng ký mượn sách
+ *     tags: [Admin Loans]
+ *     summary: Đăng ký mượn sách mới
+ *     description: Tạo phiếu mượn sách mới cho độc giả. Có thể mượn trực tiếp (tại quầy) hoặc đăng ký trước.
  *     requestBody:
  *       required: true
  *       content:
@@ -18,19 +19,24 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             properties:
- *               readerId: { type: 'string', example: '1' }
- *               copyId: { type: 'string', example: '1' }
+ *               readerId: { type: 'string', example: '1', description: 'ID người đọc' }
+ *               copyId: { type: 'string', example: '1', description: 'ID bản sao sách (tùy chọn if barcode is provided)' }
  *               registerDate: { type: 'string', format: 'date-time' }
- *               barcode: { type: 'string' }
+ *               barcode: { type: 'string', description: 'Mã vạch cuốn sách' }
  *               notes: { type: 'string' }
- *               directBorrow: { type: 'boolean', description: 'Mượn trực tiếp (dành cho Admin)' }
+ *               directBorrow: { type: 'boolean', description: 'Mượn trực tiếp không cần đăng ký trước' }
  *     responses:
- *       200: { description: OK }
+ *       200:
+ *         description: Đăng ký thành công
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
  * /api/Borrow/approve:
  *   post:
- *     tags: [Admin Borrow]
- *     summary: Duyệt yêu cầu mượn
+ *     tags: [Admin Loans]
+ *     summary: Duyệt yêu cầu mượn sách
+ *     description: Phê duyệt yêu cầu mượn sách đã được đăng ký trước bởi độc giả.
  *     requestBody:
  *       required: true
  *       content:
@@ -40,12 +46,17 @@ const router = express.Router();
  *             properties:
  *               requestId: { type: 'integer', example: 1 }
  *     responses:
- *       200: { description: OK }
+ *       200:
+ *         description: Duyệt thành công
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
  * /api/Borrow/extend:
  *   post:
- *     tags: [Admin Borrow]
- *     summary: Gia hạn mượn sách
+ *     tags: [Admin Loans]
+ *     summary: Gia hạn thời gian mượn
+ *     description: Gia hạn thêm số ngày mượn cho một phiếu mượn đang hoạt động.
  *     requestBody:
  *       required: true
  *       content:
@@ -56,12 +67,17 @@ const router = express.Router();
  *               loanId: { type: 'integer', example: 1 }
  *               extendDays: { type: 'integer', example: 7 }
  *     responses:
- *       200: { description: OK }
+ *       200:
+ *         description: Gia hạn thành công
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
  * /api/Borrow/return:
  *   post:
- *     tags: [Admin Borrow]
- *     summary: Trả sách
+ *     tags: [Admin Loans]
+ *     summary: Xử lý trả sách
+ *     description: Ghi nhận việc trả sách, cập nhật trạng thái bản sao và tính toán quá hạn nếu có.
  *     requestBody:
  *       required: true
  *       content:
@@ -71,12 +87,17 @@ const router = express.Router();
  *             properties:
  *               loanId: { type: 'integer', example: 1 }
  *     responses:
- *       200: { description: OK }
+ *       200:
+ *         description: Trả sách thành công
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
  * /api/Borrow/all:
  *   get:
- *     tags: [Admin Borrow]
- *     summary: Lấy danh sách phiếu mượn (Admin)
+ *     tags: [Admin Loans]
+ *     summary: Danh sách phiếu mượn
+ *     description: Lấy danh sách toàn bộ phiếu mượn trong hệ thống với khả năng lọc theo trạng thái.
  *     parameters:
  *       - in: query
  *         name: page
@@ -88,12 +109,31 @@ const router = express.Router();
  *         name: status
  *         schema: { type: 'string', enum: ['borrowing', 'returned', 'overdue'] }
  *     responses:
- *       200: { description: OK }
+ *       200:
+ *         description: Thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data: { type: 'array', items: { $ref: '#/components/schemas/BookLoan' } }
+ *                     pagination: { $ref: '#/components/schemas/Pagination' }
+ *
+ * /api/Borrow/export:
+ *   get:
+ *     tags: [Admin Loans]
+ *     summary: Xuất dữ liệu mượn trả ra Excel
+ *     responses:
+ *       200:
+ *         description: Trả về file Excel binary
  *
  * /api/Borrow/reserve:
  *   post:
- *     tags: [Admin Borrow]
- *     summary: Đăng ký đặt giữ chỗ
+ *     tags: [Admin Loans]
+ *     summary: Đăng ký giữ chỗ (Reservation)
+ *     description: Đăng ký giữ chỗ cho một ấn phẩm khi không còn bản sao nào sẵn có.
  *     requestBody:
  *       required: true
  *       content:
@@ -105,14 +145,27 @@ const router = express.Router();
  *               publicationId: { type: 'string' }
  *               notes: { type: 'string' }
  *     responses:
- *       200: { description: OK }
+ *       200:
+ *         description: Đặt chỗ thành công
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
  * /api/Borrow/reservations:
  *   get:
- *     tags: [Admin Borrow]
- *     summary: Lấy danh sách hàng đợi đặt chỗ
+ *     tags: [Admin Loans]
+ *     summary: Danh sách hàng đợi đặt chỗ
  *     responses:
- *       200: { description: OK }
+ *       200:
+ *         description: Thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data: { type: 'array', items: { $ref: '#/components/schemas/BookReservation' } }
  */
 router.post('/register', checkPermission('book_loans.manage'), borrowController.register);
 router.post('/approve', checkPermission('book_loans.manage'), borrowController.approve);

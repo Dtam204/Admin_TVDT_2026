@@ -13,27 +13,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import ImageUpload from "@/components/admin/ImageUpload";
 import { getSettings, updateSettings } from "@/lib/api/settings";
-import { LocaleInput } from "@/components/admin/LocaleInput";
-import { getLocaleValue, setLocaleValue, migrateObjectToLocale } from "@/lib/utils/locale-admin";
-import { useTranslationControls } from "@/lib/hooks/useTranslationControls";
-import { AIProviderSelector } from "@/components/admin/AIProviderSelector";
+import { getCleanValue } from "@/lib/utils/locale-admin";
 
 type Locale = 'vi' | 'en' | 'ja';
 
 interface FooterLink {
-  name: string | Record<Locale, string>;
+  name: string;
   href: string;
 }
 
 interface GeneralSettings {
   favicon: string;
   logo: string;
-  slogan: string | Record<Locale, string>;
-  site_name: string | Record<Locale, string>;
-  site_description: string | Record<Locale, string>;
+  slogan: string;
+  site_name: string;
+  site_description: string;
   phone: string;
   email: string;
-  address: string | Record<Locale, string>;
+  address: string;
   social_facebook: string;
   social_twitter: string;
   social_linkedin: string;
@@ -44,9 +41,9 @@ interface GeneralSettings {
   openai_api_key: string;
   gemini_api_key: string;
   announcement_enabled: boolean;
-  announcement_title: string | Record<Locale, string>;
-  announcement_message: string | Record<Locale, string>;
-  announcement_cta_text: string | Record<Locale, string>;
+  announcement_title: string;
+  announcement_message: string;
+  announcement_cta_text: string;
   announcement_cta_link: string;
   announcement_reappear_hours: number;
   library_fine_per_day: number;
@@ -55,25 +52,17 @@ interface GeneralSettings {
 }
 
 export default function AdminSettingsPage() {
-  // Use translation controls hook
-  const {
-    globalLocale,
-    setGlobalLocale,
-    aiProvider,
-    setAiProvider,
-  } = useTranslationControls();
-
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [generalSettings, setGeneralSettings] = useState<GeneralSettings>({
     favicon: '',
     logo: '',
-    slogan: { vi: '', en: '', ja: '' },
-    site_name: { vi: '', en: '', ja: '' },
-    site_description: { vi: '', en: '', ja: '' },
+    slogan: '',
+    site_name: '',
+    site_description: '',
     phone: '',
     email: '',
-    address: { vi: '', en: '', ja: '' },
+    address: '',
     social_facebook: '',
     social_twitter: '',
     social_linkedin: '',
@@ -84,9 +73,9 @@ export default function AdminSettingsPage() {
     openai_api_key: '',
     gemini_api_key: '',
     announcement_enabled: false,
-    announcement_title: { vi: '', en: '', ja: '' },
-    announcement_message: { vi: '', en: '', ja: '' },
-    announcement_cta_text: { vi: '', en: '', ja: '' },
+    announcement_title: '',
+    announcement_message: '',
+    announcement_cta_text: '',
     announcement_cta_link: '',
     announcement_reappear_hours: 1,
     library_fine_per_day: 5000,
@@ -106,12 +95,12 @@ export default function AdminSettingsPage() {
       setGeneralSettings({
         favicon: settings.favicon?.value || '',
         logo: settings.logo?.value || '',
-        slogan: migrateObjectToLocale(settings.slogan?.value || ''),
-        site_name: migrateObjectToLocale(settings.site_name?.value || ''),
-        site_description: migrateObjectToLocale(settings.site_description?.value || ''),
+        slogan: getCleanValue(settings.slogan?.value || ''),
+        site_name: getCleanValue(settings.site_name?.value || ''),
+        site_description: getCleanValue(settings.site_description?.value || ''),
         phone: settings.phone?.value || '',
         email: settings.email?.value || '',
-        address: migrateObjectToLocale(settings.address?.value || ''),
+        address: getCleanValue(settings.address?.value || ''),
         social_facebook: settings.social_facebook?.value || '',
         social_twitter: settings.social_twitter?.value || '',
         social_linkedin: settings.social_linkedin?.value || '',
@@ -122,9 +111,9 @@ export default function AdminSettingsPage() {
         openai_api_key: settings.openai_api_key?.value || '',
         gemini_api_key: settings.gemini_api_key?.value || '',
         announcement_enabled: settings.announcement_enabled?.value === 'true' || false,
-        announcement_title: migrateObjectToLocale(settings.announcement_title?.value || ''),
-        announcement_message: migrateObjectToLocale(settings.announcement_message?.value || ''),
-        announcement_cta_text: migrateObjectToLocale(settings.announcement_cta_text?.value || ''),
+        announcement_title: getCleanValue(settings.announcement_title?.value || ''),
+        announcement_message: getCleanValue(settings.announcement_message?.value || ''),
+        announcement_cta_text: getCleanValue(settings.announcement_cta_text?.value || ''),
         announcement_cta_link: settings.announcement_cta_link?.value || '',
         announcement_reappear_hours: parseInt(settings.announcement_reappear_hours?.value || '1', 10),
         library_fine_per_day: parseInt(settings.library_fine_per_day?.value || '5000', 10),
@@ -132,7 +121,6 @@ export default function AdminSettingsPage() {
         library_max_books_per_user: parseInt(settings.library_max_books_per_user?.value || '5', 10),
       });
     } catch (error: any) {
-      // Silently fail
       toast.error('Không thể tải cấu hình');
     } finally {
       setLoading(false);
@@ -143,16 +131,15 @@ export default function AdminSettingsPage() {
     try {
       setSaving(true);
       
-      // Process locale fields before saving
       const settingsToSave: Record<string, string> = {
         favicon: generalSettings.favicon,
         logo: generalSettings.logo,
-        slogan: typeof generalSettings.slogan === 'string' ? generalSettings.slogan : JSON.stringify(generalSettings.slogan),
-        site_name: typeof generalSettings.site_name === 'string' ? generalSettings.site_name : JSON.stringify(generalSettings.site_name),
-        site_description: typeof generalSettings.site_description === 'string' ? generalSettings.site_description : JSON.stringify(generalSettings.site_description),
+        slogan: generalSettings.slogan,
+        site_name: generalSettings.site_name,
+        site_description: generalSettings.site_description,
         phone: generalSettings.phone,
         email: generalSettings.email,
-        address: typeof generalSettings.address === 'string' ? generalSettings.address : JSON.stringify(generalSettings.address),
+        address: generalSettings.address,
         social_facebook: generalSettings.social_facebook,
         social_twitter: generalSettings.social_twitter,
         social_linkedin: generalSettings.social_linkedin,
@@ -163,9 +150,9 @@ export default function AdminSettingsPage() {
         openai_api_key: generalSettings.openai_api_key,
         gemini_api_key: generalSettings.gemini_api_key,
         announcement_enabled: generalSettings.announcement_enabled ? 'true' : 'false',
-        announcement_title: typeof generalSettings.announcement_title === 'string' ? generalSettings.announcement_title : JSON.stringify(generalSettings.announcement_title),
-        announcement_message: typeof generalSettings.announcement_message === 'string' ? generalSettings.announcement_message : JSON.stringify(generalSettings.announcement_message),
-        announcement_cta_text: typeof generalSettings.announcement_cta_text === 'string' ? generalSettings.announcement_cta_text : JSON.stringify(generalSettings.announcement_cta_text),
+        announcement_title: generalSettings.announcement_title,
+        announcement_message: generalSettings.announcement_message,
+        announcement_cta_text: generalSettings.announcement_cta_text,
         announcement_cta_link: generalSettings.announcement_cta_link,
         announcement_reappear_hours: generalSettings.announcement_reappear_hours.toString(),
         library_fine_per_day: generalSettings.library_fine_per_day.toString(),
@@ -174,10 +161,9 @@ export default function AdminSettingsPage() {
       };
       
       await updateSettings(settingsToSave);
-      
       toast.success('Đã lưu cấu hình thông tin chung');
+      await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error: any) {
-      // Silently fail
       toast.error('Không thể lưu cấu hình');
     } finally {
       setSaving(false);
@@ -192,16 +178,14 @@ export default function AdminSettingsPage() {
     }, 800);
   };
 
-  // Helper functions for footer links management
   const parseFooterLinks = (jsonString: string): FooterLink[] => {
     try {
       if (!jsonString) return [];
       const parsed = JSON.parse(jsonString);
       const links = Array.isArray(parsed) ? parsed : [];
-      // Normalize name field to locale object
       return links.map(link => ({
         ...link,
-        name: migrateObjectToLocale(link.name || '')
+        name: getCleanValue(link.name || '')
       }));
     } catch {
       return [];
@@ -214,7 +198,7 @@ export default function AdminSettingsPage() {
 
   const addFooterLink = (field: 'footer_quick_links' | 'footer_solutions') => {
     const links = parseFooterLinks(generalSettings[field]);
-    links.push({ name: { vi: '', en: '', ja: '' }, href: '' });
+    links.push({ name: '', href: '' });
     setGeneralSettings({
       ...generalSettings,
       [field]: formatFooterLinks(links),
@@ -253,37 +237,12 @@ export default function AdminSettingsPage() {
             Thiết lập các thông số cho website và hệ thống admin
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          {/* AI Provider Selector */}
-          <AIProviderSelector
-            value={aiProvider}
-            onChange={setAiProvider}
-          />
-        </div>
       </div>
 
-      {/* Translation Controls */}
+      {/* Translation Controls
       <Card className="mb-4">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            {/* Locale Selector */}
-            <div className="flex items-center gap-2">
-              <Languages className="h-4 w-4 text-gray-500" />
-              <Label className="text-sm text-gray-600 whitespace-nowrap">Hiển thị:</Label>
-              <Select value={globalLocale} onValueChange={(value: 'vi' | 'en' | 'ja') => setGlobalLocale(value)}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="vi">🇻🇳 Tiếng Việt</SelectItem>
-                  <SelectItem value="en">🇬🇧 English</SelectItem>
-                  <SelectItem value="ja">🇯🇵 日本語</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        ...
+      </Card> */}
 
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList>
@@ -317,45 +276,30 @@ export default function AdminSettingsPage() {
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <LocaleInput
-                        label="Tên website"
-                        value={getLocaleValue(generalSettings, 'site_name')}
-                        onChange={(value) => {
-                          const updated = setLocaleValue(generalSettings, 'site_name', value);
-                          setGeneralSettings(updated as GeneralSettings);
-                        }}
+                      <Label>Tên website</Label>
+                      <Input
+                        value={generalSettings.site_name}
+                        onChange={(e) => setGeneralSettings({ ...generalSettings, site_name: e.target.value })}
                         placeholder="Nhập tên website"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                     <div className="space-y-2">
-                      <LocaleInput
-                        label="Slogan"
-                        value={getLocaleValue(generalSettings, 'slogan')}
-                        onChange={(value) => {
-                          const updated = setLocaleValue(generalSettings, 'slogan', value);
-                          setGeneralSettings(updated as GeneralSettings);
-                        }}
+                      <Label>Slogan</Label>
+                      <Input
+                        value={generalSettings.slogan}
+                        onChange={(e) => setGeneralSettings({ ...generalSettings, slogan: e.target.value })}
                         placeholder="Smart Solutions Business"
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <LocaleInput
-                      label="Mô tả ngắn (hiển thị trong footer)"
-                      value={getLocaleValue(generalSettings, 'site_description')}
-                      onChange={(value) => {
-                        const updated = setLocaleValue(generalSettings, 'site_description', value);
-                        setGeneralSettings(updated as GeneralSettings);
-                      }}
+                    <Label>Mô tả ngắn (hiển thị trong footer)</Label>
+                    <Textarea
+                      value={generalSettings.site_description}
+                      onChange={(e) => setGeneralSettings({ ...generalSettings, site_description: e.target.value })}
                       placeholder="Mô tả về công ty..."
-                      multiline={true}
-                      defaultLocale={globalLocale}
-                      aiProvider={aiProvider}
+                      className="min-h-[100px]"
                     />
                   </div>
 
@@ -399,17 +343,11 @@ export default function AdminSettingsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <LocaleInput
-                      label="Địa chỉ"
-                      value={getLocaleValue(generalSettings, 'address')}
-                      onChange={(value) => {
-                        const updated = setLocaleValue(generalSettings, 'address', value);
-                        setGeneralSettings(updated as GeneralSettings);
-                      }}
+                    <Label>Địa chỉ</Label>
+                    <Textarea
+                      value={generalSettings.address}
+                      onChange={(e) => setGeneralSettings({ ...generalSettings, address: e.target.value })}
                       placeholder="Địa chỉ văn phòng..."
-                      multiline={true}
-                      defaultLocale={globalLocale}
-                      aiProvider={aiProvider}
                     />
                   </div>
 
@@ -479,47 +417,7 @@ export default function AdminSettingsPage() {
                   </div>
 */}
 
-                  <div className="space-y-4 pt-4 border-t">
-                    <Label className="text-base font-semibold">API Keys cho Dịch thuật AI</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="openai_api_key">
-                          OpenAI API Key
-                        </Label>
-                        <Input
-                          id="openai_api_key"
-                          type="password"
-                          value={generalSettings.openai_api_key}
-                          onChange={(e) => setGeneralSettings({ ...generalSettings, openai_api_key: e.target.value })}
-                          placeholder="sk-proj-..."
-                        />
-                        <p className="text-sm text-gray-500">
-                          API key từ OpenAI để sử dụng dịch thuật bằng GPT-4o-mini.
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="gemini_api_key">
-                          Google Gemini API Key
-                        </Label>
-                        <Input
-                          id="gemini_api_key"
-                          type="password"
-                          value={generalSettings.gemini_api_key}
-                          onChange={(e) => setGeneralSettings({ ...generalSettings, gemini_api_key: e.target.value })}
-                          placeholder="AIzaSy..."
-                        />
-                        <p className="text-sm text-gray-500">
-                          API key từ Google Gemini để sử dụng dịch thuật bằng Gemini AI.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <p className="text-sm text-blue-800">
-                        <strong>Lưu ý:</strong> API keys sẽ được lưu trong database và sử dụng cho dịch thuật tự động. 
-                        Đảm bảo API keys có đủ quota và quyền truy cập.
-                      </p>
-                    </div>
-                  </div>
+                  {/* AI API Keys section hidden */}
 
 {/* 
                   <div className="space-y-4 pt-4 border-t">
@@ -543,47 +441,32 @@ export default function AdminSettingsPage() {
                       {generalSettings.announcement_enabled && (
                         <div className="space-y-4 pt-4 border-t border-blue-200">
                           <div className="space-y-2">
-                            <LocaleInput
-                              label="Tiêu đề"
-                              value={getLocaleValue(generalSettings, 'announcement_title')}
-                              onChange={(value) => {
-                                const updated = setLocaleValue(generalSettings, 'announcement_title', value);
-                                setGeneralSettings(updated as GeneralSettings);
-                              }}
-                              placeholder="Khuyến mãi đặc biệt"
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
+                             <Label>Tiêu đề</Label>
+                             <Input
+                                value={generalSettings.announcement_title}
+                                onChange={(e) => setGeneralSettings({ ...generalSettings, announcement_title: e.target.value })}
+                                placeholder="Khuyến mãi đặc biệt"
+                             />
                           </div>
 
                           <div className="space-y-2">
-                            <LocaleInput
-                              label="Nội dung thông báo"
-                              value={getLocaleValue(generalSettings, 'announcement_message')}
-                              onChange={(value) => {
-                                const updated = setLocaleValue(generalSettings, 'announcement_message', value);
-                                setGeneralSettings(updated as GeneralSettings);
-                              }}
-                              placeholder="Giảm 20% cho khách hàng mới đăng ký tư vấn trong tháng 12!"
-                              multiline={true}
-                              defaultLocale={globalLocale}
-                              aiProvider={aiProvider}
-                            />
+                             <Label>Nội dung thông báo</Label>
+                             <Textarea
+                                value={generalSettings.announcement_message}
+                                onChange={(e) => setGeneralSettings({ ...generalSettings, announcement_message: e.target.value })}
+                                placeholder="Giảm 20% cho khách hàng mới đăng ký tư vấn trong tháng 12!"
+                                className="min-h-[80px]"
+                             />
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <LocaleInput
-                                label="Text nút CTA"
-                                value={getLocaleValue(generalSettings, 'announcement_cta_text')}
-                                onChange={(value) => {
-                                  const updated = setLocaleValue(generalSettings, 'announcement_cta_text', value);
-                                  setGeneralSettings(updated as GeneralSettings);
-                                }}
-                                placeholder="Nhận ưu đãi"
-                                defaultLocale={globalLocale}
-                                aiProvider={aiProvider}
-                              />
+                               <Label>Text nút CTA</Label>
+                               <Input
+                                  value={generalSettings.announcement_cta_text}
+                                  onChange={(e) => setGeneralSettings({ ...generalSettings, announcement_cta_text: e.target.value })}
+                                  placeholder="Nhận ưu đãi"
+                               />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="announcement_cta_link">Link CTA</Label>
@@ -591,11 +474,8 @@ export default function AdminSettingsPage() {
                                 id="announcement_cta_link"
                                 value={generalSettings.announcement_cta_link}
                                 onChange={(e) => setGeneralSettings({ ...generalSettings, announcement_cta_link: e.target.value })}
-                                placeholder="/contact hoặc /vi/contact"
+                                placeholder="/contact"
                               />
-                              <p className="text-xs text-gray-500">
-                                Đường dẫn khi click vào nút CTA (có thể dùng /contact hoặc /vi/contact)
-                              </p>
                             </div>
                           </div>
 
@@ -645,20 +525,19 @@ export default function AdminSettingsPage() {
                           <Card key={idx} className="border border-gray-200 shadow-sm">
                             <CardContent className="p-3">
                               <div className="flex flex-col gap-2">
-                                <LocaleInput
-                                  label="Tên link"
-                                  value={getLocaleValue(link, 'name')}
-                                  onChange={(value) => {
+                                <Label className="text-[10px]">Tên link</Label>
+                                <Input
+                                  value={link.name}
+                                  onChange={(e) => {
                                     const links = parseFooterLinks(generalSettings.footer_quick_links);
-                                    links[idx] = { ...links[idx], name: value };
+                                    links[idx] = { ...links[idx], name: e.target.value };
                                     setGeneralSettings({
                                       ...generalSettings,
                                       footer_quick_links: formatFooterLinks(links)
                                     });
                                   }}
                                   placeholder="Tên link"
-                                  defaultLocale={globalLocale}
-                                  aiProvider={aiProvider}
+                                  className="h-8 text-xs"
                                 />
                                 <div className="flex items-center gap-2">
                                   <Input
@@ -705,20 +584,19 @@ export default function AdminSettingsPage() {
                           <Card key={idx} className="border border-gray-200 shadow-sm">
                             <CardContent className="p-3">
                               <div className="flex flex-col gap-2">
-                                <LocaleInput
-                                  label="Tên dịch vụ"
-                                  value={getLocaleValue(link, 'name')}
-                                  onChange={(value) => {
+                                <Label className="text-[10px]">Tên dịch vụ</Label>
+                                <Input
+                                  value={link.name}
+                                  onChange={(e) => {
                                     const links = parseFooterLinks(generalSettings.footer_solutions);
-                                    links[idx] = { ...links[idx], name: value };
+                                    links[idx] = { ...links[idx], name: e.target.value };
                                     setGeneralSettings({
                                       ...generalSettings,
                                       footer_solutions: formatFooterLinks(links)
                                     });
                                   }}
                                   placeholder="Tên dịch vụ"
-                                  defaultLocale={globalLocale}
-                                  aiProvider={aiProvider}
+                                  className="h-8 text-xs"
                                 />
                                 <div className="flex items-center gap-2">
                                   <Input

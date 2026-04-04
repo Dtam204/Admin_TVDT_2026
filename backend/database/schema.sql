@@ -411,21 +411,21 @@ CREATE TRIGGER update_publishers_updated_at BEFORE UPDATE ON publishers
 -- 9.2. Authors (Tác giả)
 CREATE TABLE IF NOT EXISTS authors (
   id SERIAL PRIMARY KEY,
-  name JSONB NOT NULL,
+  name TEXT NOT NULL,
   slug VARCHAR(255) UNIQUE NOT NULL,
-  pseudonyms JSONB,
+  pseudonyms TEXT,
   professional_title VARCHAR(255),
   gender VARCHAR(20),
-  bio JSONB,
+  bio TEXT,
   avatar VARCHAR(500),
   cover_image VARCHAR(500),
   birth_year INTEGER,
   death_year INTEGER,
   nationality VARCHAR(100),
   birth_place VARCHAR(255),
-  education JSONB,
-  awards JSONB,
-  career_highlights JSONB,
+  education TEXT,
+  awards TEXT,
+  career_highlights TEXT,
   website VARCHAR(500),
   social_links JSONB,
   total_books INTEGER DEFAULT 0,
@@ -447,9 +447,9 @@ CREATE TRIGGER update_authors_updated_at BEFORE UPDATE ON authors
 CREATE TABLE IF NOT EXISTS book_categories (
   id SERIAL PRIMARY KEY,
   code VARCHAR(50) UNIQUE NOT NULL,
-  name JSONB NOT NULL,
+  name TEXT NOT NULL,
   slug VARCHAR(255) UNIQUE NOT NULL,
-  description JSONB,
+  description TEXT,
   icon VARCHAR(100),
   parent_id INTEGER REFERENCES book_categories(id) ON DELETE SET NULL,
   sort_order INTEGER DEFAULT 0,
@@ -473,12 +473,12 @@ CREATE TABLE IF NOT EXISTS books (
   id SERIAL PRIMARY KEY,
   isbn VARCHAR(50) UNIQUE NOT NULL,
   code VARCHAR(50) UNIQUE, -- Mã quản lý nội bộ (Next Gen)
-  title JSONB NOT NULL,
+  title TEXT NOT NULL,
   slug VARCHAR(255) UNIQUE NOT NULL,
   author TEXT,
   publisher_id INTEGER REFERENCES publishers(id) ON DELETE SET NULL,
   collection_id UUID REFERENCES collections(id) ON DELETE SET NULL, -- Liên kết Bộ sưu tập mới
-  description JSONB,
+  description TEXT,
   cover_image VARCHAR(500),
   publication_year INTEGER,
   language VARCHAR(10) DEFAULT 'vi',
@@ -495,9 +495,9 @@ CREATE TABLE IF NOT EXISTS books (
   edition VARCHAR(100), -- Tái bản/Phiên bản
   volume VARCHAR(50), -- Tập
   dimensions VARCHAR(100), -- Kích thước
-  keywords JSONB, -- Từ khóa tìm kiếm
+  keywords TEXT, -- Từ khóa tìm kiếm
   digital_content JSONB, -- Nội dung số chi tiết
-  toc JSONB, -- Mục lục
+  toc TEXT, -- Mục lục
   featured BOOLEAN DEFAULT false,
   rating_average DECIMAL(3,2) DEFAULT 0,
   total_reviews INTEGER DEFAULT 0,
@@ -518,7 +518,7 @@ CREATE INDEX IF NOT EXISTS idx_books_isbn ON books(isbn);
 CREATE INDEX IF NOT EXISTS idx_books_slug ON books(slug);
 CREATE INDEX IF NOT EXISTS idx_books_publisher ON books(publisher_id);
 CREATE INDEX IF NOT EXISTS idx_books_status_featured ON books(status, featured);
-CREATE INDEX IF NOT EXISTS idx_books_title_gin ON books USING gin(title);
+CREATE INDEX IF NOT EXISTS idx_books_title ON books(title);
 
 DROP TRIGGER IF EXISTS update_books_updated_at ON books;
 CREATE TRIGGER update_books_updated_at BEFORE UPDATE ON books
@@ -553,9 +553,9 @@ CREATE INDEX IF NOT EXISTS idx_book_category_books_category ON book_category_boo
 CREATE TABLE IF NOT EXISTS course_categories (
   id SERIAL PRIMARY KEY,
   code VARCHAR(50) UNIQUE NOT NULL,
-  name JSONB NOT NULL,
+  name TEXT NOT NULL,
   slug VARCHAR(255) UNIQUE NOT NULL,
-  description JSONB,
+  description TEXT,
   icon VARCHAR(100),
   parent_id INTEGER REFERENCES course_categories(id) ON DELETE SET NULL,
   sort_order INTEGER DEFAULT 0,
@@ -578,12 +578,12 @@ CREATE TRIGGER update_course_categories_updated_at BEFORE UPDATE ON course_categ
 CREATE TABLE IF NOT EXISTS instructors (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  name JSONB NOT NULL,
+  name TEXT NOT NULL,
   slug VARCHAR(255) UNIQUE NOT NULL,
   title VARCHAR(255),
-  bio JSONB,
+  bio TEXT,
   avatar VARCHAR(500),
-  expertise JSONB,
+  expertise TEXT,
   social_links JSONB,
   total_courses INTEGER DEFAULT 0,
   total_students INTEGER DEFAULT 0,
@@ -606,10 +606,10 @@ CREATE TRIGGER update_instructors_updated_at BEFORE UPDATE ON instructors
 -- 10.3. Courses (Khóa học)
 CREATE TABLE IF NOT EXISTS courses (
   id SERIAL PRIMARY KEY,
-  title JSONB NOT NULL,
+  title TEXT NOT NULL,
   slug VARCHAR(255) UNIQUE NOT NULL,
-  description JSONB,
-  content JSONB,
+  description TEXT,
+  content TEXT,
   thumbnail VARCHAR(500),
   preview_video VARCHAR(500),
   level VARCHAR(20) DEFAULT 'beginner' CHECK (level IN ('beginner', 'intermediate', 'advanced')),
@@ -620,9 +620,9 @@ CREATE TABLE IF NOT EXISTS courses (
   discount_price DECIMAL(10,2) DEFAULT 0,
   is_free BOOLEAN DEFAULT false,
   certificate BOOLEAN DEFAULT false,
-  requirements JSONB,
-  what_you_learn JSONB,
-  target_audience JSONB,
+  requirements TEXT,
+  what_you_learn TEXT,
+  target_audience TEXT,
   status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
   featured BOOLEAN DEFAULT false,
   rating_average DECIMAL(3,2) DEFAULT 0,
@@ -636,7 +636,7 @@ CREATE TABLE IF NOT EXISTS courses (
 
 CREATE INDEX IF NOT EXISTS idx_courses_slug ON courses(slug);
 CREATE INDEX IF NOT EXISTS idx_courses_status_featured ON courses(status, featured);
-CREATE INDEX IF NOT EXISTS idx_courses_title_gin ON courses USING gin(title);
+CREATE INDEX IF NOT EXISTS idx_courses_title ON courses(title);
 CREATE INDEX IF NOT EXISTS idx_courses_level ON courses(level);
 
 DROP TRIGGER IF EXISTS update_courses_updated_at ON courses;
@@ -671,14 +671,14 @@ CREATE INDEX IF NOT EXISTS idx_course_category_courses_category ON course_catego
 -- 11.1. Membership Plans (Gói thành viên)
 CREATE TABLE IF NOT EXISTS membership_plans (
   id SERIAL PRIMARY KEY,
-  name JSONB NOT NULL,
+  name TEXT NOT NULL,
   slug VARCHAR(255) UNIQUE NOT NULL,
   tier_code VARCHAR(50) DEFAULT 'basic', -- Cấp độ (basic, premium, vip,...)
-  description JSONB,
+  description TEXT,
   price DECIMAL(10,2) DEFAULT 0,
   duration_days INTEGER DEFAULT 30,
   late_fee_per_day DECIMAL(10,2) DEFAULT 5000, -- Phí phạt quá hạn mặc định
-  features JSONB,
+  features TEXT,
   max_books_borrowed INTEGER DEFAULT 3,
   max_concurrent_courses INTEGER DEFAULT 1,
   discount_percentage DECIMAL(5,2) DEFAULT 0,

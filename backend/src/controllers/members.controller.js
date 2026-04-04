@@ -18,7 +18,7 @@ exports.getAll = async (req, res, next) => {
     let query = `
       SELECT 
         m.*, 
-        mp.name->>'vi' as membership_plan_name,
+        mp.name as membership_plan_name,
         mp.max_books_borrowed,
         mp.tier_code
       FROM members m
@@ -89,7 +89,7 @@ exports.getAll = async (req, res, next) => {
 
     return res.json({
       success: true,
-      data: rows,
+      data: data,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -396,7 +396,7 @@ exports.update = async (req, res, next) => {
     await client.query('COMMIT');
 
     const { rows } = await client.query(`
-      SELECT m.*, mp.name->>'vi' as membership_plan_name
+      SELECT m.*, mp.name as membership_plan_name
       FROM members m
       LEFT JOIN membership_plans mp ON m.membership_plan_id = mp.id
       WHERE m.id = $1
@@ -476,7 +476,7 @@ exports.getStats = async (req, res) => {
     const vipResult = await pool.query(`
       SELECT COUNT(*) FROM members m 
       LEFT JOIN membership_plans p ON m.membership_plan_id = p.id 
-      WHERE p.name->>'vi' ILIKE '%VIP%' OR p.price > 0
+      WHERE p.name ILIKE '%VIP%' OR p.price > 0
     `);
 
     const inactiveResult = await pool.query(`

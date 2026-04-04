@@ -204,8 +204,9 @@ app.use((err, req, res, next) => {
 
   res.status(statusCode).json({
     success: false,
-    message: isDev ? err.message : 'Đã có lỗi hệ thống xảy ra. Vui lòng thử lại sau hoặc liên hệ Admin.',
-    error_code: err.code || 'INTERNAL_SERVER_ERROR',
+    message: isDev ? err.message : 'Đã có lỗi hệ thống xảy ra. Vui lòng thử lại sau hoặc liên hệ bộ phận kỹ thuật.',
+    code: err.code || statusCode || 500,
+    data: null,
     status: statusCode,
     timestamp: new Date().toISOString(),
     path: req.url,

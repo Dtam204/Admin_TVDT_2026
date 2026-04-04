@@ -34,6 +34,10 @@ export default function MembershipPlanDetailPage({ params }: { params: Promise<{
     update(updatedData, {
       onSuccess: () => {
         toast.success('Lưu cấu hình Hạng thẻ thành công!');
+        // Delay nhỏ để tránh lỗi unmount và hiển thị toast
+        setTimeout(() => {
+          router.push('/admin/membership-plans');
+        }, 500);
       },
       onError: (error: any) => {
         toast.error(error.message || 'Lỗi khi cập nhật!');

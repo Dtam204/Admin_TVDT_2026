@@ -5,13 +5,18 @@ const secret = jwtConfig.secret || process.env.JWT_SECRET || 'sfb-demo-secret';
 
 /**
  * Middleware chính (mặc định) - Yêu cầu Token
+ * CHUẨN HÓA RESTFUL CHUYÊN NGHIỆP: Trả về đầy đủ message và code
  */
 function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ success: false, message: 'Access denied. No token provided.' });
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Truy cập bị từ chối. Vui lòng cung cấp mã xác thực (Token).', 
+      code: 401 
+    });
   }
 
   try {
@@ -19,7 +24,11 @@ function authenticateToken(req, res, next) {
     req.user = decoded;
     next();
   } catch (error) {
-    return res.status(401).json({ success: false, message: 'Invalid token.' });
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Mã xác thực (Token) không hợp lệ hoặc đã hết hạn.', 
+      code: 401 
+    });
   }
 }
 
@@ -39,15 +48,13 @@ function authenticateTokenOptional(req, res, next) {
     req.user = decoded;
     next();
   } catch (error) {
-    // Token lỗi cũng không chặn, chỉ là không có req.user
+    // Token lỗi cũng không chặn, chỉ là không gán req.user
     next();
   }
 }
 
-// Export mặc định là authenticateToken để tương thích với requireAuth = require(...)
+// Export mặc định và gán các thuộc tính named exports
 module.exports = authenticateToken;
-
-// Gán thêm các thuộc tính để dùng như named exports
 module.exports.authenticateToken = authenticateToken;
 module.exports.authenticateTokenOptional = authenticateTokenOptional;
 module.exports.requireAuth = authenticateToken;

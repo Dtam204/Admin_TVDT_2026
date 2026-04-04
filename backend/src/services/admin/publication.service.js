@@ -3,7 +3,7 @@ const AuditService = require('./audit.service');
 
 /**
  * Service xử lý nghiệp vụ Ấn phẩm (Publications)
- * CHUẨN HÓA 100%: Loại bỏ đa ngôn ngữ phức tạp, dùng Vị trí kho (ID) và ghi Log Admin.
+ * CHUẨN HÓA 100%: Dữ liệu thực từ Database, cấu trúc phẳng chuyên nghiệp.
  */
 class PublicationService {
   /**
@@ -23,7 +23,6 @@ class PublicationService {
       const code = pubData.code || `PUB-${Date.now()}`;
       const isbn = pubData.isbn || code; 
       
-      // Chuẩn hóa JSON - Chỉ lưu trữ nội dung Tiếng Việt đơn giản để Mobile App dễ đọc
       const titleJson = { vi: title };
       const description = typeof pubData.description === 'string' ? pubData.description : (pubData.description?.vi || "");
       const descriptionJson = { vi: description };
@@ -54,7 +53,6 @@ class PublicationService {
       
       const publicationId = rows[0].id;
 
-      // 2. Thêm bản sao (Copies) - Sử dụng storage_location_id chuẩn hóa
       if (copiesData && Array.isArray(copiesData)) {
         for (const [idx, copy] of copiesData.entries()) {
           const finalBarcode = copy.barcode || `BC-${publicationId}-${Date.now()}-${idx}`;
@@ -77,7 +75,6 @@ class PublicationService {
         }
       }
 
-      // 3. Ghi nhật ký Admin
       await AuditService.log({
         userId: adminId,
         action: 'CREATE',
@@ -98,28 +95,73 @@ class PublicationService {
   }
 
   /**
-   * Chi tiết ấn phẩm (Dùng cho Edit/View)
+   * Helper: Giải mã JSON an toàn (Dùng chung cho toàn bộ Service)
    */
-  static async getPublicationDetail(id) {
+  static parseJson(val, key = 'vi', defaultVal = "") {
+    if (!val) return defaultVal;
+    try {
+      const obj = typeof val === 'string' ? JSON.parse(val) : val;
+      if (obj && typeof obj === 'object') {
+        return obj[key] || obj.vi || obj.en || (typeof obj === 'object' && !Array.isArray(obj) ? "" : obj);
+      }
+      return obj || defaultVal;
+    } catch (e) { 
+      return val || defaultVal; 
+    }
+  }
+
+  /**
+   * Chi tiết ấn phẩm "Full Field" - Dữ liệu thực 100%
+   * Hỗ trợ user_interaction nếu có readerId (từ token)
+   */
+  static async getPublicationDetail(id, readerId = null) {
+    // 1. Lấy thông tin chính kèm Publisher và Collection
+    // view_count: Tổng hợp của view, read, download cho chuyên nghiệp
     const { rows: pubRows } = await pool.query(`
-      SELECT b.*, sl.name as storage_location_name,
-             json_build_object('id', p.id, 'name', p.name) as publisher,
+      SELECT b.*, 
+             p.name as publisher_name,
+             c.name as collection_name,
+             (SELECT count(*) FROM interaction_logs WHERE object_id = b.id AND action_type IN ('view', 'read', 'download')) as view_count,
+             (SELECT count(*) FROM wishlists WHERE book_id = b.id) as favorite_count,
              (
                SELECT json_agg(json_build_object('id', a.id, 'name', a.name))
                FROM authors a
                JOIN book_authors ba ON a.id = ba.author_id
                WHERE ba.book_id = b.id
-             ) as authors_list
+             ) as authors_list,
+             -- Thông tin tương tác cá nhân (nếu có readerId)
+             EXISTS(SELECT 1 FROM wishlists WHERE book_id = b.id AND member_id = $2) as is_favorited,
+             EXISTS(SELECT 1 FROM interaction_logs WHERE object_id = b.id AND member_id = $2 AND action_type = 'download') as has_downloaded,
+             (SELECT count(*) FROM interaction_logs WHERE object_id = b.id AND member_id = $2 AND action_type = 'read') as read_count
       FROM books b
       LEFT JOIN publishers p ON b.publisher_id = p.id
-      LEFT JOIN publication_copies pc ON b.id = pc.publication_id
-      LEFT JOIN storage_locations sl ON pc.storage_location_id = sl.id
+      LEFT JOIN collections c ON b.collection_id = c.id
       WHERE b.id = $1
-    `, [id]);
+    `, [id, readerId]);
 
     if (pubRows.length === 0) return null;
-    const publication = pubRows[0];
+    let publication = pubRows[0];
 
+    // 2. Chuẩn hóa dữ liệu JSON & Interaction
+    const userInteraction = readerId ? {
+      isFavorited: publication.is_favor_ited || publication.is_favorited,
+      hasDownloaded: publication.has_downloaded,
+      readCount: parseInt(publication.read_count || 0)
+    } : null;
+
+    publication = {
+      ...publication,
+      title: this.parseJson(publication.title),
+      description: this.parseJson(publication.description),
+      toc: (typeof publication.toc === 'string' && publication.toc.startsWith('[') ) ? JSON.parse(publication.toc) : [],
+      keywords: (typeof publication.keywords === 'string' && publication.keywords.startsWith('[') ) ? JSON.parse(publication.keywords) : [],
+      digital_content: (typeof publication.digital_content === 'string' ) ? JSON.parse(publication.digital_content) : (publication.digital_content || {}),
+      metadata: (typeof publication.metadata === 'string' ) ? JSON.parse(publication.metadata) : (publication.metadata || {}),
+      author_ids: publication.authors_list?.map(a => a.id) || [],
+      user_interaction: userInteraction
+    };
+
+    // 3. Lấy danh sách Bản sao (Copies) thực tế
     const { rows: copies } = await pool.query(`
       SELECT pc.*, sl.name as storage_name
       FROM publication_copies pc
@@ -128,7 +170,28 @@ class PublicationService {
       ORDER BY pc.copy_number ASC
     `, [id]);
 
-    return { publication, copies };
+    // 4. Lấy danh sách Ấn phẩm liên quan
+    let relatedItems = [];
+    if (publication.collection_id) {
+      const { rows: related } = await pool.query(`
+        SELECT id, title, cover_image, author, media_type
+        FROM books
+        WHERE collection_id = $1 AND id != $2
+        ORDER BY created_at DESC
+        LIMIT 6
+      `, [publication.collection_id, id]);
+      
+      relatedItems = related.map(item => ({
+        ...item,
+        title: this.parseJson(item.title)
+      }));
+    }
+
+    return { 
+      ...publication, 
+      copies, 
+      relatedItems 
+    };
   }
 
   /**
@@ -136,41 +199,109 @@ class PublicationService {
    */
   static async getAll(params = {}) {
     try {
-      const { page = 1, limit = 10, search = '', collection_id, status, cooperation_status, media_type } = params;
+      const { 
+        page = 1, limit = 10, search = '', 
+        collection_id, status, cooperation_status, media_type,
+        title, author, publisher_id, year_from, year_to, language, subject,
+        sort_by = 'id', order = 'DESC'
+      } = params;
+      
       const offset = (page - 1) * limit;
       
       let filter = ' WHERE 1=1';
       const values = [];
       let idx = 1;
 
+      // 1. Bộ lọc cơ bản
       if (media_type && media_type !== 'all') { filter += ` AND b.media_type = $${idx++}`; values.push(media_type); }
       if (status && status !== 'all') { filter += ` AND b.status = $${idx++}`; values.push(status); }
       if (cooperation_status && cooperation_status !== 'all') { filter += ` AND b.cooperation_status = $${idx++}`; values.push(cooperation_status); }
       if (collection_id) { filter += ` AND b.collection_id = $${idx++}`; values.push(collection_id); }
-      if (search) { filter += ` AND (b.title::text ILIKE $${idx} OR b.author ILIKE $${idx} OR b.code ILIKE $${idx})`; values.push(`%${search}%`); idx++; }
+      if (language) { filter += ` AND b.language = $${idx++}`; values.push(language); }
 
+      // 2. Tìm kiếm nội dung (ILIKE)
+      if (search) { 
+        filter += ` AND (b.title::text ILIKE $${idx} OR b.author ILIKE $${idx} OR b.code ILIKE $${idx} OR b.isbn ILIKE $${idx})`; 
+        values.push(`%${search}%`); idx++; 
+      }
+      if (title) { filter += ` AND b.title::text ILIKE $${idx++}`; values.push(`%${title}%`); }
+      if (author) { filter += ` AND b.author ILIKE $${idx++}`; values.push(`%${author}%`); }
+      if (subject) { filter += ` AND (b.keywords::text ILIKE $${idx} OR b.description::text ILIKE $${idx})`; values.push(`%${subject}%`); idx++; }
+      
+      // 3. Lọc theo khoá ngoại & thuộc tính số
+      if (publisher_id) { filter += ` AND b.publisher_id = $${idx++}`; values.push(publisher_id); }
+      
+      // Hỗ trợ chọn 1 năm hoặc NHIỀU NĂM rời rạc (Ví dụ: 2024, 2020)
+      if (params.years || params.year) {
+        const yearVal = params.years || params.year;
+        const yearArray = yearVal.toString().split(',').map(y => parseInt(y.trim())).filter(y => !isNaN(y));
+        if (yearArray.length > 1) {
+          filter += ` AND b.publication_year = ANY($${idx++})`;
+          values.push(yearArray);
+        } else if (yearArray.length === 1) {
+          filter += ` AND b.publication_year = $${idx++}`;
+          values.push(yearArray[0]);
+        }
+      }
+
+      if (year_from) { filter += ` AND b.publication_year >= $${idx++}`; values.push(parseInt(year_from)); }
+      if (year_to) { filter += ` AND b.publication_year <= $${idx++}`; values.push(parseInt(year_to)); }
+
+      // 4. Đếm tổng số bản ghi
       const countRes = await pool.query(`SELECT COUNT(*) FROM books b ${filter}`, values);
       const totalItems = parseInt(countRes.rows[0].count);
 
+      // 5. Xử lý Sắp xếp (Sorting) - Nâng cấp đa tầng cho Mobile App
+      let orderClause = '';
+      if (sort_by === 'id' || !sort_by || sort_by === 'default') {
+        // Mặc định: Giảm dần lượt xem -> Nhan đề A-Z -> ID mới nhất
+        orderClause = 'ORDER BY view_count DESC, b.title::text ASC, b.id DESC';
+      } else {
+        const allowedSortFields = {
+          'title': 'b.title::text',
+          'year': 'b.publication_year',
+          'views': 'view_count',
+          'favorites': 'favorite_count'
+        };
+        const sortField = allowedSortFields[sort_by] || 'b.id';
+        const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+        orderClause = `ORDER BY ${sortField} ${sortOrder}`;
+      }
+
       const dataQuery = `
-        SELECT b.*, p.name as publisher_name,
+        SELECT b.id, b.code, b.isbn, b.title, b.author, b.slug, b.cover_image, 
+               b.publication_year, b.media_type, b.status, b.access_policy, b.language,
+               p.name as publisher_name,
                (SELECT count(*) FROM publication_copies pc WHERE pc.publication_id = b.id) as total_copies,
-               (SELECT count(*) FROM interaction_logs il WHERE il.object_id = b.id AND il.action_type = 'view') as real_views
+               (SELECT count(*) FROM interaction_logs il WHERE il.object_id = b.id AND il.action_type = 'view') as view_count,
+               (SELECT count(*) FROM wishlists WHERE book_id = b.id) as favorite_count
         FROM books b 
         LEFT JOIN publishers p ON b.publisher_id = p.id
-        ${filter} ORDER BY b.id DESC LIMIT $${idx++} OFFSET $${idx++}
+        ${filter} 
+        ${orderClause} 
+        LIMIT $${idx++} OFFSET $${idx++}
       `;
       values.push(limit, offset);
       const { rows: publications } = await pool.query(dataQuery, values);
 
       return {
         publications: publications.map(p => ({
-          ...p,
+          id: p.id,
+          code: p.code,
+          isbn: p.isbn,
+          title: this.parseJson(p.title),
+          author: p.author,
+          slug: p.slug,
+          cover_image: p.cover_image,
           thumbnail: p.cover_image,
-          publisher: { name: p.publisher_name },
-          copyCount: parseInt(p.total_copies || 0),
-          viewCount: parseInt(p.real_views || 0), // Lấy view thật từ log
-          trendingScore: parseInt(p.real_views || 0) * 1.5 // Tính điểm trending tạm tính
+          publication_year: p.publication_year,
+          media_type: p.media_type,
+          status: p.status,
+          access_policy: p.access_policy,
+          publisher_name: this.parseJson(p.publisher_name),
+          copy_count: parseInt(p.total_copies || 0),
+          view_count: parseInt(p.view_count || 0),
+          favorite_count: parseInt(p.favorite_count || 0)
         })),
         pagination: {
           totalItems,
@@ -303,9 +434,9 @@ class PublicationService {
       const { rows: digitalCountRes } = await pool.query("SELECT COUNT(*) as total FROM books WHERE media_type = 'Digital' OR is_digital = true");
       
       return {
-        totalPublications: parseInt(pubCountRes[0].total || 0),
-        totalCopies: parseInt(copyCountRes[0].total || 0),
-        totalDigital: parseInt(digitalCountRes[0].total || 0)
+        totalPublications: parseInt(pubCountRes[0]?.total || 0),
+        totalCopies: parseInt(copyCountRes[0]?.total || 0),
+        totalDigital: parseInt(digitalCountRes[0]?.total || 0)
       };
     } catch (error) {
       console.error("PublicationService.getStats Error:", error.message);

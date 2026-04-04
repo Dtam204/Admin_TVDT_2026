@@ -18,14 +18,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDashboardStats } from '@/lib/hooks/useDashboard';
 import { cn } from '@/components/ui/utils';
-
-// Safe parse tên bộ sưu tập (có thể là string hoặc object multilang)
-const parseName = (name: any): string => {
-  if (!name) return 'Chưa đặt tên';
-  if (typeof name === 'string') return name;
-  if (typeof name === 'object') return name.vi || name.en || Object.values(name)[0] as string || 'N/A';
-  return String(name);
-};
+import { getCleanValue } from '@/lib/utils/locale-admin';
 
 export default function CollectionsPage() {
   const router = useRouter();
@@ -45,7 +38,7 @@ export default function CollectionsPage() {
   });
 
   const filteredCollections = collections?.data?.filter((c: any) =>
-    parseName(c.name).toLowerCase().includes(searchQuery.toLowerCase())
+    getCleanValue(c.name).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -160,7 +153,7 @@ export default function CollectionsPage() {
                       </div>
                       <div>
                         <div className="text-slate-900 font-black uppercase text-[12px] group-hover:text-indigo-600 transition-colors tracking-tight">
-                          {parseName(item.name)}
+                          {getCleanValue(item.name)}
                         </div>
                         <div className="text-[10px] text-slate-400 font-bold font-mono mt-0.5">
                           UID: {String(item.id).slice(0, 8)}
@@ -212,7 +205,7 @@ export default function CollectionsPage() {
                               <DropdownMenuItem
                                  className="gap-3 py-2.5 px-3 text-rose-600 cursor-pointer rounded-xl font-bold text-[10px] uppercase tracking-wider focus:bg-rose-50 focus:text-rose-600"
                                  onClick={() => {
-                                    if (confirm(`Xóa bộ sưu tập "${parseName(item.name)}"?`)) {
+                                    if (confirm(`Xóa bộ sưu tập "${getCleanValue(item.name)}"?`)) {
                                        deleteCollection(item.id);
                                     }
                                  }}

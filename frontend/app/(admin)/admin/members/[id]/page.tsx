@@ -95,6 +95,10 @@ export default function MemberEditPage({ params }: { params: Promise<{ id: strin
       updateItem(formData, {
         onSuccess: () => {
           toast.success('Cập nhật thông tin thành công');
+          // Delay nhỏ để tránh lỗi unmount và hiển thị toast
+          setTimeout(() => {
+            router.push('/admin/members');
+          }, 500);
         },
         onError: (err: any) => {
           console.error('Save failed:', err);

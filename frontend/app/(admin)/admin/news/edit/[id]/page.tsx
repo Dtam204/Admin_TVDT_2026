@@ -12,6 +12,7 @@ export default function EditNewsPage() {
   const id = params?.id as string;
   const [loading, setLoading] = useState(true);
   const [initialData, setInitialData] = useState<any>(undefined);
+  const { getCleanValue } = require("@/lib/utils/locale-admin");
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -20,23 +21,23 @@ export default function EditNewsPage() {
         const news = data?.data || data;
         // Map API fields to formData shape
         setInitialData({
-          title: news.title,
-          excerpt: news.excerpt || "",
-          category: news.category || "",
+          title: getCleanValue(news.title),
+          excerpt: getCleanValue(news.excerpt) || "",
+          category: getCleanValue(news.category) || "",
           categoryId: news.categoryId || "",
-          content: news.content || "",
+          content: getCleanValue(news.content) || "",
           status: news.status || "draft",
           isFeatured: news.isFeatured ?? false,
           imageUrl: news.imageUrl,
-          author: news.author || "Thư viện TN",
-          readTime: news.readTime || "5 phút đọc",
+          author: getCleanValue(news.author) || "Thư viện TN",
+          readTime: getCleanValue(news.readTime) || "5 phút đọc",
           gradient: news.gradient || "from-blue-600 to-cyan-600",
           link: news.link || "",
           publishedDate: news.publishedDate || new Date().toISOString().split("T")[0],
-          seoTitle: news.seoTitle || "",
-          seoDescription: news.seoDescription || "",
-          seoKeywords: news.seoKeywords || "",
-          galleryTitle: news.galleryTitle || "",
+          seoTitle: getCleanValue(news.seoTitle) || "",
+          seoDescription: getCleanValue(news.seoDescription) || "",
+          seoKeywords: getCleanValue(news.seoKeywords) || "",
+          galleryTitle: getCleanValue(news.galleryTitle) || "",
           // Cấu hình nâng cao cho nội dung chi tiết
           galleryImages: news.galleryImages || [],
           galleryPosition: news.galleryPosition || "top",
@@ -67,7 +68,10 @@ export default function EditNewsPage() {
         body: JSON.stringify(formData),
       });
       toast.success("Đã cập nhật bài viết");
-      // Không redirect, giữ nguyên ở trang hiện tại
+      // Delay nhỏ để toast hiển thị trước khi redirect
+      setTimeout(() => {
+        router.push("/admin/news");
+      }, 500);
     } catch (error: any) {
       toast.error(error?.message || "Có lỗi xảy ra khi cập nhật bài viết");
       // Silently fail

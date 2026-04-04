@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Edit, Trash2, FolderTree } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { getCleanValue } from '@/lib/utils/locale-admin';
 
 export default function CourseCategoriesPage() {
   const [page, setPage] = useState(1);
@@ -131,24 +132,7 @@ export default function CourseCategoriesPage() {
               </TableRow>
             ) : (
               data?.data?.map((item: any) => {
-                // Parse multilang field
-                let displayName = 'N/A';
-                const nameField = item.name;
-                
-                if (nameField) {
-                  if (typeof nameField === 'string') {
-                    try {
-                      const parsed = JSON.parse(nameField);
-                      displayName = parsed.vi || parsed.en || parsed.ja || nameField;
-                    } catch {
-                      displayName = nameField;
-                    }
-                  } else if (typeof nameField === 'object') {
-                    displayName = nameField.vi || nameField.en || nameField.ja || 'N/A';
-                  } else {
-                    displayName = String(nameField);
-                  }
-                }
+                const displayName = getCleanValue(item.name);
                 
                 return (
                   <TableRow key={item.id}>

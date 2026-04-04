@@ -69,77 +69,6 @@ router.get('/', getNews);
  *     tags: [Admin News]
  *     summary: Chi tiết bài viết
  *     security:
-const express = require('express');
-const {
-  getNews,
-  getNewsById,
-  createNews,
-  updateNews,
-  deleteNews,
-  updateNewsStatus,
-  toggleNewsFeatured,
-} = require('../controllers/news.controller');
-const { validate, schemas } = require('../middlewares/validation.middleware');
-
-const router = express.Router();
-
-/**
- * @openapi
- * /api/admin/news:
- *   get:
- *     tags: [Admin News]
- *     summary: Danh sách bài viết
- *     description: Lấy danh sách các bài viết, tin tức trong hệ thống. Hỗ trợ lọc theo trạng thái và tìm kiếm.
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema: { type: 'integer', default: 1 }
- *       - in: query
- *         name: limit
- *         schema: { type: 'integer', default: 10 }
- *       - in: query
- *         name: status
- *         schema: { type: 'string', enum: [draft, published] }
- *       - in: query
- *         name: category
- *         schema: { type: 'string' }
- *         description: Lọc theo categoryId
- *       - in: query
- *         name: search
- *         schema: { type: 'string' }
- *         description: Tìm theo tiêu đề
- *     responses:
- *       200:
- *         description: Thành công
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/BaseResponse'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/News'
- *                     pagination:
- *                       $ref: '#/components/schemas/Pagination'
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden
- */
-router.get('/', getNews);
-
-/**
- * @openapi
- * /api/admin/news/{id}:
- *   get:
- *     tags: [Admin News]
- *     summary: Chi tiết bài viết
- *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
@@ -184,8 +113,7 @@ router.get('/:id', validate(schemas.id, 'params'), getNewsById);
  *         description: Tạo thành công
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BaseResponse'
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *       401:
  *         description: Unauthorized
  *       403:
@@ -217,8 +145,7 @@ router.post('/', validate(schemas.news, 'body'), createNews);
  *         description: Cập nhật thành công
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BaseResponse'
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *       401:
  *         description: Unauthorized
  *       403:
@@ -231,7 +158,7 @@ router.put('/:id', validate(schemas.id, 'params'), validate(schemas.news, 'body'
  * /api/admin/news/{id}/status:
  *   patch:
  *     tags: [Admin News]
- *     summary: Thay đổi trạng thái
+ *     summary: Thay đổi trạng thái bài viết
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -239,13 +166,20 @@ router.put('/:id', validate(schemas.id, 'params'), validate(schemas.news, 'body'
  *         name: id
  *         required: true
  *         schema: { type: 'integer' }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status: { type: 'string', enum: ['draft', 'published', 'archived'] }
  *     responses:
  *       200:
  *         description: Cập nhật trạng thái thành công
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BaseResponse'
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *       401:
  *         description: Unauthorized
  *       403:
@@ -258,7 +192,7 @@ router.patch('/:id/status', validate(schemas.id, 'params'), updateNewsStatus);
  * /api/admin/news/{id}/featured:
  *   patch:
  *     tags: [Admin News]
- *     summary: Bật/tắt nổi bật
+ *     summary: Bật/tắt trạng thái nổi bật
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -271,8 +205,7 @@ router.patch('/:id/status', validate(schemas.id, 'params'), updateNewsStatus);
  *         description: Thành công
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BaseResponse'
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *       401:
  *         description: Unauthorized
  *       403:
@@ -298,8 +231,7 @@ router.patch('/:id/featured', validate(schemas.id, 'params'), toggleNewsFeatured
  *         description: Xóa thành công
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BaseResponse'
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *       401:
  *         description: Unauthorized
  *       403:

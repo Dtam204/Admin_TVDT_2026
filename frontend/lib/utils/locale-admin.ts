@@ -165,18 +165,23 @@ export function isTranslatableField(fieldName: string): boolean {
     // Color/Gradient fields
     'gradient', 'color', 'backgroundcolor', 'backgroundgradient',
     // Image fields
-    'image', 'imageurl', 'backgroundimage', 'heroimage', 'contentimage', 'contactimage',
-    // Path/Route fields
-    'path', 'route', 'slug',
+    'image', 'imageurl', 'backgroundimage', 'heroimage', 'contentimage', 'contactimage', 'avatar', 'cover_image', 'thumbnail',
+    // Path/Route/File fields
+    'path', 'route', 'slug', 'file', 'filepath', 'filename',
     // Other non-translatable fields
-    'slug', 'id', 'sortorder', 'isactive', 'categoryid',
+    'slug', 'id', 'sortorder', 'isactive', 'categoryid', 'featured',
     'publisheddate', 'publishedat', 'author', 'readtime', 'status',
     'partners', 'galleryimages', 'galleryposition', 'showtableofcontents',
     'enablesharebuttons', 'showauthorbox', 'contentmode',
     'statsusers', 'statsrating', 'statsdeploy', 'pricing',
     'badge', 'features', 'createdat', 'updatedat',
     // Contact/Office fields (email, phone, address, city are not translatable)
-    'email', 'phone', 'address', 'city', 'iframe', 'iframesrc'
+    'email', 'phone', 'address', 'city', 'iframe', 'iframesrc',
+    // Social / Identity / Personal
+    'facebook', 'twitter', 'linkedin', 'instagram', 'github', 'youtube', 'tiktok', 'social', 'website',
+    'nationality', 'gender', 'professional_title', 'birth_place', 'birth_year', 'death_year', 'identity_number',
+    'language', 'author', 'publisher_name', 'publisher', 'collection', 'category', 'topic', 'tag',
+    'barcode', 'copy_number', 'condition', 'price', 'page_count', 'publication_year', 'edition', 'volume', 'dimensions'
   ];
   
   const lowerFieldName = fieldName.toLowerCase();
@@ -271,9 +276,16 @@ export function migrateObjectToLocale(obj: any): any {
   const result: any = {};
   
   for (const [key, value] of Object.entries(obj)) {
-    // Skip các field không cần dịch
+    // Skip các field không cần dịch, nhưng nếu nó đã là locale object (do dữ liệu cũ/sai lệch) thì lấy ra string .vi
     if (!isTranslatableField(key)) {
-      result[key] = value;
+      if (isLocaleObject(value)) {
+        result[key] = (value as any).vi || "";
+      } else if (Array.isArray(value)) {
+        // Nếu là array trong một field không cần dịch (ví dụ: galleryImages), đảm bảo các item là string
+        result[key] = value.map(item => isLocaleObject(item) ? (item as any).vi || "" : item);
+      } else {
+        result[key] = value;
+      }
       continue;
     }
     
@@ -306,3 +318,44 @@ export function migrateObjectToLocale(obj: any): any {
   return result;
 }
 
+/**
+ * Lấy giá trị hiển thị sạch (luôn trả về string)
+ * Ưu tiên Tiếng Việt (vi), sau đó đến các ngôn ngữ khác, cuối cùng là chính nó nếu là string
+ */
+export function getCleanValue(value: any, defaultValue: string = ""): string {
+  if (value === null || value === undefined) return defaultValue;
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    // Thử parse nếu là JSON string
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object") {
+          // Ưu tiên Tiếng Việt, sau đó đến các ngôn ngữ khác, hoặc lấy giá trị đầu tiên có dữ liệu
+          return parsed.vi || parsed.en || parsed.ja || Object.values(parsed).find(v => v) || defaultValue;
+        }
+      } catch (e) {
+        // Không phải JSON hợp lệ, trả về chính nó
+      }
+    }
+    return value;
+  }
+
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return value.vi || value.en || value.ja || Object.values(value).find(v => v) || defaultValue;
+  }
+
+  return String(value);
+}
+
+/**
+ * Lấy cấu hình các ngôn ngữ hỗ trợ trong Admin
+ */
+export function getLocaleConfig() {
+  return [
+    { id: 'vi' as Locale, name: 'Tiếng Việt', flag: '🇻🇳' },
+    { id: 'en' as Locale, name: 'English', flag: '🇺🇸' },
+    { id: 'ja' as Locale, name: '日本語', flag: '🇯🇵' },
+  ];
+}

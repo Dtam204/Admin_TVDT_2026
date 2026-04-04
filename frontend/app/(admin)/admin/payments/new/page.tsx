@@ -80,7 +80,10 @@ function TransactionForm() {
     }, {
       onSuccess: () => {
         toast.success('Giao dịch đã được tạo thành công');
-        router.push('/admin/payments');
+        // Delay nhỏ để tránh lỗi unmount và hiển thị toast
+        setTimeout(() => {
+          router.push('/admin/payments');
+        }, 500);
       },
       onError: (err: any) => toast.error(err.message || 'Lỗi khi tạo giao dịch'),
     });

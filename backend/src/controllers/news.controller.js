@@ -23,7 +23,7 @@ const parseLocaleField = (value) => {
 
 // Chuẩn hóa dữ liệu trả về cho frontend
 const mapNews = (row) => {
-  let publishedDate = row.published_date;
+  let publishedDate = row.published_date || row.published_at; // Support both
   if (publishedDate instanceof Date) {
     const year = publishedDate.getFullYear();
     const month = String(publishedDate.getMonth() + 1).padStart(2, '0');
@@ -32,15 +32,33 @@ const mapNews = (row) => {
   } else if (publishedDate && typeof publishedDate === 'string' && publishedDate.includes('T')) {
     publishedDate = publishedDate.split('T')[0];
   }
+
+  // Format createdAt for frontend display
+  let createdAt = row.created_at;
+  if (createdAt instanceof Date) {
+    const year = createdAt.getFullYear();
+    const month = String(createdAt.getMonth() + 1).padStart(2, '0');
+    const day = String(createdAt.getDate()).padStart(2, '0');
+    const hours = String(createdAt.getHours()).padStart(2, '0');
+    const minutes = String(createdAt.getMinutes()).padStart(2, '0');
+    const seconds = String(createdAt.getSeconds()).padStart(2, '0');
+    createdAt = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  } else if (createdAt && typeof createdAt === 'string' && createdAt.includes('T')) {
+    createdAt = createdAt.replace('T', ' ').split('.')[0];
+  }
   
   return {
     ...row,
+    id: parseInt(row.id),
     title: parseLocaleField(row.title),
     excerpt: parseLocaleField(row.summary),
     author: parseLocaleField(row.author),
     readTime: parseLocaleField(row.read_time),
     content: parseLocaleField(row.content),
     publishedDate: publishedDate || '',
+    createdAt: createdAt || '',
+    isFeatured: !!row.is_featured,
+    commentsCount: parseInt(row.comments_count || 0),
     imageUrl: row.image_url || '',
     galleryImages: (() => {
       if (!row.gallery_images) return [];
@@ -49,6 +67,10 @@ const mapNews = (row) => {
     })(),
   };
 };
+
+/**
+ * News Controller - CHUẨN HÓA RESTFUL (Admin)
+ */
 
 // GET /api/admin/news
 exports.getNews = async (req, res, next) => {
@@ -81,7 +103,12 @@ exports.getNews = async (req, res, next) => {
     `;
 
     const { rows } = await pool.query(query, params);
-    return res.json({ success: true, data: rows.map(mapNews) });
+    return res.json({ 
+      success: true, 
+      message: "Lấy danh sách bài viết thành công",
+      data: rows.map(mapNews),
+      code: 0 
+    });
   } catch (error) { return next(error); }
 };
 
@@ -90,8 +117,19 @@ exports.getNewsById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query('SELECT * FROM news WHERE id = $1', [id]);
-    if (rows.length === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
-    return res.json({ success: true, data: mapNews(rows[0]) });
+    if (rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Không tìm thấy bài viết trên hệ thống', 
+        code: 404 
+      });
+    }
+    return res.json({ 
+      success: true, 
+      message: "Lấy chi tiết bài viết thành công",
+      data: mapNews(rows[0]),
+      code: 0 
+    });
   } catch (error) { return next(error); }
 };
 
@@ -129,7 +167,12 @@ exports.createNews = async (req, res, next) => {
       await AuditService.log(adminId, 'CREATE', 'NEWS', newNews.id, null, newNews);
     }
 
-    return res.status(201).json({ success: true, data: mapNews(newNews) });
+    return res.status(201).json({ 
+      success: true, 
+      message: "Bài viết mới đã được khởi tạo thành công",
+      data: mapNews(newNews),
+      code: 0 
+    });
   } catch (error) { return next(error); }
 };
 
@@ -139,7 +182,13 @@ exports.updateNews = async (req, res, next) => {
     const { id } = req.params;
     const adminId = req.user?.id || null;
     const { rows: existing } = await pool.query('SELECT * FROM news WHERE id = $1', [id]);
-    if (existing.length === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
+    if (existing.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Không tìm thấy bài viết để cập nhật', 
+        code: 404 
+      });
+    }
     const oldNews = existing[0];
 
     const data = req.body;
@@ -164,7 +213,7 @@ exports.updateNews = async (req, res, next) => {
     if (data.readTime) { params.push(processLocaleField(data.readTime)); fields.push(`read_time = $${params.length}`); }
     if (data.galleryImages) { params.push(JSON.stringify(data.galleryImages)); fields.push(`gallery_images = $${params.length}`); }
 
-    if (fields.length === 0) return res.json({ success: true, data: mapNews(oldNews) });
+    if (fields.length === 0) return res.json({ success: true, data: mapNews(oldNews), code: 0 });
 
     params.push(id);
     const query = `UPDATE news SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${params.length} RETURNING *`;
@@ -175,23 +224,36 @@ exports.updateNews = async (req, res, next) => {
       await AuditService.log(adminId, 'UPDATE', 'NEWS', id, oldNews, updatedNews);
     }
 
-    return res.json({ success: true, data: mapNews(updatedNews) });
+    return res.json({ 
+      success: true, 
+      message: "Nội dung bài viết đã được cập nhật",
+      data: mapNews(updatedNews),
+      code: 0 
+    });
   } catch (error) { return next(error); }
 };
 
-// DELETE /api/admin/news/:id
+// DELETE /api/admin/news/:id - CHUẨN 204 NO CONTENT
 exports.deleteNews = async (req, res, next) => {
   try {
     const { id } = req.params;
     const adminId = req.user?.id || null;
     const { rows: existing } = await pool.query('SELECT * FROM news WHERE id = $1', [id]);
-    if (existing.length === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
+    if (existing.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Không tìm thấy bài viết để xóa', 
+        code: 404 
+      });
+    }
     
     const { rowCount } = await pool.query('DELETE FROM news WHERE id = $1', [id]);
     if (rowCount > 0 && adminId) {
       await AuditService.log(adminId, 'DELETE', 'NEWS', id, existing[0], null);
     }
-    return res.json({ success: true, message: 'Đã xóa bài viết' });
+    
+    // REST Standard: 204 No Content for successful deletion
+    return res.status(204).send();
   } catch (error) { return next(error); }
 };
 
@@ -202,7 +264,7 @@ exports.updateNewsStatus = async (req, res, next) => {
     const { status } = req.body;
 
     if (!['draft', 'published', 'archived'].includes(status)) {
-      return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
+      return res.status(400).json({ success: false, message: 'Trạng thái bài viết không hợp lệ', code: 400 });
     }
 
     const { rows } = await pool.query(
@@ -211,10 +273,10 @@ exports.updateNewsStatus = async (req, res, next) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết', code: 404 });
     }
 
-    return res.json({ success: true, data: rows[0] });
+    return res.json({ success: true, message: "Trạng thái đã được cập nhật thành công", data: rows[0], code: 0 });
   } catch (error) {
     return next(error);
   }
@@ -232,12 +294,16 @@ exports.toggleNewsFeatured = async (req, res, next) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết', code: 404 });
     }
 
-    return res.json({ success: true, data: rows[0] });
+    return res.json({ 
+      success: true, 
+      message: isFeatured ? "Đã bật trạng thái bài viết nổi bật" : "Đã tắt trạng thái bài viết nổi bật",
+      data: rows[0], 
+      code: 0 
+    });
   } catch (error) {
     return next(error);
   }
 };
-

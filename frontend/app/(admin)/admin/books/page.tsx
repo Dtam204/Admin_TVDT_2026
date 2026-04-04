@@ -19,19 +19,11 @@ import {
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { cn } from '@/components/ui/utils';
+import { getCleanValue } from '@/lib/utils/locale-admin';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 // Safe stringify bất kỳ giá trị nào có thể là multilang JSON object
-const getDisplayTitle = (title: any): string => {
-  if (!title) return 'N/A';
-  if (typeof title === 'string') {
-    try { const p = JSON.parse(title); return String(p.vi || p.en || Object.values(p)[0] || title); } catch { return title; }
-  }
-  if (typeof title === 'object') {
-    return String(title.vi || title.en || Object.values(title)[0] || '');
-  }
-  return String(title);
-};
+const getDisplayTitle = (title: any): string => getCleanValue(title, 'N/A');
 
 function MediaBadge({ type }: { type?: string }) {
   const cfg: Record<string, { label: string; cls: string; icon: any }> = {

@@ -1,6 +1,29 @@
 const { pool } = require('../config/database');
 const AuditService = require('../services/admin/audit.service');
 
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+const parseMultilang = (value, lang = 'vi') => {
+  if (!value) return '';
+  if (typeof value === 'string') {
+    if (value.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(value);
+        return parsed[lang] || parsed.vi || value;
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  }
+  if (typeof value === 'object') {
+    return value[lang] || value.vi || '';
+  }
+  return value;
+};
+
 // GET /api/admin/courses
 exports.getCourses = async (req, res, next) => {
   try {
@@ -64,8 +87,8 @@ exports.getCourses = async (req, res, next) => {
       success: true,
       data: rows.map(c => ({
         ...c,
-        title: c.title?.vi || c.title || '',
-        description: c.description?.vi || c.description || ''
+        title: parseMultilang(c.title),
+        description: parseMultilang(c.description)
       })),
       pagination: {
         page: parseInt(page),
@@ -96,8 +119,8 @@ exports.getCourseById = async (req, res, next) => {
       success: true,
       data: {
         ...course,
-        title: course.title?.vi || course.title || '',
-        description: course.description?.vi || course.description || '',
+        title: parseMultilang(course.title),
+        description: parseMultilang(course.description),
         instructors,
         categories,
       },
@@ -117,10 +140,10 @@ exports.createCourse = async (req, res, next) => {
       `INSERT INTO courses (title, slug, description, content, thumbnail, status, featured, level, price) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [
-        JSON.stringify({ vi: typeof title === 'string' ? title : (title?.vi || '') }),
+        typeof title === 'string' ? title : (title?.vi || ''),
         slug,
-        JSON.stringify({ vi: typeof description === 'string' ? description : (description?.vi || '') }),
-        JSON.stringify({ vi: typeof content === 'string' ? content : (content?.vi || '') }),
+        typeof description === 'string' ? description : (description?.vi || ''),
+        typeof content === 'string' ? content : (content?.vi || ''),
         rest.thumbnail, rest.status || 'draft', rest.featured || false, rest.level || 'beginner', rest.price || 0
       ]
     );
@@ -163,8 +186,9 @@ exports.updateCourse = async (req, res, next) => {
     const params = [];
     let paramIndex = 1;
 
-    if (title) { updateFields.push(`title = $${paramIndex++}`); params.push(JSON.stringify({ vi: typeof title === 'string' ? title : (title?.vi || '') })); }
-    if (description) { updateFields.push(`description = $${paramIndex++}`); params.push(JSON.stringify({ vi: typeof description === 'string' ? description : (description?.vi || '') })); }
+    if (title) { updateFields.push(`title = $${paramIndex++}`); params.push(typeof title === 'string' ? title : (title?.vi || '')); }
+    if (description) { updateFields.push(`description = $${paramIndex++}`); params.push(typeof description === 'string' ? description : (description?.vi || '')); }
+    if (content) { updateFields.push(`content = $${paramIndex++}`); params.push(typeof content === 'string' ? content : (content?.vi || '')); }
     if (rest.status) { updateFields.push(`status = $${paramIndex++}`); params.push(rest.status); }
 
     if (updateFields.length > 0) {

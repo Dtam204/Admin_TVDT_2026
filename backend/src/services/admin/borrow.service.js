@@ -64,7 +64,7 @@ class BorrowService {
       // 2. Tìm Bản sao — qua copyId hoặc barcode (hỗ trợ máy quét tại quầy)
       let copyQuery = `
         SELECT c.*,
-               b.title->>'vi' as book_title,
+               b.title as book_title,
                b.author,
                b.media_type,
                b.cooperation_status,
@@ -169,7 +169,7 @@ class BorrowService {
        // 1. Lấy thông tin phiếu mượn và chi tiết liên quan
        const { rows: loans } = await client.query(`
          SELECT bl.*, m.full_name, m.email, m.phone, m.card_number,
-                b.title->>'vi' as book_title, b.author as book_author
+                b.title as book_title, b.author as book_author
          FROM book_loans bl
          JOIN members m ON bl.member_id = m.id
          JOIN books b ON bl.book_id = b.id
@@ -397,7 +397,7 @@ class BorrowService {
     let query = `
       SELECT r.*, 
              m.full_name as member_name, 
-             b.title->>'vi' as book_title
+             b.title as book_title
       FROM book_reservations r
       JOIN members m ON r.member_id = m.id
       JOIN books b ON r.book_id = b.id
@@ -449,7 +449,7 @@ class BorrowService {
     }
 
     if (search) {
-      queryConditions += ` AND (m.full_name ILIKE $${paramIndex} OR b.title->>'vi' ILIKE $${paramIndex} OR c.barcode ILIKE $${paramIndex})`;
+      queryConditions += ` AND (m.full_name ILIKE $${paramIndex} OR b.title ILIKE $${paramIndex} OR c.barcode ILIKE $${paramIndex})`;
       queryParams.push(`%${search}%`);
       paramIndex++;
     }
@@ -470,7 +470,7 @@ class BorrowService {
       SELECT bl.*, 
              m.full_name as member_name, m.card_number as member_card,
              mp.tier_code as member_tier,
-             b.title->>'vi' as book_title,
+             b.title as book_title,
              b.media_type,
              b.cover_image,
              b.access_policy,
@@ -521,7 +521,7 @@ class BorrowService {
     }
 
     if (search) {
-      queryConditions += ` AND (m.full_name ILIKE $${paramIndex} OR b.title->>'vi' ILIKE $${paramIndex} OR c.barcode ILIKE $${paramIndex})`;
+      queryConditions += ` AND (m.full_name ILIKE $${paramIndex} OR b.title ILIKE $${paramIndex} OR c.barcode ILIKE $${paramIndex})`;
       queryParams.push(`%${search}%`);
       paramIndex++;
     }
@@ -529,7 +529,7 @@ class BorrowService {
     const dataSql = `
       SELECT bl.*, 
              m.full_name as member_name, m.card_number as member_card,
-             b.title->>'vi' as book_title,
+             b.title as book_title,
              c.barcode as copy_barcode
       FROM book_loans bl
       JOIN members m ON bl.member_id = m.id

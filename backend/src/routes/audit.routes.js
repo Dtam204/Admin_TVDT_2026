@@ -23,11 +23,11 @@ const { checkPermission } = require('../middlewares/rbac.middleware');
  *         schema: { type: 'integer', default: 20 }
  *       - in: query
  *         name: module
- *         description: Lọc theo module (ví dụ: COURSE, NEWS, PUBLISHER...)
+ *         description: "Lọc theo module (ví dụ: COURSE, NEWS, PUBLISHER...)"
  *         schema: { type: 'string' }
  *       - in: query
  *         name: action
- *         description: Lọc theo hành động (ví dụ: CREATE, UPDATE, DELETE...)
+ *         description: "Lọc theo hành động (ví dụ: CREATE, UPDATE, DELETE...)"
  *         schema: { type: 'string' }
  *       - in: query
  *         name: search

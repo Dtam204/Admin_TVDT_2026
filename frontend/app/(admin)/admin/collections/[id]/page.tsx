@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useAdminCollection, useUpdateCollection } from '@/lib/hooks/usePublications';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { getCleanValue } from '@/lib/utils/locale-admin';
 
 export default function EditCollectionPage() {
   const router = useRouter();
@@ -33,10 +34,10 @@ export default function EditCollectionPage() {
   useEffect(() => {
     if (collection) {
       setFormData({
-        name: collection.name || '',
+        name: getCleanValue(collection.name),
         is_active: collection.is_active ?? true,
         order_index: collection.order_index || 0,
-        description: collection.description || ''
+        description: getCleanValue(collection.description)
       });
     }
   }, [collection]);
@@ -51,7 +52,10 @@ export default function EditCollectionPage() {
     updateCollection({ id, data: formData }, {
       onSuccess: () => {
         toast.success('Cập nhật bộ sưu tập thành công');
-        router.push('/admin/collections');
+        // Delay nhỏ để tránh lỗi unmount và hiển thị toast
+        setTimeout(() => {
+          router.push('/admin/collections');
+        }, 500);
       },
       onError: (err: any) => {
         toast.error(err.message || 'Có lỗi xảy ra');

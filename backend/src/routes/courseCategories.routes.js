@@ -16,7 +16,7 @@ const router = express.Router();
  *   get:
  *     tags: [Admin CourseCategories]
  *     summary: Danh sách danh mục khóa học
- *     description: Lấy danh sách các phân loại khóa học (VD: Lập trình, Ngoại ngữ...)
+ *     description: "Lấy danh sách các phân loại khóa học (VD: Lập trình, Ngoại ngữ...)"
  *     security:
  *       - bearerAuth: []
  *     responses:

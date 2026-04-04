@@ -19,7 +19,7 @@ exports.getAll = async (req, res, next) => {
         mr.*, 
         m.full_name as member_name, 
         m.card_number,
-        mp.name->>'vi' as plan_name,
+        mp.name as plan_name,
         mp.price as plan_price,
         mp.duration_days as plan_duration,
         u.name as processor_name

@@ -34,17 +34,17 @@ async function authenticateReader({ identifier, password }) {
         u.password,
         u.role_id,
         r.code AS role_code,
-        mp.name->>'vi' as plan_name,
+        mp.name as plan_name,
         mp.max_books_borrowed,
         mp.tier_code
       FROM members m
       JOIN users u ON m.user_id = u.id
       JOIN roles r ON u.role_id = r.id
       LEFT JOIN membership_plans mp ON m.membership_plan_id = mp.id
-      WHERE (m.email = $1 OR m.card_number = $1)
+      WHERE (LOWER(m.email) = LOWER($1) OR LOWER(m.card_number) = LOWER($1))
       LIMIT 1
       `,
-      [identifier.toLowerCase().trim()]
+      [identifier.trim()]
     );
 
     if (rows.length === 0) {
@@ -72,25 +72,12 @@ async function authenticateReader({ identifier, password }) {
       max_books_borrowed: readerData.max_books_borrowed || 3
     });
 
-    // 5. Get Reader Entitlements (Extra permissions)
-    const { rows: entitlementRows } = await pool.query(
-      `
-      SELECT resource_type, resource_id, extra_borrow_limit
-      FROM reader_entitlements
-      WHERE reader_id = $1 AND (expire_date IS NULL OR expire_date >= CURRENT_DATE) AND is_active = TRUE
-      `,
-      [readerData.id]
-    );
+    // 5. Get Reader Entitlements (Placeholder for future)
+    const entitlements = [];
 
-    const entitlements = entitlementRows.map(e => ({
-      type: e.resource_type,
-      id: e.resource_id,
-      extraLimit: e.extra_borrow_limit
-    }));
-
-    // 6. Generate JWT Token for Reader
-    // Uses the effective tier (e.g., 'basic' if expired)
-    const token = jwt.sign(
+    // 6. Generate JWT Tokens for Reader
+    // AccessToken (Short-lived)
+    const accessToken = jwt.sign(
       {
         sub: readerData.id,
         email: readerData.email,
@@ -100,11 +87,29 @@ async function authenticateReader({ identifier, password }) {
         type: 'reader'
       },
       jwtConfig.secret,
-      { expiresIn: jwtConfig.expiresIn }
+      { expiresIn: '1h' } 
+    );
+
+    // RefreshToken (Long-lived)
+    const refreshToken = jwt.sign(
+      {
+        sub: readerData.id,
+        type: 'reader_refresh'
+      },
+      jwtConfig.secret,
+      { expiresIn: '7d' } 
+    );
+
+    // [SESSION MANAGEMENT] Lưu Refresh Token vào Database
+    await pool.query(
+      `INSERT INTO refresh_tokens (user_id, token, expires_at) 
+       VALUES ($1, $2, CURRENT_TIMESTAMP + interval '7 days')`,
+      [readerData.user_id, refreshToken]
     );
 
     return {
-      token,
+      accessToken,
+      refreshToken,
       reader: {
         id: readerData.id,
         fullName: readerData.full_name,
@@ -117,7 +122,7 @@ async function authenticateReader({ identifier, password }) {
         status: readerData.status,
         isExpired: effective.is_expired
       },
-      expiresIn: jwtConfig.expiresIn
+      expiresIn: 3600 // 1 hour in seconds
     };
 
   } catch (error) {
@@ -126,6 +131,30 @@ async function authenticateReader({ identifier, password }) {
   }
 }
 
+/**
+ * Thu hồi Refresh Token (Đăng xuất cụ thể 1 thiết bị)
+ */
+async function revokeRefreshToken(token) {
+  await pool.query(
+    'UPDATE refresh_tokens SET revoked = TRUE WHERE token = $1',
+    [token]
+  );
+  return true;
+}
+
+/**
+ * Đăng xuất toàn bộ thiết bị (Xóa hết token của User)
+ */
+async function logoutAllDevices(userId) {
+  await pool.query(
+    'UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1',
+    [userId]
+  );
+  return true;
+}
+
 module.exports = {
-  authenticateReader
+  authenticateReader,
+  revokeRefreshToken,
+  logoutAllDevices
 };

@@ -31,7 +31,7 @@ async function processMembershipUpgrade({
   try {
     // 1. Get plan details
     const { rows: plans } = await db.query(
-      'SELECT id, duration_days, price, name->>\'vi\' as plan_name FROM membership_plans WHERE id = $1',
+      'SELECT id, duration_days, price, name as plan_name FROM membership_plans WHERE id = $1',
       [planId]
     );
     

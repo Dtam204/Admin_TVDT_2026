@@ -31,12 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { LocaleInput } from "@/components/admin/LocaleInput";
-import { normalizeLocaleValue, getLocaleValue, setLocaleValue } from "@/lib/utils/locale-admin";
-import { useTranslationControls } from "@/lib/hooks/useTranslationControls";
-import { TranslationControls } from "@/components/admin/TranslationControls";
-import { AIProviderSelector } from "@/components/admin/AIProviderSelector";
-import { getLocalizedText } from "@/lib/utils/i18n";
+import { getCleanValue } from "@/lib/utils/locale-admin";
 import {
   Dialog,
   DialogContent,
@@ -61,14 +56,14 @@ type NewsStatus = "draft" | "pending" | "approved" | "rejected" | "published";
 
 interface NewsFormData {
   id?: number;
-  title: string | Record<'vi' | 'en' | 'ja', string>;
-  excerpt: string | Record<'vi' | 'en' | 'ja', string>;
-  content: string | Record<'vi' | 'en' | 'ja', string>;
+  title: string;
+  excerpt: string;
+  content: string;
   status: NewsStatus;
   isFeatured: boolean;
   imageUrl?: string;
-  author: string | Record<'vi' | 'en' | 'ja', string>;
-  readTime: string | Record<'vi' | 'en' | 'ja', string>;
+  author: string;
+  readTime: string;
   slug: string;
   publishedDate: string;
 
@@ -91,24 +86,6 @@ export default function NewsForm({
   onCancel,
   isEditing = false,
 }: NewsFormProps) {
-  // Use translation controls hook
-  const {
-    globalLocale,
-    setGlobalLocale,
-    aiProvider,
-    setAiProvider,
-    translatingAll,
-    translateSourceLang,
-    setTranslateSourceLang,
-    translateData,
-  } = useTranslationControls();
-
-  // Locale riêng cho khối nội dung chi tiết (RichTextEditor)
-  const [contentLocale, setContentLocale] = useState<'vi' | 'en' | 'ja'>(globalLocale);
-
-  useEffect(() => {
-    setContentLocale(globalLocale);
-  }, [globalLocale]);
 
   const [formData, setFormData] = useState<NewsFormData>({
     id: initialData?.id,
@@ -147,9 +124,7 @@ export default function NewsForm({
     // 1. Chưa chỉnh sửa thủ công
     // 2. Có tiêu đề
     // 3. Không phải đang edit với slug đã có từ DB
-    const titleText = typeof formData.title === 'string' 
-      ? formData.title 
-      : formData.title?.vi || '';
+    const titleText = formData.title;
     if (!slugManuallyEdited && titleText && !(isEditing && ((initialData as any)?.slug || (initialData as any)?.link))) {
       const autoSlug = generateSlug(titleText);
       if (autoSlug) {
@@ -161,17 +136,13 @@ export default function NewsForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const titleText = typeof formData.title === 'string' 
-      ? formData.title 
-      : formData.title?.vi || '';
+    const titleText = formData.title;
     if (!titleText.trim()) {
       toast.error("Vui lòng nhập tiêu đề bài viết");
       return;
     }
 
-    const contentText = typeof formData.content === 'string' 
-      ? formData.content 
-      : getLocalizedText(formData.content || { vi: "", en: "", ja: "" }, globalLocale) || '';
+    const contentText = formData.content;
     if (!contentText.trim()) {
       toast.error("Vui lòng nhập nội dung bài viết");
       return;
@@ -179,6 +150,7 @@ export default function NewsForm({
 
     try {
       setSaving(true);
+      // Gửi dữ liệu chuỗi thuần sau khi database đã được flatten
       await onSave(formData);
     } catch (error) {
       toast.error("Có lỗi xảy ra khi lưu bài viết");
@@ -215,10 +187,6 @@ export default function NewsForm({
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <AIProviderSelector
-                value={aiProvider}
-                onChange={setAiProvider}
-              />
               <Button
                 variant="outline"
                 onClick={() => setShowMobilePreview(true)}
@@ -332,22 +300,18 @@ export default function NewsForm({
                             </p>
                           </div>
                         </div>
-                        <TranslationControls
-                          globalLocale={globalLocale}
-                          setGlobalLocale={setGlobalLocale}
-                        />
                       </div>
                     </div>
                     <div className="p-4 space-y-5">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <LocaleInput
-                            value={normalizeLocaleValue(formData.title)}
-                            onChange={(value) => setFormData({ ...formData, title: value })}
-                            label="Tiêu đề bài viết"
+                          <Label htmlFor="title" className="text-sm font-semibold italic text-blue-700">Tiêu đề bài viết</Label>
+                          <Input
+                            id="title"
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                             placeholder="Nhập tiêu đề bài viết..."
-                            defaultLocale={globalLocale}
-                            aiProvider={aiProvider}
+                            className="h-10 border-blue-100 focus:border-blue-400"
                           />
                         </div>
 
@@ -373,56 +337,29 @@ export default function NewsForm({
 */}
                       </div>
 
-                      <LocaleInput
-                        value={normalizeLocaleValue(formData.excerpt)}
-                        onChange={(value) => setFormData({ ...formData, excerpt: value })}
-                        label="Tóm tắt"
-                        placeholder="Nhập tóm tắt ngắn gọn về tin tức..."
-                        multiline={true}
-                        defaultLocale={globalLocale}
-                        aiProvider={aiProvider}
-                      />
+                      <div className="space-y-2">
+                        <Label htmlFor="excerpt" className="text-sm font-semibold italic text-blue-700">Tóm tắt bài viết</Label>
+                        <Textarea
+                          id="excerpt"
+                          value={formData.excerpt}
+                          onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
+                          placeholder="Nhập tóm tắt ngắn gọn về tin tức..."
+                          className="min-h-[80px] border-blue-100 focus:border-blue-400"
+                        />
+                      </div>
                       
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <Label className="text-sm font-semibold">
-                            Nội dung chi tiết ({contentLocale.toUpperCase()})
+                            Nội dung chi tiết (Tiếng Việt)
                           </Label>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span>Hiển thị:</span>
-                            <Select
-                              value={contentLocale}
-                              onValueChange={(value: 'vi' | 'en' | 'ja') => setContentLocale(value)}
-                            >
-                              <SelectTrigger className="h-7 w-[120px] px-2 py-1 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="vi">🇻🇳 Tiếng Việt</SelectItem>
-                                <SelectItem value="en">🇬🇧 English</SelectItem>
-                                <SelectItem value="ja">🇯🇵 日本語</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
                         </div>
                         <div className="border rounded-lg min-h-[360px]">
                           <RichTextEditor
-                            key={`content-${contentLocale}`}
-                            value={typeof formData.content === 'string' 
-                              ? formData.content 
-                              : getLocalizedText(formData.content || { vi: "", en: "", ja: "" }, contentLocale) || ""}
+                            value={formData.content}
                             onChange={(value) => {
-                              const currentContent = formData.content || { vi: "", en: "", ja: "" };
-                              const updatedContent = typeof currentContent === 'string' 
-                                ? { vi: currentContent, en: "", ja: "" }
-                                : { ...currentContent, [contentLocale]: value };
-                              setFormData({ ...formData, content: updatedContent });
+                              setFormData({ ...formData, content: value });
                             }}
-                            globalLocale={contentLocale}
-                            translateData={translateData}
-                            translatingAll={translatingAll}
-                            translateSourceLang={translateSourceLang}
-                            setTranslateSourceLang={setTranslateSourceLang}
                           />
                         </div>
                       </div>
@@ -460,7 +397,7 @@ export default function NewsForm({
                                   className="relative w-28 h-20 rounded-md overflow-hidden bg-white border border-gray-200 shadow-sm"
                                 >
                                   <img
-                                    src={img.startsWith("/") ? buildUrl(img) : img}
+                                    src={typeof img === 'string' && img.startsWith("/") ? buildUrl(img) : (typeof img === 'string' ? img : '')}
                                     alt={`Gallery ${idx + 1}`}
                                     className="w-full h-full object-cover"
                                   />
@@ -582,20 +519,24 @@ export default function NewsForm({
                     <Card className="p-4 space-y-4">
                       <h2 className="text-lg font-semibold">Thông tin hiển thị</h2>
                       <div className="space-y-4">
-                        <LocaleInput
-                          value={normalizeLocaleValue(formData.author as any)}
-                          onChange={(val) => setFormData({ ...formData, author: val as any })}
-                          label="Tác giả"
-                          defaultLocale={globalLocale}
-                          aiProvider={aiProvider}
-                        />
-                        <LocaleInput
-                          value={normalizeLocaleValue(formData.readTime as any)}
-                          onChange={(val) => setFormData({ ...formData, readTime: val as any })}
-                          label="Thời gian đọc"
-                          defaultLocale={globalLocale}
-                          aiProvider={aiProvider}
-                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="author" className="text-sm font-semibold">Tác giả</Label>
+                          <Input
+                            id="author"
+                            value={formData.author}
+                            onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                            placeholder="Tên tác giả..."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="readTime" className="text-sm font-semibold">Thời gian đọc</Label>
+                          <Input
+                            id="readTime"
+                            value={formData.readTime}
+                            onChange={(e) => setFormData({ ...formData, readTime: e.target.value })}
+                            placeholder="Ví dụ: 5 phút đọc"
+                          />
+                        </div>
                         <div className="flex items-center justify-between pt-2">
                           <div>
                             <p className="text-sm font-medium text-gray-800">Hiển thị Box tác giả</p>
@@ -618,7 +559,7 @@ export default function NewsForm({
                         onClick={() => setShowImageDialog(true)}
                       >
                         {formData.imageUrl ? (
-                          <img src={formData.imageUrl.startsWith("/") ? buildUrl(formData.imageUrl) : formData.imageUrl} className="w-full h-full object-cover" alt="Cover" />
+                          <img src={typeof formData.imageUrl === 'string' && formData.imageUrl.startsWith("/") ? buildUrl(formData.imageUrl) : (typeof formData.imageUrl === 'string' ? formData.imageUrl : '')} className="w-full h-full object-cover" alt="Cover" />
                         ) : (
                           <div className="text-center text-gray-500">
                             <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-20" />
