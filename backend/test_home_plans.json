@@ -1,0 +1,76 @@
+{
+  "LIST": {
+    "code": 0,
+    "success": true,
+    "message": "Danh sách gói hội viên",
+    "data": [
+      {
+        "id": 2,
+        "name": "Miễn phí",
+        "tier_code": "basic",
+        "slug": "free",
+        "price": "0.00",
+        "duration_days": 999,
+        "description": ""
+      },
+      {
+        "id": 3,
+        "name": "Gói Prenium ",
+        "tier_code": "premium",
+        "slug": "prenium-1month",
+        "price": "50000.00",
+        "duration_days": 30,
+        "description": ""
+      },
+      {
+        "id": 4,
+        "name": "VIP 1 Tháng",
+        "tier_code": "vip",
+        "slug": "vip-1month",
+        "price": "99000.00",
+        "duration_days": 30,
+        "description": ""
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 3,
+      "totalPages": 1
+    },
+    "errors": null
+  },
+  "DETAIL_ID2": {
+    "code": 0,
+    "success": true,
+    "message": "Chi tiết gói hội viên",
+    "data": {
+      "id": 2,
+      "name": "Miễn phí",
+      "slug": "free",
+      "tier_code": "basic",
+      "description": "",
+      "price": "0.00",
+      "duration_days": 999,
+      "late_fee_per_day": "5000.00",
+      "features": null,
+      "max_books_borrowed": 3,
+      "max_concurrent_courses": 1,
+      "max_renewal_limit": 1,
+      "discount_percentage": "0.00",
+      "priority_support": false,
+      "allow_digital_read": true,
+      "allow_download": true,
+      "sort_order": 0,
+      "status": "active"
+    },
+    "errors": null
+  },
+  "DETAIL_404": {
+    "code": 404,
+    "success": false,
+    "message": "Không tìm thấy gói hội viên hoặc gói đã bị vô hiệu hóa",
+    "data": null,
+    "errors": null
+  }
+}

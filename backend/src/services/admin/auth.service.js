@@ -53,7 +53,6 @@ async function authenticateAdmin({ email, password }) {
 
     // [SECURITY] Chặn vai trò 'user' (Bạn đọc) đăng nhập vào luồng Admin CMS
     if (user.role_code === 'user') {
-      console.log(`[AUTH] Blocked login attempt for Reader account to CMS: ${email}`);
       return null;
     }
 

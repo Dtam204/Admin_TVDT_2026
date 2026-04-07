@@ -1,26 +1,209 @@
 const express = require('express');
-const publicSearchController = require('../controllers/public_search.controller');
-const { aiSuggest, aiNewsSuggest } = require('../controllers/search.controller');
-
 const router = express.Router();
+const searchController = require('../controllers/search.controller');
 
 /**
- * @swagger
- * /api/public/search/ai-suggest:
- *   get:
+ * @openapi
+ * /api/public/search/ai-smart:
+ *   post:
  *     tags: [Public Search]
- *     summary: Tìm kiếm sách thông minh (AI Gemini)
- *     description: Sử dụng AI để hiểu ý định người dùng và tìm kiếm các ấn phẩm phù hợp nhất.
- *     parameters:
- *       - in: query
- *         name: query
- *         schema:
- *           type: string
- *         required: true
- *         description: Nội dung tìm kiếm (ví dụ "Sách về lập trình Python cho người mới")
+ *     summary: "Tìm kiếm thông minh bằng Gemini AI (Function Calling)"
+ *     description: |
+ *       Phân tích ý định tìm kiếm của người dùng bằng **Gemini Function Calling**.
+ *       AI tự động xác định: đang tìm **sách** hay **tin tức**, trích xuất tiêu chí lọc
+ *       (tác giả, năm xuất bản, thể loại, loại media...) và thực thi tìm kiếm chính xác.
+ *
+ *       **Ưu điểm so với tìm kiếm cơ bản:**
+ *       - Hiểu câu hỏi tự nhiên: *"sách Python cho người mới bắt đầu xuất bản sau 2020"*
+ *       - Tự phân biệt sách vs tin tức
+ *       - Trả về `ai_interpreted` để App hiển thị rõ AI đã hiểu gì
+ *       - Fallback an toàn nếu AI timeout
+ *
+ *       **Lưu ý:** Response `data.type = "books" | "news"` để App biết render component nào.
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [query]
+ *             properties:
+ *               query:
+ *                 type: string
+ *                 example: "tìm sách lập trình Python xuất bản sau năm 2020"
+ *                 description: "Câu hỏi tự nhiên của người dùng (tối thiểu 2 ký tự)"
+ *               pageIndex:
+ *                 type: integer
+ *                 default: 1
+ *                 example: 1
+ *               pageSize:
+ *                 type: integer
+ *                 default: 10
+ *                 example: 10
  *     responses:
  *       200:
- *         description: Thành công
+ *         description: "Tìm kiếm thành công"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         type:
+ *                           type: string
+ *                           enum: [books, news]
+ *                           description: "Loại kết quả AI trả về"
+ *                         items:
+ *                           type: array
+ *                           items: { $ref: '#/components/schemas/Publication' }
+ *                         totalRecords:
+ *                           type: integer
+ *                           example: 12
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 2
+ *                         pageIndex:
+ *                           type: integer
+ *                           example: 1
+ *                         pageSize:
+ *                           type: integer
+ *                           example: 10
+ *                         ai_interpreted:
+ *                           type: object
+ *                           nullable: true
+ *                           description: "Thông tin AI đã phân tích được (null nếu fallback)"
+ *                           properties:
+ *                             function:
+ *                               type: string
+ *                               enum: [searchBooks, searchNews]
+ *                             params:
+ *                               type: object
+ *                               description: "Các tham số AI trích xuất được"
+ *                             originalQuery:
+ *                               type: string
+ *                               description: "Câu hỏi gốc của người dùng"
+ *       500:
+ *         description: "Lỗi hệ thống"
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ */
+router.post('/ai-smart', searchController.aiSmartSearch);
+
+/**
+ * @openapi
+ * /api/public/search/autocomplete:
+ *   get:
+ *     tags: [Public Search]
+ *     summary: "Gợi ý tìm kiếm nhanh (Autocomplete)"
+ *     description: |
+ *       Trả về danh sách gợi ý khi người dùng đang gõ (tìm thẳng trong DB, không qua AI).
+ *       Tốc độ nhanh (~50ms), phù hợp để gọi real-time khi người dùng gõ từng ký tự.
+ *
+ *       **Gợi ý:** Gọi API này sau khi người dùng gõ ≥ 2 ký tự với debounce 300ms.
+ *     security: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema: { type: string, minLength: 2 }
+ *         description: "Từ khóa đang gõ (tối thiểu 2 ký tự)"
+ *         example: "python"
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 8, maximum: 20 }
+ *         description: "Số lượng gợi ý tối đa"
+ *     responses:
+ *       200:
+ *         description: "Danh sách gợi ý"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: integer, example: 42 }
+ *                           label: { type: string, example: "Python Crash Course" }
+ *                           subtitle: { type: string, example: "Eric Matthes", description: "Tên tác giả" }
+ *                           thumbnail: { type: string, nullable: true, example: "https://..." }
+ *                           year: { type: integer, example: 2023 }
+ *                           type: { type: string, enum: [Physical, Digital, Hybrid] }
+ */
+router.get('/autocomplete', searchController.autocomplete);
+
+/**
+ * @openapi
+ * /api/public/search/publications:
+ *   get:
+ *     tags: [Public Search]
+ *     summary: "Tra cứu ấn phẩm (Cơ bản & Nâng cao)"
+ *     description: |
+ *       Tìm kiếm ấn phẩm theo nhiều tiêu chí. Phục vụ màn hình **Tra cứu tài liệu** trên Mobile App.
+ *
+ *       - **Tìm cơ bản**: Dùng `search` để tìm trong nhan đề, tác giả, ISBN, mã
+ *       - **Tìm nâng cao**: Kết hợp `title`, `author`, `year_from`, `year_to`
+ *       - **Lọc theo năm**: Dùng `year` (1 năm) hoặc `years` (nhiều năm cách nhau dấu phẩy)
+ *     security: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: "Từ khóa chung (tìm trong nhan đề, tác giả, mã, ISBN)"
+ *       - in: query
+ *         name: title
+ *         schema: { type: string }
+ *         description: "Lọc chính xác theo nhan đề"
+ *       - in: query
+ *         name: author
+ *         schema: { type: string }
+ *         description: "Lọc chính xác theo tác giả"
+ *       - in: query
+ *         name: year
+ *         schema: { type: integer }
+ *         description: "Lọc đúng 1 năm xuất bản"
+ *       - in: query
+ *         name: years
+ *         schema: { type: string }
+ *         description: "Lọc nhiều năm rời rạc, ngăn cách bằng dấu phẩy. VD: 2020,2022,2024"
+ *       - in: query
+ *         name: year_from
+ *         schema: { type: integer, default: 2005 }
+ *         description: "Xuất bản từ năm"
+ *       - in: query
+ *         name: year_to
+ *         schema: { type: integer }
+ *         description: "Xuất bản đến năm"
+ *       - in: query
+ *         name: media_type
+ *         schema: { type: string, enum: [Physical, Digital, Hybrid] }
+ *         description: "Loại ấn phẩm"
+ *       - in: query
+ *         name: sort_by
+ *         schema: { type: string, enum: [default, views, favorites, title, year] }
+ *         default: default
+ *       - in: query
+ *         name: order
+ *         schema: { type: string, enum: [ASC, DESC], default: DESC }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *     responses:
+ *       200:
+ *         description: "Danh sách ấn phẩm khớp điều kiện"
  *         content:
  *           application/json:
  *             schema:
@@ -31,25 +214,31 @@ const router = express.Router();
  *                     data:
  *                       type: array
  *                       items: { $ref: '#/components/schemas/Publication' }
- *                     ai_interpreted:
- *                       type: object
- *                       description: Phân tích của AI về câu truy vấn
- *
- * /api/public/search/ai-news-suggest:
+ *                     pagination: { $ref: '#/components/schemas/Pagination' }
+ */
+router.get('/publications', searchController.searchPublications);
+
+/**
+ * @openapi
+ * /api/public/search/barcode/{barcode}:
  *   get:
  *     tags: [Public Search]
- *     summary: Tìm kiếm tin tức thông minh (AI Gemini)
- *     description: Tìm kiếm các bài viết, tin tức dựa trên câu hỏi tự nhiên của người dùng.
+ *     summary: "Quét mã Barcode/QR để tra cứu ấn phẩm"
+ *     description: |
+ *       Tra cứu ấn phẩm bằng mã vạch (barcode) hoặc mã QR.
+ *       Phục vụ tính năng **Quét mã** trên Mobile App.
+ *       Khi tìm thấy sẽ trả về thông tin chi tiết đầy đủ để hiển thị ngay màn hình Detail.
+ *     security: []
  *     parameters:
- *       - in: query
- *         name: query
- *         schema:
- *           type: string
+ *       - in: path
+ *         name: barcode
  *         required: true
- *         description: Nội dung tìm kiếm tin tức
+ *         schema: { type: string }
+ *         description: "Mã vạch hoặc chuỗi QR code của ấn phẩm"
+ *         example: "BC-001-20240101"
  *     responses:
  *       200:
- *         description: Thành công
+ *         description: "Thông tin chi tiết ấn phẩm"
  *         content:
  *           application/json:
  *             schema:
@@ -57,61 +246,13 @@ const router = express.Router();
  *                 - $ref: '#/components/schemas/BaseResponse'
  *                 - type: object
  *                   properties:
- *                     data:
- *                       type: array
- *                       items: { $ref: '#/components/schemas/News' }
- *
- * /api/public/search/publications:
- *   get:
- *     tags: [Public Search]
- *     summary: Tra cứu ấn phẩm (Cơ bản & Nâng cao)
- *     description: API phục vụ màn hình Tra cứu tài liệu trên Mobile App.
- *     parameters:
- *       - in: query
- *         name: search
- *         schema: { type: 'string' }
- *         description: Từ khóa tìm kiếm chung
- *       - in: query
- *         name: title
- *         schema: { type: 'string' }
- *         description: Lọc đích danh theo nhan đề
- *       - in: query
- *         name: author
- *         schema: { type: 'string' }
- *         description: Lọc đích danh theo tác giả
- *       - in: query
- *         name: year
- *         schema: { type: 'integer' }
- *         description: Lọc đích danh theo 1 năm (Dùng cho các Chip năm trên Mobile)
- *       - in: query
- *         name: year_from
- *         schema: { type: 'integer', default: 2005 }
- *       - in: query
- *         name: year_to
- *         schema: { type: 'integer', default: 2026 }
- *       - in: query
- *         name: sort_by
- *         schema: { type: 'string', default: 'default' }
- *     responses:
- *       200:
- *         description: Thành công
- * 
- * /api/public/search/barcode/{barcode}:
- *   get:
- *     tags: [Public Search]
- *     summary: Quét mã ấn phẩm (Barcode/QR)
- *     parameters:
- *       - in: path
- *         name: barcode
- *         required: true
- *         schema: { type: 'string' }
- *     responses:
- *       200:
- *         description: Thông tin chi tiết ấn phẩm
+ *                     data: { $ref: '#/components/schemas/Publication' }
+ *       404:
+ *         description: "Mã vạch không tồn tại"
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
  */
-router.get('/publications', publicSearchController.searchPublications);
-router.get('/barcode/:barcode', publicSearchController.searchByBarcode);
-router.get('/ai-suggest', aiSuggest);
-router.get('/ai-news-suggest', aiNewsSuggest);
+router.get('/barcode/:barcode', searchController.searchByBarcode);
 
 module.exports = router;

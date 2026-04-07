@@ -212,21 +212,83 @@ exports.remove = async (req, res, next) => {
   }
 };
 
-// GET /api/public/membership-plans (For Reader UI)
+// ============================================================================
+// PUBLIC API: Dành cho Mobile App (Không yêu cầu Token)
+// ============================================================================
+
+// GET /api/public/membership-plans — Danh sách gói (Trang chủ Mobile, có phân trang)
 exports.getPublicPlans = async (req, res, next) => {
   try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const offset = (page - 1) * limit;
+
+    // Lấy danh sách gọn nhẹ cho thẻ trang chủ
     const { rows } = await pool.query(`
       SELECT 
-        id, slug, name, description, price, duration_days,
-        max_books_borrowed, tier_code, status
+        id, name, tier_code, slug, price, duration_days, description
       FROM membership_plans
       WHERE status = 'active'
-      ORDER BY price ASC
-    `);
+      ORDER BY sort_order ASC, price ASC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+
+    // Đếm tổng
+    const { rows: countRows } = await pool.query(
+      "SELECT COUNT(*) FROM membership_plans WHERE status = 'active'"
+    );
+    const total = parseInt(countRows[0].count, 10);
 
     return res.json({
+      code: 0,
       success: true,
+      message: 'Lấy danh sách gói hội viên thành công',
       data: rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      },
+      errors: null
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// GET /api/public/membership-plans/:id — Chi tiết đặc quyền gói hội viên
+exports.getPublicPlanDetail = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(`
+      SELECT 
+        id, name, slug, tier_code, description, price, duration_days,
+        late_fee_per_day, features, 
+        max_books_borrowed, max_concurrent_courses, max_renewal_limit,
+        discount_percentage, priority_support,
+        allow_digital_read, allow_download,
+        sort_order, status
+      FROM membership_plans
+      WHERE id = $1 AND status = 'active'
+    `, [parseInt(id, 10)]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        code: 404,
+        success: false,
+        message: 'Không tìm thấy gói hội viên hoặc gói đã bị vô hiệu hóa',
+        data: null,
+        errors: null
+      });
+    }
+
+    return res.json({
+      code: 0,
+      success: true,
+      message: 'Lấy chi tiết gói hội viên thành công',
+      data: rows[0],
+      errors: null
     });
   } catch (error) {
     return next(error);

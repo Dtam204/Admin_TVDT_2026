@@ -221,7 +221,8 @@ class PublicationService {
 
       // 2. Tìm kiếm nội dung (ILIKE)
       if (search) { 
-        filter += ` AND (b.title::text ILIKE $${idx} OR b.author ILIKE $${idx} OR b.code ILIKE $${idx} OR b.isbn ILIKE $${idx})`; 
+        // Mở rộng search để bao trùm tất cả các trường: title, author, code, isbn, description, keywords
+        filter += ` AND (b.title::text ILIKE $${idx} OR b.author ILIKE $${idx} OR b.code ILIKE $${idx} OR b.isbn ILIKE $${idx} OR b.description::text ILIKE $${idx} OR b.keywords::text ILIKE $${idx})`; 
         values.push(`%${search}%`); idx++; 
       }
       if (title) { filter += ` AND b.title::text ILIKE $${idx++}`; values.push(`%${title}%`); }

@@ -184,9 +184,81 @@ exports.getTopRecommend = async (req, res, next) => {
 };
 
 /**
+ * 7. GET /api/public/home/membership-plans
+ * Khối Gói Hội Viên trên Trang Chủ — Trả danh sách gọn nhẹ, có phân trang
+ */
+exports.getMembershipPlans = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const offset = (page - 1) * limit;
+
+    const { rows } = await pool.query(`
+      SELECT id, name, tier_code, slug, price, duration_days, description
+      FROM membership_plans
+      WHERE status = 'active'
+      ORDER BY sort_order ASC, price ASC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+
+    const { rows: countRows } = await pool.query(
+      "SELECT COUNT(*) FROM membership_plans WHERE status = 'active'"
+    );
+    const total = parseInt(countRows[0].count, 10);
+
+    res.json({
+      code: 0,
+      success: true,
+      message: 'Danh sách gói hội viên',
+      data: rows,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      errors: null
+    });
+  } catch (error) { next(error); }
+};
+
+/**
+ * 8. GET /api/public/home/membership-plans/:id
+ * Chi tiết Đặc Quyền gói hội viên — Chứa features[], max_books_borrowed, v.v.
+ */
+exports.getMembershipPlanDetail = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(`
+      SELECT 
+        id, name, slug, tier_code, description, price, duration_days,
+        late_fee_per_day, features, 
+        max_books_borrowed, max_concurrent_courses, max_renewal_limit,
+        discount_percentage, priority_support,
+        allow_digital_read, allow_download,
+        sort_order, status
+      FROM membership_plans
+      WHERE id = $1 AND status = 'active'
+    `, [parseInt(id, 10)]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        code: 404, success: false,
+        message: 'Không tìm thấy gói hội viên hoặc gói đã bị vô hiệu hóa',
+        data: null, errors: null
+      });
+    }
+
+    res.json({
+      code: 0, success: true,
+      message: 'Chi tiết gói hội viên',
+      data: rows[0],
+      errors: null
+    });
+  } catch (error) { next(error); }
+};
+
+/**
  * Tổng hợp Data Hub (API gộp như trước, dành cho trường hợp dùng ít request)
  */
 exports.getHomeData = async (req, res, next) => {
-  // Logic cũ vẫn giữ để backward compatible
-  return res.json({ success: true, message: "Use the singular endpoints for exact MS .NET matching: /get-suggest-books, /get-updated-books, etc." });
+  return res.json({ 
+    success: true, 
+    message: "Các endpoint trang chủ: /get-suggest-books, /get-updated-books, /get-most-viewed-books-of-the-week, /get-most-borrowed-documents, /get-top-favorite, /get-top-recommend, /membership-plans, /membership-plans/:id" 
+  });
 };
