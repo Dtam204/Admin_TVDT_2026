@@ -210,7 +210,7 @@ export default function PublishersPage() {
 
                     {/* Số ấn phẩm */}
                     <TableCell className="text-center font-black">
-                      <div className="text-xs text-slate-900">{item.book_count ?? item.total_books ?? 0}</div>
+                      <div className="text-xs text-slate-900">{item.publication_count ?? item.book_count ?? item.total_books ?? 0}</div>
                       <div className="text-[8px] text-slate-400 uppercase tracking-widest font-bold">Books</div>
                     </TableCell>
 

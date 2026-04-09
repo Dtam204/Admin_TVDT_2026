@@ -54,7 +54,7 @@ function TransactionForm() {
   const qrUrl = useMemo(() => {
     if (formData.payment_method !== 'bank_transfer') return null;
     const amount = formData.amount || '0';
-    const content = `NAP ${selectedMember?.card_number || 'TV'}`;
+    const content = `MANUAL-${selectedMember?.id || 'MEMBER'}`;
     // VietQR Compact 2 Template
     return `https://img.vietqr.io/image/${BANK_ID}-${ACCOUNT_NO}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(content)}&accountName=${encodeURIComponent(ACCOUNT_NAME)}`;
   }, [formData.payment_method, formData.amount, selectedMember]);
@@ -111,6 +111,14 @@ function TransactionForm() {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-8">
+        <div className="mb-6 p-4 rounded-2xl border border-amber-200 bg-amber-50">
+          <p className="text-[11px] font-black text-amber-700 uppercase tracking-wider mb-1">Luu y nghiep vu</p>
+          <p className="text-[12px] text-amber-900 leading-relaxed">
+            Man hinh nay tao giao dich thu cong boi Admin. Luong nap tien tu dong qua ngan hang se dung API Reader Wallet Deposit
+            de sinh ma NAP-R... va xu ly webhook doi soat tren backend.
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* ── LEFT: MAIN FORM (COL-7) ── */}
@@ -374,15 +382,19 @@ function TransactionForm() {
                        </p>
                     </div>
 
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between cursor-pointer group/memo hover:bg-indigo-50 transition-all" onClick={() => handleCopy(`NAP ${selectedMember?.card_number}`)}>
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between cursor-pointer group/memo hover:bg-indigo-50 transition-all" onClick={() => handleCopy(`MANUAL-${selectedMember?.id || 'MEMBER'}`)}>
                        <div className="text-left">
-                          <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5 tracking-widest">SePay Format</p>
-                          <p className="text-[11px] font-black text-slate-800 font-mono leading-none tracking-tighter uppercase whitespace-nowrap">NAP {selectedMember?.card_number || 'ST-GUEST'}</p>
+                          <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5 tracking-widest">Manual Memo</p>
+                          <p className="text-[11px] font-black text-slate-800 font-mono leading-none tracking-tighter uppercase whitespace-nowrap">MANUAL-{selectedMember?.id || 'MEMBER'}</p>
                        </div>
                        <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm opacity-0 group-hover/memo:opacity-100 transition-opacity">
                           <Check className="w-3.5 h-3.5" />
                        </div>
                     </div>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      Luong nap tien tu dong theo webhook su dung ma NAP-R... duoc tao o API Reader Wallet Deposit.
+                      Form nay dung de ghi so giao dich thu cong boi Admin.
+                    </p>
                  </div>
                )}
 

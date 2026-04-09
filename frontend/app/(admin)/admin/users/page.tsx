@@ -343,7 +343,7 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="space-y-6 w-full">
+    <div className="space-y-6 w-full mt-8">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl text-gray-900 font-bold">Danh sách Cán bộ / Nhân sự</h1>

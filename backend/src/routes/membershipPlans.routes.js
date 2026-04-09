@@ -7,6 +7,7 @@ const {
   remove,
 } = require('../controllers/membershipPlans.controller');
 const requireAuth = require('../middlewares/auth.middleware');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ const router = express.Router();
  *       - Admin MembershipPlans
  *     summary: Lấy danh sách membershipplans
  */
-router.get('/', requireAuth, getAll);
+router.get('/', requireAuth, checkPermission('membership_plans.view'), getAll);
 
 /**
  * @openapi
@@ -28,7 +29,7 @@ router.get('/', requireAuth, getAll);
  *       - Admin MembershipPlans
  *     summary: Lấy chi tiết membershipplans
  */
-router.get('/:id', requireAuth, getById);
+router.get('/:id', requireAuth, checkPermission('membership_plans.view'), getById);
 
 /**
  * @openapi
@@ -60,7 +61,7 @@ router.get('/:id', requireAuth, getById);
  *       201:
  *         description: Tạo thành công
  */
-router.post('/', requireAuth, create);
+router.post('/', requireAuth, checkPermission('membership_plans.manage'), create);
 
 /**
  * @openapi
@@ -70,7 +71,7 @@ router.post('/', requireAuth, create);
  *       - Admin MembershipPlans
  *     summary: Cập nhật membershipplans
  */
-router.put('/:id', requireAuth, update);
+router.put('/:id', requireAuth, checkPermission('membership_plans.manage'), update);
 
 /**
  * @openapi
@@ -80,6 +81,6 @@ router.put('/:id', requireAuth, update);
  *       - Admin MembershipPlans
  *     summary: Xóa membershipplans
  */
-router.delete('/:id', requireAuth, remove);
+router.delete('/:id', requireAuth, checkPermission('membership_plans.manage'), remove);
 
 module.exports = router;

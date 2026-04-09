@@ -28,7 +28,7 @@ exports.getAll = async (req, res, next) => {
     let paramIndex = 1;
 
     if (search) {
-      query += ` AND (m.full_name ILIKE $${paramIndex} OR m.email ILIKE $${paramIndex} OR m.card_number ILIKE $${paramIndex})`;
+      query += ` AND (m.id::text ILIKE $${paramIndex} OR m.full_name ILIKE $${paramIndex} OR m.email ILIKE $${paramIndex} OR m.card_number ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
@@ -70,7 +70,7 @@ exports.getAll = async (req, res, next) => {
     let countParamIndex = 1;
 
     if (search) {
-      countQuery += ` AND (full_name ILIKE $${countParamIndex} OR email ILIKE $${countParamIndex} OR card_number ILIKE $${countParamIndex})`;
+      countQuery += ` AND (id::text ILIKE $${countParamIndex} OR full_name ILIKE $${countParamIndex} OR email ILIKE $${countParamIndex} OR card_number ILIKE $${countParamIndex})`;
       countParams.push(`%${search}%`);
       countParamIndex++;
     }

@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/admin_notification.controller');
 const { checkPermission } = require('../middlewares/rbac.middleware');
-const requireAuth = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -12,9 +11,9 @@ const requireAuth = require('../middlewares/auth.middleware');
  */
 
 // Lấy lịch sử thông báo
-router.get('/history', requireAuth, controller.getHistory);
+router.get('/history', checkPermission('notifications.view'), controller.getHistory);
 
 // Gửi thông báo mới
-router.post('/send', requireAuth, controller.send);
+router.post('/send', checkPermission('notifications.manage'), controller.send);
 
 module.exports = router;

@@ -12,8 +12,8 @@ export const AdminEndpoints = {
   
   // Menus
   menus: {
-    list: "/api/admin/menus",
-    detail: (id: number) => `/api/admin/menus/${id}`,
+    list: "/api/admin/menu",
+    detail: (id: number) => `/api/admin/menu/${id}`,
   },
   
   // Users
@@ -52,6 +52,8 @@ export const AdminEndpoints = {
       list: "/api/admin/comments",
       status: (id: number) => `/api/admin/comments/${id}/status`,
       reports: "/api/admin/comments/reports",
+      delete: (id: number) => `/api/admin/comments/${id}`,
+      reply: (id: number) => `/api/admin/comments/${id}/reply`,
     },
     public: {
       list: (objectType: string, objectId: number) => `/api/public/comments/${objectType}/${objectId}`,
@@ -79,13 +81,13 @@ export const AdminEndpoints = {
   // Media
   media: {
     folders: {
-      list: "/api/admin/media/folders",
-      tree: "/api/admin/media/folders/tree",
-      detail: (id: number) => `/api/admin/media/folders/${id}`,
+      list: "/api/admin/media-folders",
+      tree: "/api/admin/media-folders/tree",
+      detail: (id: number) => `/api/admin/media-folders/${id}`,
     },
     files: {
-      list: "/api/admin/media/files",
-      detail: (id: number) => `/api/admin/media/files/${id}`,
+      list: "/api/admin/media-files",
+      detail: (id: number) => `/api/admin/media-files/${id}`,
     },
   },
 

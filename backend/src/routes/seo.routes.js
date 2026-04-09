@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const requireAuth = require('../middlewares/auth.middleware');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 const {
   getSeoPages,
   getSeoPageByPath,
@@ -8,7 +9,7 @@ const {
 } = require('../controllers/seo.controller');
 
 // Admin routes - cần authentication
-router.get('/', requireAuth, (req, res, next) => {
+router.get('/', requireAuth, checkPermission('seo.view'), (req, res, next) => {
   // Nếu có query parameter path, dùng nó
   if (req.query.path) {
     req.params.path = req.query.path;
@@ -18,7 +19,7 @@ router.get('/', requireAuth, (req, res, next) => {
   return getSeoPages(req, res, next);
 });
 
-router.put('/', requireAuth, (req, res, next) => {
+router.put('/', requireAuth, checkPermission('seo.manage'), (req, res, next) => {
   // Nếu có query parameter path, dùng nó
   if (req.query.path) {
     req.params.path = req.query.path;
@@ -30,7 +31,7 @@ router.put('/', requireAuth, (req, res, next) => {
   });
 });
 
-router.post('/', requireAuth, (req, res, next) => {
+router.post('/', requireAuth, checkPermission('seo.manage'), (req, res, next) => {
   // Nếu có query parameter path, dùng nó
   if (req.query.path) {
     req.params.path = req.query.path;
@@ -43,9 +44,9 @@ router.post('/', requireAuth, (req, res, next) => {
 });
 
 // Routes với path parameter - dùng :path đơn giản (cho các path khác)
-router.get('/:path', requireAuth, getSeoPageByPath);
-router.put('/:path', requireAuth, updateSeoPage);
-router.post('/:path', requireAuth, updateSeoPage); // POST cũng được để tạo mới
+router.get('/:path', requireAuth, checkPermission('seo.view'), getSeoPageByPath);
+router.put('/:path', requireAuth, checkPermission('seo.manage'), updateSeoPage);
+router.post('/:path', requireAuth, checkPermission('seo.manage'), updateSeoPage); // POST cũng được để tạo mới
 
 module.exports = router;
 

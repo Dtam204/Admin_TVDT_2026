@@ -65,7 +65,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
-app.use(express.json({ limit: '100mb' }));
+app.use(express.json({
+  limit: '100mb',
+  verify: (req, _res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(compression());
 app.use(logger);
@@ -86,13 +91,21 @@ app.use((req, res, next) => {
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Swagger Documentation (Lazy loaded to optimize startup)
-app.use('/api-docs', (req, res, next) => {
-  const { swaggerSpec } = require('./config/swagger');
-  req.swaggerSpec = swaggerSpec;
-  next();
-}, swaggerUi.serve, (req, res) => {
-  res.send(swaggerUi.generateHTML(req.swaggerSpec));
-});
+const mountSwaggerDocs = (routePath, specSelector) => {
+  app.use(routePath, (req, res, next) => {
+    const specs = require('./config/swagger');
+    req.swaggerSpec = specSelector(specs);
+    next();
+  }, swaggerUi.serve, (req, res) => {
+    res.send(swaggerUi.generateHTML(req.swaggerSpec));
+  });
+};
+
+// Đặt route chuyên biệt trước route tổng để tránh bị bắt nhầm bởi /api-docs
+mountSwaggerDocs('/api-docs/admin', (specs) => specs.adminSwaggerSpec);
+mountSwaggerDocs('/api-docs/app', (specs) => specs.appSwaggerSpec);
+mountSwaggerDocs('/api-docs/integration', (specs) => specs.integrationSwaggerSpec);
+mountSwaggerDocs('/api-docs', (specs) => specs.swaggerSpec);
 
 /**
  * Middleware: RE-ROUTING VÀ PATCH CHO FRONTEND
@@ -146,7 +159,7 @@ app.use('/api/public/notifications', publicNotificationRoutes);
 app.use('/api/public/news', publicNewsRoutes);
 app.use('/api/public/membership-plans', publicMembershipPlansRoutes);
 app.use('/api/webhooks', webhookRoutes);
-app.use('/api/health', healthRoutes);
+app.use('/api', healthRoutes);
 
 // Protected Admin Routes Group
 const adminRouter = express.Router();
@@ -164,6 +177,7 @@ adminRouter.use('/permissions', permissionsRoutes);
 adminRouter.use('/news', newsRoutes);
 adminRouter.use('/news-categories', newsCategoriesRoutes);
 adminRouter.use('/menu', menuRoutes);
+adminRouter.use('/menus', menuRoutes);
 adminRouter.use('/upload', uploadRoutes); 
 adminRouter.use('/collections', collectionRoutes);
 adminRouter.use('/media-folders', mediaFoldersRoutes);

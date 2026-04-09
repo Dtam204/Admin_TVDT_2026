@@ -2,8 +2,11 @@ const express = require('express');
 const {
   adminGetComments,
   adminModerateComment,
-  adminGetReports
+  adminGetReports,
+  adminDeleteComment,
+  adminReplyComment,
 } = require('../controllers/comment.controller');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
 
@@ -14,7 +17,7 @@ const router = express.Router();
  *     tags: [Admin Comments]
  *     summary: Danh sách tất cả bình luận (kiểm duyệt)
  */
-router.get('/', adminGetComments);
+router.get('/', checkPermission('books.view'), adminGetComments);
 
 /**
  * @openapi
@@ -23,7 +26,25 @@ router.get('/', adminGetComments);
  *     tags: [Admin Comments]
  *     summary: Duyệt/Ẩn bình luận
  */
-router.put('/:id/status', adminModerateComment);
+router.put('/:id/status', checkPermission('books.manage'), adminModerateComment);
+
+/**
+ * @openapi
+ * /api/admin/comments/{id}:
+ *   delete:
+ *     tags: [Admin Comments]
+ *     summary: Xóa mềm bình luận
+ */
+router.delete('/:id', checkPermission('books.manage'), adminDeleteComment);
+
+/**
+ * @openapi
+ * /api/admin/comments/{id}/reply:
+ *   post:
+ *     tags: [Admin Comments]
+ *     summary: Phản hồi bình luận từ CMS
+ */
+router.post('/:id/reply', checkPermission('books.manage'), adminReplyComment);
 
 /**
  * @openapi
@@ -32,6 +53,6 @@ router.put('/:id/status', adminModerateComment);
  *     tags: [Admin Comments]
  *     summary: Danh sách báo cáo vi phạm
  */
-router.get('/reports', adminGetReports);
+router.get('/reports', checkPermission('books.view'), adminGetReports);
 
 module.exports = router;

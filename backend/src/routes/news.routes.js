@@ -9,6 +9,7 @@ const {
   toggleNewsFeatured,
 } = require('../controllers/news.controller');
 const { validate, schemas } = require('../middlewares/validation.middleware');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
 
@@ -60,7 +61,7 @@ const router = express.Router();
  *       403:
  *         description: Forbidden
  */
-router.get('/', getNews);
+router.get('/', checkPermission('news.view'), getNews);
 
 /**
  * @openapi
@@ -92,7 +93,7 @@ router.get('/', getNews);
  *       403:
  *         description: Forbidden
  */
-router.get('/:id', validate(schemas.id, 'params'), getNewsById);
+router.get('/:id', checkPermission('news.view'), validate(schemas.id, 'params'), getNewsById);
 
 /**
  * @openapi
@@ -119,7 +120,7 @@ router.get('/:id', validate(schemas.id, 'params'), getNewsById);
  *       403:
  *         description: Forbidden
  */
-router.post('/', validate(schemas.news, 'body'), createNews);
+router.post('/', checkPermission('news.manage'), validate(schemas.news, 'body'), createNews);
 
 /**
  * @openapi
@@ -151,7 +152,7 @@ router.post('/', validate(schemas.news, 'body'), createNews);
  *       403:
  *         description: Forbidden
  */
-router.put('/:id', validate(schemas.id, 'params'), validate(schemas.news, 'body'), updateNews);
+router.put('/:id', checkPermission('news.manage'), validate(schemas.id, 'params'), validate(schemas.news, 'body'), updateNews);
 
 /**
  * @openapi
@@ -185,7 +186,7 @@ router.put('/:id', validate(schemas.id, 'params'), validate(schemas.news, 'body'
  *       403:
  *         description: Forbidden
  */
-router.patch('/:id/status', validate(schemas.id, 'params'), updateNewsStatus);
+router.patch('/:id/status', checkPermission('news.manage'), validate(schemas.id, 'params'), updateNewsStatus);
 
 /**
  * @openapi
@@ -211,7 +212,7 @@ router.patch('/:id/status', validate(schemas.id, 'params'), updateNewsStatus);
  *       403:
  *         description: Forbidden
  */
-router.patch('/:id/featured', validate(schemas.id, 'params'), toggleNewsFeatured);
+router.patch('/:id/featured', checkPermission('news.manage'), validate(schemas.id, 'params'), toggleNewsFeatured);
 
 /**
  * @openapi
@@ -237,6 +238,6 @@ router.patch('/:id/featured', validate(schemas.id, 'params'), toggleNewsFeatured
  *       403:
  *         description: Forbidden
  */
-router.delete('/:id', validate(schemas.id, 'params'), deleteNews);
+router.delete('/:id', checkPermission('news.manage'), validate(schemas.id, 'params'), deleteNews);
 
 module.exports = router;

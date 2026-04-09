@@ -22,6 +22,8 @@ function getFileType(mimetype) {
  */
 exports.uploadFile = async (req, res, next) => {
   try {
+    await ensureTablesOnce();
+
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -92,6 +94,10 @@ exports.uploadFile = async (req, res, next) => {
       success: true,
       data: {
         ...rows[0],
+        url: rows[0].file_url,
+        originalName: rows[0].original_name,
+        size: rows[0].file_size,
+        mimetype: rows[0].mime_type,
         pageCount
       },
     });
@@ -163,7 +169,13 @@ exports.uploadFiles = async (req, res, next) => {
         ]
       );
       
-      uploadedFiles.push(rows[0]);
+      uploadedFiles.push({
+        ...rows[0],
+        url: rows[0].file_url,
+        originalName: rows[0].original_name,
+        size: rows[0].file_size,
+        mimetype: rows[0].mime_type,
+      });
     }
     
     return res.status(200).json({
@@ -181,6 +193,8 @@ exports.uploadFiles = async (req, res, next) => {
  */
 exports.uploadImage = async (req, res, next) => {
   try {
+    await ensureTablesOnce();
+
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -188,17 +202,56 @@ exports.uploadImage = async (req, res, next) => {
       });
     }
 
-    // Tạo URL để truy cập file
-    const fileUrl = `/uploads/news/${req.file.filename}`;
+    const folderId = req.body.folder_id ? parseInt(req.body.folder_id, 10) : null;
+    const userId = req.user?.id || null;
+
+    const relativePath = folderId
+      ? `uploads/media/folder-${folderId}/${req.file.filename}`
+      : `uploads/media/${req.file.filename}`;
+    const fileUrl = `/${relativePath}`;
+
+    let width = null;
+    let height = null;
+    const filePath = path.join(__dirname, '../../', relativePath);
+    try {
+      const dimensions = sizeOf(filePath);
+      width = dimensions.width;
+      height = dimensions.height;
+    } catch (err) {
+      // Ignore invalid image dimension read
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO media_files (
+        folder_id, filename, original_name, file_path, file_url,
+        file_type, mime_type, file_size, width, height, uploaded_by
+      ) VALUES ($1, $2, $3, $4, $5, 'image', $6, $7, $8, $9, $10)
+      RETURNING *`,
+      [
+        folderId,
+        req.file.filename,
+        req.file.originalname,
+        relativePath,
+        fileUrl,
+        req.file.mimetype,
+        req.file.size,
+        width,
+        height,
+        userId,
+      ]
+    );
+    const savedFile = rows[0];
 
     return res.status(200).json({
       success: true,
       data: {
-        url: fileUrl,
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        size: req.file.size,
-        mimetype: req.file.mimetype,
+        ...savedFile,
+        // Backward-compatible fields for old clients
+        url: savedFile.file_url,
+        filename: savedFile.filename,
+        originalName: savedFile.original_name,
+        size: savedFile.file_size,
+        mimetype: savedFile.mime_type,
       },
     });
   } catch (error) {
@@ -214,21 +267,27 @@ exports.deleteImage = async (req, res, next) => {
   try {
     const { filename } = req.params;
     const fs = require('fs');
-    const filePath = path.join(__dirname, '../../uploads/news', filename);
+    const mediaPath = path.join(__dirname, '../../uploads/media', filename);
+    const legacyNewsPath = path.join(__dirname, '../../uploads/news', filename);
 
     // Kiểm tra file có tồn tại không
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    if (fs.existsSync(mediaPath)) {
+      fs.unlinkSync(mediaPath);
+    } else if (fs.existsSync(legacyNewsPath)) {
+      fs.unlinkSync(legacyNewsPath);
+    } else {
       return res.status(200).json({
         success: true,
-        message: 'Đã xóa file thành công',
-      });
-    } else {
-      return res.status(404).json({
-        success: false,
-        message: 'File không tồn tại',
+        message: 'File đã được xóa trước đó hoặc không tồn tại',
       });
     }
+
+    await pool.query('DELETE FROM media_files WHERE filename = $1', [filename]);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã xóa file thành công',
+    });
   } catch (error) {
     return next(error);
   }

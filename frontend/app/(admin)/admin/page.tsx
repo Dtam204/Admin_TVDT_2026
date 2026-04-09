@@ -151,7 +151,7 @@ export default function AdminDashboardPage() {
               </Link>
             )}
             {stats?.totalOverdueLoans > 0 && (
-              <Link href="/admin/books/loans">
+              <Link href="/admin/book-loans">
                 <Card className="border-none bg-gradient-to-r from-rose-500 to-red-700 text-white shadow-lg cursor-pointer hover:scale-[1.01] transition-transform">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">

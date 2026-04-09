@@ -36,12 +36,8 @@ export default function NewsCommentsManager({ newsId }: NewsCommentsManagerProps
   const fetchComments = async () => {
     try {
       setLoading(true);
-      // Sử dụng API Public để lấy danh sách comment của bài viết
-      // Lưu ý: Admin có thể cần lấy cả các comment đang ẩn/pending
-      // Ở đây ta dùng endpoints.comments.public.list nhưng Admin có thể cần một endpoint riêng nếu muốn kiểm duyệt
-      // Tuy nhiên, theo controller adminGetComments, ta có thể lấy theo objectType/objectId
       const response = await adminApiCall<{ success: boolean; data: Comment[] }>(
-        AdminEndpoints.comments.public.list('news', newsId)
+        `${AdminEndpoints.comments.admin.list}?objectType=news&objectId=${newsId}`
       );
       setComments(response.data || []);
     } catch (error: any) {
@@ -71,7 +67,7 @@ export default function NewsCommentsManager({ newsId }: NewsCommentsManagerProps
   const handleDelete = async (commentId: number) => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa bình luận này?")) return;
     try {
-      await adminApiCall(AdminEndpoints.comments.public.delete(commentId), {
+      await adminApiCall(AdminEndpoints.comments.admin.delete(commentId), {
         method: "DELETE",
       });
       toast.success("Đã xóa bình luận");
@@ -85,13 +81,9 @@ export default function NewsCommentsManager({ newsId }: NewsCommentsManagerProps
     if (!replyContent.trim() || !replyingTo) return;
     try {
       setSubmittingReply(true);
-      await adminApiCall(AdminEndpoints.comments.public.create, {
+      await adminApiCall(AdminEndpoints.comments.admin.reply(replyingTo.id), {
         method: "POST",
         body: JSON.stringify({
-          objectType: 'news',
-          objectId: newsId,
-          parentId: replyingTo.parent_id || replyingTo.id, // Luôn reply vào top level hoặc reply trực tiếp
-          replyToUserId: replyingTo.user_id,
           content: replyContent,
         }),
       });

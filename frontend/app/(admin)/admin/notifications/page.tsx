@@ -29,7 +29,69 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+
+const APP_NAV_OPTIONS = [
+  { value: 'none', label: 'Không điều hướng (chỉ mở danh sách thông báo)' },
+  { value: 'home', label: 'Trang chủ App' },
+  { value: 'news_detail', label: 'Chi tiết Tin tức (cần nhập ID)' },
+  { value: 'book_detail', label: 'Chi tiết Sách (cần nhập ID)' },
+  { value: 'wallet', label: 'Ví / Giao dịch' },
+  { value: 'membership', label: 'Trang Hội viên' },
+  { value: 'notifications', label: 'Danh sách thông báo' },
+  { value: 'custom', label: 'Tùy chọn mã màn hình (do app định nghĩa)' }
+] as const;
+
+function buildNavigationMetadata(data: any) {
+  const target = data.navigation_target;
+  const objectId = (data.navigation_object_id || '').trim();
+  const customScreen = (data.custom_screen || '').trim();
+
+  if (!target || target === 'none') return null;
+
+  if (target === 'news_detail') {
+    return {
+      screen: 'NewsDetail',
+      params: objectId ? { id: Number(objectId) } : {},
+      fallbackPath: objectId ? `/news/${objectId}` : '/news'
+    };
+  }
+
+  if (target === 'book_detail') {
+    return {
+      screen: 'BookDetail',
+      params: objectId ? { id: Number(objectId) } : {},
+      fallbackPath: objectId ? `/books/${objectId}` : '/books'
+    };
+  }
+
+  if (target === 'home') {
+    return { screen: 'Home', params: {}, fallbackPath: '/' };
+  }
+
+  if (target === 'wallet') {
+    return { screen: 'Wallet', params: {}, fallbackPath: '/wallet' };
+  }
+
+  if (target === 'membership') {
+    return { screen: 'Membership', params: {}, fallbackPath: '/membership' };
+  }
+
+  if (target === 'notifications') {
+    return { screen: 'Notifications', params: {}, fallbackPath: '/notifications' };
+  }
+
+  if (target === 'custom') {
+    return {
+      screen: customScreen || 'Home',
+      params: objectId ? { id: Number(objectId) } : {},
+      fallbackPath: '/'
+    };
+  }
+
+  return null;
+}
 
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
@@ -41,7 +103,10 @@ export default function NotificationsPage() {
     body: '',
     target_type: 'all', // all, individual, basic, premium, vip
     member_id: '',
-    link: ''
+    navigation_target: 'none',
+    navigation_object_id: '',
+    custom_screen: '',
+    show_on_app_open: false
   });
 
   // Query History
@@ -60,7 +125,13 @@ export default function NotificationsPage() {
         message: { vi: data.body }, // Đổi từ body -> message cho đồng bộ Backend
         target_type: data.target_type,
         member_id: data.target_type === 'individual' ? parseInt(data.member_id) : null,
-        metadata: { link: data.link }
+        metadata: {
+          navigation: buildNavigationMetadata(data),
+          presentation: {
+            show_on_app_open: data.target_type === 'all' ? Boolean(data.show_on_app_open) : false,
+            mode: data.target_type === 'all' && data.show_on_app_open ? 'startup_modal' : 'inbox'
+          }
+        }
       })
     }),
     onSuccess: () => {
@@ -70,7 +141,10 @@ export default function NotificationsPage() {
         body: '',
         target_type: 'all',
         member_id: '',
-        link: ''
+        navigation_target: 'none',
+        navigation_object_id: '',
+        custom_screen: '',
+        show_on_app_open: false
       });
       queryClient.invalidateQueries({ queryKey: ['admin-notifications-history'] });
     },
@@ -83,6 +157,25 @@ export default function NotificationsPage() {
       toast.error('Vui lòng nhập đầy đủ Tiêu đề và Nội dung');
       return;
     }
+
+    if (formData.target_type === 'individual' && !formData.member_id.trim()) {
+      toast.error('Vui lòng nhập ID hội viên khi gửi cá nhân');
+      return;
+    }
+
+    if (
+      (formData.navigation_target === 'news_detail' || formData.navigation_target === 'book_detail') &&
+      !formData.navigation_object_id.trim()
+    ) {
+      toast.error('Vui lòng nhập ID nội dung để điều hướng đúng trang chi tiết');
+      return;
+    }
+
+    if (formData.navigation_target === 'custom' && !formData.custom_screen.trim()) {
+      toast.error('Vui lòng nhập mã màn hình App cho chế độ tùy chọn');
+      return;
+    }
+
     sendNotification(formData);
   };
 
@@ -179,15 +272,73 @@ export default function NotificationsPage() {
                     </div>
                   )}
 
-                  <div className="space-y-3">
-                    <Label className="text-sm font-bold text-slate-700 ml-1">Đường dẫn khi nhấn vào (Tùy chọn)</Label>
-                    <Input 
-                      placeholder="VD: /news/123 hoặc https://..."
-                      value={formData.link}
-                      onChange={e => setFormData({ ...formData, link: e.target.value })}
-                      className="h-14 bg-slate-50 border-none rounded-2xl font-medium px-6 shadow-sm"
-                    />
+                  {formData.target_type === 'all' && (
+                    <div className="space-y-3 animate-in zoom-in-95 duration-300">
+                      <Label className="text-sm font-bold text-slate-700 ml-1">Hiển thị ngay khi mở App</Label>
+                      <div className="flex items-center gap-3 rounded-2xl bg-indigo-50/60 px-4 py-4 border border-indigo-100">
+                        <Checkbox
+                          id="show-on-open"
+                          checked={formData.show_on_app_open}
+                          onCheckedChange={(checked) =>
+                            setFormData({ ...formData, show_on_app_open: checked === true })
+                          }
+                        />
+                        <Label htmlFor="show-on-open" className="text-sm font-medium text-slate-700 cursor-pointer">
+                          Bật popup toàn màn hình khi người dùng vừa mở app
+                        </Label>
+                      </div>
+                      <p className="text-xs text-slate-500 ml-1">
+                        Dùng cho thông báo quan trọng toàn hệ thống. Người dùng sẽ thấy ngay mà không cần vào danh sách thông báo.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-3 md:col-span-2">
+                    <Label className="text-sm font-bold text-slate-700 ml-1">Điều hướng khi người dùng chạm thông báo</Label>
+                    <Select
+                      value={formData.navigation_target}
+                      onValueChange={(v) => setFormData({ ...formData, navigation_target: v })}
+                    >
+                      <SelectTrigger className="h-14 bg-slate-50 border-none rounded-2xl font-medium px-6 shadow-sm">
+                        <SelectValue placeholder="Chọn trang đích trong App" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl shadow-2xl p-2 border-slate-100">
+                        {APP_NAV_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="rounded-xl py-3 cursor-pointer">
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  {(formData.navigation_target === 'news_detail' || formData.navigation_target === 'book_detail' || formData.navigation_target === 'custom') && (
+                    <div className="space-y-3 animate-in zoom-in-95 duration-300">
+                      <Label className="text-sm font-bold text-slate-700 ml-1">
+                        ID nội dung (nếu có)
+                      </Label>
+                      <Input
+                        placeholder="VD: 123"
+                        value={formData.navigation_object_id}
+                        onChange={e => setFormData({ ...formData, navigation_object_id: e.target.value })}
+                        className="h-14 bg-slate-50 border-none rounded-2xl font-medium px-6 shadow-sm"
+                      />
+                    </div>
+                  )}
+
+                  {formData.navigation_target === 'custom' && (
+                    <div className="space-y-3 animate-in zoom-in-95 duration-300">
+                      <Label className="text-sm font-bold text-slate-700 ml-1">
+                        Mã màn hình App (do mobile định nghĩa)
+                      </Label>
+                      <Input
+                        placeholder="VD: PromoDetail hoặc EventScreen"
+                        value={formData.custom_screen}
+                        onChange={e => setFormData({ ...formData, custom_screen: e.target.value })}
+                        className="h-14 bg-slate-50 border-none rounded-2xl font-medium px-6 shadow-sm"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-6 border-t border-slate-100">

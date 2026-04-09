@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { uploadPdf, handleUploadError } = require('../middlewares/upload.middleware');
-const requireAuth = require('../middlewares/auth.middleware');
+const { uploadPdf, uploadMediaImage, uploadMediaAny, handleUploadError } = require('../middlewares/upload.middleware');
+const uploadController = require('../controllers/upload.controller');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 /**
  * @swagger
@@ -38,6 +39,7 @@ const requireAuth = require('../middlewares/auth.middleware');
  */
 
 router.post('/pdf', 
+  checkPermission('media.manage'),
   uploadPdf.single('file'), 
   handleUploadError, 
   (req, res) => {
@@ -52,37 +54,28 @@ router.post('/pdf',
     });
 });
 
-// Alias cho /pdf để tương thích với uploadFile client helper
+// Alias cho /pdf để tương thích với một số luồng cũ
 router.post('/file', 
-  uploadPdf.single('file'), 
-  handleUploadError, 
-  (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Vui lòng chọn file để upload.' });
-    }
+  checkPermission('media.manage'),
+  uploadMediaAny.single('file'), 
+  handleUploadError,
+  uploadController.uploadFile
+);
 
-    const fileUrl = `/uploads/pdfs/${req.file.filename}`;
-    res.status(200).json({
-      success: true,
-      data: { url: fileUrl, filename: req.file.filename }
-    });
-});
+// Upload nhiều file vào Media Library
+router.post('/files',
+  checkPermission('media.manage'),
+  uploadMediaAny.array('files', 10),
+  handleUploadError,
+  uploadController.uploadFiles
+);
 
 // Route upload ảnh (Thumbnail/Cover)
-const { uploadMedia } = require('../middlewares/upload.middleware');
 router.post('/image',
-  uploadMedia.single('file'),
+  checkPermission('media.manage'),
+  uploadMediaImage.single('file'),
   handleUploadError,
-  (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Vui lòng chọn ảnh để upload.' });
-    }
-
-    const fileUrl = `/uploads/media/${req.file.filename}`;
-    res.status(200).json({
-      success: true,
-      data: { url: fileUrl, filename: req.file.filename }
-    });
-});
+  uploadController.uploadImage
+);
 
 module.exports = router;

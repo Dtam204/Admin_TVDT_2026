@@ -7,6 +7,7 @@ const {
   remove,
 } = require('../controllers/authors.controller');
 const requireAuth = require('../middlewares/auth.middleware');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
 
@@ -47,7 +48,7 @@ const router = express.Router();
  *                     pagination:
  *                       $ref: '#/components/schemas/Pagination'
  */
-router.get('/', getAll);
+router.get('/', requireAuth, checkPermission('authors.view'), getAll);
 
 /**
  * @openapi
@@ -75,7 +76,7 @@ router.get('/', getAll);
  *                     data:
  *                       $ref: '#/components/schemas/Author'
  */
-router.get('/:id', getById);
+router.get('/:id', requireAuth, checkPermission('authors.view'), getById);
 
 /**
  * @openapi
@@ -99,7 +100,7 @@ router.get('/:id', getById);
  *             schema:
  *               $ref: '#/components/schemas/BaseResponse'
  */
-router.post('/', create);
+router.post('/', requireAuth, checkPermission('authors.manage'), create);
 
 /**
  * @openapi
@@ -128,7 +129,7 @@ router.post('/', create);
  *             schema:
  *               $ref: '#/components/schemas/BaseResponse'
  */
-router.put('/:id', update);
+router.put('/:id', requireAuth, checkPermission('authors.manage'), update);
 
 /**
  * @openapi
@@ -151,6 +152,6 @@ router.put('/:id', update);
  *             schema:
  *               $ref: '#/components/schemas/BaseResponse'
  */
-router.delete('/:id', remove);
+router.delete('/:id', requireAuth, checkPermission('authors.manage'), remove);
 
 module.exports = router;

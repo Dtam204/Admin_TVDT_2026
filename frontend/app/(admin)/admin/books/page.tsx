@@ -314,7 +314,7 @@ function BooksContent() {
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100 text-xs font-bold text-slate-600">
-                      {item.countCopies ?? item.total_copies ?? 0}
+                      {item.copy_count ?? item.total_copies ?? item.countCopies ?? 0}
                       <span className="text-[9px] text-slate-400 font-normal">bản</span>
                     </div>
                   </TableCell>

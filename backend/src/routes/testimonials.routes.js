@@ -6,14 +6,15 @@ const {
   updateTestimonial,
   deleteTestimonial,
 } = require('../controllers/testimonials.controller');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
 
-router.get('/', getTestimonials);
-router.get('/:id', getTestimonialById);
-router.post('/', createTestimonial);
-router.put('/:id', updateTestimonial);
-router.delete('/:id', deleteTestimonial);
+router.get('/', checkPermission('news.view'), getTestimonials);
+router.get('/:id', checkPermission('news.view'), getTestimonialById);
+router.post('/', checkPermission('news.manage'), createTestimonial);
+router.put('/:id', checkPermission('news.manage'), updateTestimonial);
+router.delete('/:id', checkPermission('news.manage'), deleteTestimonial);
 
 module.exports = router;
 

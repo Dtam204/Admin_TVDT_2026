@@ -1,22 +1,32 @@
 const GeminiService = require('../services/gemini.service');
 const SearchService = require('../services/search.service');
 
+// Helper để tạo response chuẩn 7 trường
+const sendResponse = (res, status, message, data = null, errors = null, pagination = null) => {
+  const response = {
+    code: status === 200 || status === 201 ? 0 : status, // Tuân thủ code: 0 cho success theo yêu cầu User
+    success: status >= 200 && status < 300,
+    message: message,
+    data: data,
+    errorId: null,
+    appId: null,
+    errors: errors
+  };
+
+  if (pagination) {
+    response.pagination = pagination;
+  }
+
+  return res.status(status).json(response);
+};
+
 /**
  * Search Controller — Tìm kiếm thư viện cho Mobile App
- *
- * Endpoints:
- *  POST /api/public/search/ai-smart       ← Tìm kiếm thông minh (Gemini Function Calling)
- *  GET  /api/public/search/autocomplete   ← Gợi ý nhanh khi gõ (DB, không AI)
- *  GET  /api/public/search/publications   ← Tìm kiếm cơ bản / nâng cao (giữ nguyên)
- *  GET  /api/public/search/barcode/:code  ← Quét mã (giữ nguyên)
- *  GET  /api/public/search/ai-suggest     ← Legacy (backward compat)
- *  GET  /api/public/search/ai-news-suggest← Legacy (backward compat)
  */
 
 // ─────────────────────────────────────────────────────────────────
 // ✨ MỚI: Tìm kiếm thông minh bằng Gemini Function Calling
 // POST /api/public/search/ai-smart
-// Body: { query, pageIndex?, pageSize? }
 // ─────────────────────────────────────────────────────────────────
 exports.aiSmartSearch = async (req, res, next) => {
   try {
@@ -24,20 +34,14 @@ exports.aiSmartSearch = async (req, res, next) => {
 
     // Validate
     if (!query || query.trim().length < 2) {
-      return res.json({
-        code: 0, errorId: null, appId: null,
-        success: true,
-        message: 'Vui lòng nhập từ khóa tìm kiếm (tối thiểu 2 ký tự)',
-        data: {
-          type: 'books',
-          items: [],
-          totalRecords: 0,
-          totalPages: 0,
-          pageIndex: 1,
-          pageSize: parseInt(pageSize),
-          ai_interpreted: null
-        },
-        errors: null
+      return sendResponse(res, 200, 'Vui lòng nhập từ khóa tìm kiếm (tối thiểu 2 ký tự)', {
+        type: 'books',
+        items: [],
+        totalRecords: 0,
+        totalPages: 0,
+        pageIndex: 1,
+        pageSize: parseInt(pageSize),
+        ai_interpreted: null
       });
     }
 
@@ -69,20 +73,14 @@ exports.aiSmartSearch = async (req, res, next) => {
       resultType = 'books';
     }
 
-    return res.json({
-      code: 0, errorId: null, appId: null,
-      success: true,
-      message: 'Tìm kiếm thông minh thành công',
-      data: {
-        type: resultType,
-        ...searchResult,
-        ai_interpreted: {
-          function: geminiResult.function,
-          params: geminiResult.args,
-          originalQuery: trimmedQuery
-        }
-      },
-      errors: null
+    return sendResponse(res, 200, 'Tìm kiếm thông minh thành công', {
+      type: resultType,
+      ...searchResult,
+      ai_interpreted: {
+        function: geminiResult.function,
+        params: geminiResult.args,
+        originalQuery: trimmedQuery
+      }
     });
 
   } catch (error) {
@@ -95,16 +93,10 @@ exports.aiSmartSearch = async (req, res, next) => {
         pageIndex,
         pageSize
       );
-      return res.json({
-        code: 0, errorId: null, appId: null,
-        success: true,
-        message: 'Tìm kiếm cơ bản (AI tạm thời không khả dụng)',
-        data: {
-          type: 'books',
-          ...searchResult,
-          ai_interpreted: null
-        },
-        errors: null
+      return sendResponse(res, 200, 'Tìm kiếm cơ bản (AI tạm thời không khả dụng)', {
+        type: 'books',
+        ...searchResult,
+        ai_interpreted: null
       });
     } catch (fallbackError) {
       return next(fallbackError);
@@ -122,13 +114,7 @@ exports.autocomplete = async (req, res, next) => {
 
     const suggestions = await SearchService.autocomplete(q, limit);
 
-    return res.json({
-      code: 0, errorId: null, appId: null,
-      success: true,
-      message: 'Gợi ý tìm kiếm',
-      data: suggestions,
-      errors: null
-    });
+    return sendResponse(res, 200, 'Gợi ý tìm kiếm', suggestions);
   } catch (error) {
     return next(error);
   }
@@ -136,8 +122,6 @@ exports.autocomplete = async (req, res, next) => {
 
 // ─────────────────────────────────────────────────────────────────
 // GIỮ NGUYÊN: Tìm kiếm cơ bản & nâng cao
-// GET /api/public/search/publications
-// (Đã có trong public_search.controller.js — export lại từ đây để routes gọn)
 // ─────────────────────────────────────────────────────────────────
 const publicSearchController = require('./public_search.controller');
 exports.searchPublications = publicSearchController.searchPublications;

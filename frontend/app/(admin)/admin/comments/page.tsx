@@ -134,7 +134,7 @@ function CommentsManagerContent() {
   const handleDelete = async (id: number) => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa bình luận này?")) return;
     try {
-      await adminApiCall(AdminEndpoints.comments.public.delete(id), {
+      await adminApiCall(AdminEndpoints.comments.admin.delete(id), {
         method: "DELETE",
       });
       toast.success("Đã xóa bình luận");
@@ -148,13 +148,9 @@ function CommentsManagerContent() {
     if (!replyContent.trim() || !replyingTo) return;
     try {
       setSubmittingReply(true);
-      await adminApiCall(AdminEndpoints.comments.public.create, {
+      await adminApiCall(AdminEndpoints.comments.admin.reply(replyingTo.id), {
         method: "POST",
         body: JSON.stringify({
-          objectType: replyingTo.object_type,
-          objectId: replyingTo.object_id,
-          parentId: replyingTo.parent_id || replyingTo.id,
-          replyToUserId: replyingTo.user_id,
           content: replyContent,
         }),
       });

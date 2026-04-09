@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const CollectionService = require('../services/admin/collection.service');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 /**
  * @openapi
@@ -75,7 +76,7 @@ const CollectionService = require('../services/admin/collection.service');
  *     responses:
  *       200: { description: Deleted }
  */
-router.get('/', async (req, res) => {
+router.get('/', checkPermission('book_categories.view'), async (req, res) => {
   try {
     const collections = await CollectionService.getAllCollections(req.query);
     res.json({ success: true, data: collections });
@@ -84,7 +85,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', checkPermission('book_categories.view'), async (req, res) => {
   try {
     const collection = await CollectionService.getCollectionById(req.params.id);
     if (!collection) {
@@ -96,7 +97,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', checkPermission('book_categories.manage'), async (req, res) => {
   try {
     const collection = await CollectionService.createCollection(req.body);
     res.status(201).json({ success: true, data: collection });
@@ -105,7 +106,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', checkPermission('book_categories.manage'), async (req, res) => {
   try {
     const collection = await CollectionService.updateCollection(req.params.id, req.body);
     res.json({ success: true, data: collection });
@@ -114,7 +115,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', checkPermission('book_categories.manage'), async (req, res) => {
   try {
     await CollectionService.deleteCollection(req.params.id);
     res.json({ success: true, message: 'Deleted successfully' });

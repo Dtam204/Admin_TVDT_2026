@@ -20,12 +20,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { useAuth } from '@/lib/hooks/useAuth'; // Giả định hook có sẵn
+import { buildUrl } from '@/lib/api/base';
 
 export default function BookDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { user } = useAuth();
   const [book, setBook] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorited, setIsFavorited] = useState(false);
@@ -37,13 +36,13 @@ export default function BookDetailPage() {
   const fetchBookDetail = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/public/publications/${id}`, {
+      const res = await fetch(buildUrl(`/api/public/publications/${id}`), {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       const json = await res.json();
       if (json.success) {
         setBook(json.data);
-        setIsFavorited(json.data.isFavorited);
+        setIsFavorited(Boolean(json.data?.user_interaction?.isFavorited || json.data?.isFavorited));
       } else {
         toast.error("Không tìm thấy ấn phẩm");
       }
@@ -55,25 +54,26 @@ export default function BookDetailPage() {
   };
 
   const toggleFavorite = async () => {
-    if (!user) {
+    const token = localStorage.getItem('token');
+    if (!token) {
       toast.error("Vui lòng đăng nhập để yêu thích sách");
       return;
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/reader/actions/favorites/toggle`, {
-        method: 'POST',
+      const endpoint = buildUrl(`/api/public/publications/${book.id}/favorite`);
+      const res = await fetch(endpoint, {
+        method: isFavorited ? 'DELETE' : 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ bookId: book.id })
       });
       const json = await res.json();
       if (json.success) {
-        setIsFavorited(json.isFavorited);
+        setIsFavorited(Boolean(json.data?.isFavorited ?? json.data?.is_favorited));
         toast.success(json.message);
+      } else {
+        toast.error(json.message || 'Không thể cập nhật yêu thích');
       }
     } catch (error) {
       toast.error("Lỗi khi xử lý");
@@ -83,8 +83,21 @@ export default function BookDetailPage() {
   if (loading) return <div className="p-8 space-y-4"><Skeleton className="h-64 w-full" /><Skeleton className="h-10 w-3/4" /><Skeleton className="h-4 w-full" /></div>;
   if (!book) return <div className="p-20 text-center">Không tìm thấy sách.</div>;
 
-  const title = typeof book.title === 'string' ? JSON.parse(book.title).vi : book.title?.vi || book.title;
-  const description = typeof book.description === 'string' ? JSON.parse(book.description).vi : book.description?.vi || book.description;
+  const parseMaybeJsonText = (value: any) => {
+    if (typeof value !== 'string') return value;
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === 'object') {
+        return parsed.vi || parsed.en || value;
+      }
+      return value;
+    } catch {
+      return value;
+    }
+  };
+
+  const title = parseMaybeJsonText(book.title) || 'Chưa có tiêu đề';
+  const description = parseMaybeJsonText(book.description);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -109,7 +122,7 @@ export default function BookDetailPage() {
             {/* Book Cover */}
             <div className="w-48 h-64 bg-slate-100 rounded-2xl shadow-2xl overflow-hidden mb-6 border-4 border-white">
               {book.thumbnail ? (
-                <img src={book.thumbnail.startsWith('http') ? book.thumbnail : `http://localhost:5000${book.thumbnail}`} className="w-full h-full object-cover" />
+                <img src={book.thumbnail.startsWith('http') ? book.thumbnail : buildUrl(book.thumbnail)} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center"><BookOpen className="w-12 h-12 text-slate-300" /></div>
               )}
@@ -214,7 +227,7 @@ export default function BookDetailPage() {
                  </div>
                  <div className="flex justify-between text-sm py-2 border-b border-slate-50">
                     <span className="text-slate-400">Nhà xuất bản</span>
-                    <span className="font-bold text-slate-700">{book.publisher?.name || "Đang cập nhật"}</span>
+                      <span className="font-bold text-slate-700">{book.publisher_name || book.publisher?.name || "Đang cập nhật"}</span>
                  </div>
                  <div className="flex justify-between text-sm py-2 border-b border-slate-50">
                     <span className="text-slate-400">Quyền truy cập</span>

@@ -21,25 +21,26 @@ const publicHomeController = require('../controllers/public_home.controller');
  *         schema: { type: integer, default: 10 }
  *     responses:
  *       200:
- *         description: "Thành công - Trả về { success, data: [...] }"
+ *         description: "Danh sách ấn phẩm đề xuất"
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean, example: true }
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id: { type: integer, example: 1 }
- *                       title: { type: string, example: "Lập trình Node.js" }
- *                       thumbnail: { type: string, example: "https://..." }
- *                       author: { type: string, example: "Nguyễn Văn A" }
- *                       publication_year: { type: integer, example: 2023 }
- *                       dominant_color: { type: string, example: "#4f46e5" }
- *                       is_digital: { type: boolean, example: false }
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: integer, example: 1 }
+ *                           title: { type: string, example: "Lập trình Node.js" }
+ *                           thumbnail: { type: string, example: "https://..." }
+ *                           author: { type: string, example: "Nguyễn Văn A" }
+ *                           publication_year: { type: integer, example: 2023 }
+ *                           dominant_color: { type: string, example: "#4f46e5" }
+ *                           is_digital: { type: boolean, example: false }
  *       500:
  *         description: "Lỗi hệ thống"
  *         content:
@@ -67,26 +68,27 @@ router.get('/get-suggest-books', publicHomeController.getSuggestBooks);
  *         schema: { type: integer, default: 10 }
  *     responses:
  *       200:
- *         description: "Thành công"
+ *         description: "Danh sách ấn phẩm mới cập nhật"
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean, example: true }
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id: { type: integer }
- *                       title: { type: string }
- *                       thumbnail: { type: string }
- *                       author: { type: string }
- *                       publication_year: { type: integer }
- *                       dominant_color: { type: string }
- *                       is_digital: { type: boolean }
- *                       created_at: { type: string, format: date-time }
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: integer }
+ *                           title: { type: string }
+ *                           thumbnail: { type: string }
+ *                           author: { type: string }
+ *                           publication_year: { type: integer }
+ *                           dominant_color: { type: string }
+ *                           is_digital: { type: boolean }
+ *                           created_at: { type: string, format: date-time }
  */
 router.get('/get-updated-books', publicHomeController.getUpdatedBooks);
 
@@ -109,25 +111,26 @@ router.get('/get-updated-books', publicHomeController.getUpdatedBooks);
  *         schema: { type: integer, default: 10 }
  *     responses:
  *       200:
- *         description: "Thành công"
+ *         description: "Danh sách xem nhiều nhất"
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean, example: true }
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id: { type: integer }
- *                       title: { type: string }
- *                       thumbnail: { type: string }
- *                       author: { type: string }
- *                       views: { type: integer, example: 150, description: "Lượt xem" }
- *                       dominant_color: { type: string }
- *                       is_digital: { type: boolean }
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: integer }
+ *                           title: { type: string }
+ *                           thumbnail: { type: string }
+ *                           author: { type: string }
+ *                           views: { type: integer, example: 150, description: "Lượt xem" }
+ *                           dominant_color: { type: string }
+ *                           is_digital: { type: boolean }
  */
 router.get('/get-most-viewed-books-of-the-week', publicHomeController.getMostViewedBooksOfTheWeek);
 
@@ -150,24 +153,25 @@ router.get('/get-most-viewed-books-of-the-week', publicHomeController.getMostVie
  *         schema: { type: integer, default: 10 }
  *     responses:
  *       200:
- *         description: "Thành công"
+ *         description: "Danh sách mượn nhiều nhất"
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean, example: true }
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id: { type: integer }
- *                       title: { type: string }
- *                       thumbnail: { type: string }
- *                       author: { type: string }
- *                       borrow_count: { type: integer, example: 48, description: "Số lượt mượn" }
- *                       is_digital: { type: boolean, example: false }
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: integer }
+ *                           title: { type: string }
+ *                           thumbnail: { type: string }
+ *                           author: { type: string }
+ *                           borrow_count: { type: integer, example: 48, description: "Số lượt mượn" }
+ *                           is_digital: { type: boolean, example: false }
  */
 router.get('/get-most-borrowed-documents', publicHomeController.getMostBorrowedDocuments);
 
@@ -190,24 +194,25 @@ router.get('/get-most-borrowed-documents', publicHomeController.getMostBorrowedD
  *         schema: { type: integer, default: 10 }
  *     responses:
  *       200:
- *         description: "Thành công"
+ *         description: "Danh sách yêu thích"
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean, example: true }
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id: { type: integer }
- *                       title: { type: string }
- *                       thumbnail: { type: string }
- *                       author: { type: string }
- *                       is_digital: { type: boolean }
- *                       dominant_color: { type: string }
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: integer }
+ *                           title: { type: string }
+ *                           thumbnail: { type: string }
+ *                           author: { type: string }
+ *                           is_digital: { type: boolean }
+ *                           dominant_color: { type: string }
  */
 router.get('/get-top-favorite', publicHomeController.getTopFavorite);
 
@@ -223,25 +228,26 @@ router.get('/get-top-favorite', publicHomeController.getTopFavorite);
  *     security: []
  *     responses:
  *       200:
- *         description: "Thành công - Tối đa 5 banner items"
+ *         description: "Danh sách đề cử (Banner)"
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean, example: true }
- *                 data:
- *                   type: array
- *                   maxItems: 5
- *                   items:
- *                     type: object
- *                     properties:
- *                       id: { type: integer }
- *                       title: { type: string }
- *                       thumbnail: { type: string }
- *                       description: { type: string, description: "Mô tả ngắn cho Banner" }
- *                       dominant_color: { type: string, example: "#4f46e5" }
- *                       is_digital: { type: boolean }
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       maxItems: 5
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: integer }
+ *                           title: { type: string }
+ *                           thumbnail: { type: string }
+ *                           description: { type: string, description: "Mô tả ngắn cho Banner" }
+ *                           dominant_color: { type: string, example: "#4f46e5" }
+ *                           is_digital: { type: boolean }
  */
 router.get('/get-top-recommend', publicHomeController.getTopRecommend);
 
@@ -274,28 +280,23 @@ router.get('/get-top-recommend', publicHomeController.getTopRecommend);
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean, example: true }
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id: { type: integer, example: 1 }
- *                       name: { type: string, example: "Gói Premium" }
- *                       tier_code: { type: string, example: "premium", description: "Mã hạng — App dùng gán icon/màu" }
- *                       slug: { type: string, example: "premium-1month" }
- *                       price: { type: number, example: 50000 }
- *                       duration_days: { type: integer, example: 30, description: "Thời hạn (ngày)" }
- *                       description: { type: string }
- *                 pagination:
- *                   type: object
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
  *                   properties:
- *                     page: { type: integer }
- *                     limit: { type: integer }
- *                     total: { type: integer }
- *                     totalPages: { type: integer }
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: integer, example: 1 }
+ *                           name: { type: string, example: "Gói Premium" }
+ *                           tier_code: { type: string, example: "premium", description: "Mã hạng — App dùng gán icon/màu" }
+ *                           slug: { type: string, example: "premium-1month" }
+ *                           price: { type: number, example: 50000 }
+ *                           duration_days: { type: integer, example: 30, description: "Thời hạn (ngày)" }
+ *                           description: { type: string }
+ *                     pagination: { $ref: '#/components/schemas/Pagination' }
  */
 router.get('/membership-plans', publicHomeController.getMembershipPlans);
 
@@ -326,26 +327,27 @@ router.get('/membership-plans', publicHomeController.getMembershipPlans);
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean }
- *                 data:
- *                   type: object
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
  *                   properties:
- *                     id: { type: integer }
- *                     name: { type: string }
- *                     tier_code: { type: string }
- *                     description: { type: string }
- *                     price: { type: number }
- *                     duration_days: { type: integer }
- *                     features: { type: array, items: { type: string }, description: "Danh sách đặc quyền" }
- *                     max_books_borrowed: { type: integer, description: "Mượn sách tối đa" }
- *                     max_renewal_limit: { type: integer, description: "Số lần gia hạn tối đa" }
- *                     allow_digital_read: { type: boolean, description: "Đọc sách số online" }
- *                     allow_download: { type: boolean, description: "Tải PDF offline" }
- *                     discount_percentage: { type: number }
- *                     priority_support: { type: boolean }
- *                     late_fee_per_day: { type: number }
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         name: { type: string }
+ *                         tier_code: { type: string }
+ *                         description: { type: string }
+ *                         price: { type: number }
+ *                         duration_days: { type: integer }
+ *                         features: { type: array, items: { type: string }, description: "Danh sách đặc quyền" }
+ *                         max_books_borrowed: { type: integer, description: "Mượn sách tối đa" }
+ *                         max_renewal_limit: { type: integer, description: "Số lần gia hạn tối đa" }
+ *                         allow_digital_read: { type: boolean, description: "Đọc sách số online" }
+ *                         allow_download: { type: boolean, description: "Tải PDF offline" }
+ *                         discount_percentage: { type: number }
+ *                         priority_support: { type: boolean }
+ *                         late_fee_per_day: { type: number }
  *       404:
  *         description: "Gói không tồn tại hoặc đã bị vô hiệu hóa"
  */
@@ -362,6 +364,9 @@ router.get('/membership-plans/:id', publicHomeController.getMembershipPlanDetail
  *     responses:
  *       200:
  *         description: "API đang hoạt động bình thường"
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  */
 router.get('/', publicHomeController.getHomeData);
 

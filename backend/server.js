@@ -1,8 +1,16 @@
 const { port } = require('./src/config/env');
+const http = require('http');
 const app = require('./src/app.js');
 const { testConnection } = require('./src/config/database');
+const { initSocket } = require('./src/socket');
 
 const PORT = port;
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize Socket.io
+initSocket(server);
 
 // Start server after database connection is ready
 async function startServer() {
@@ -20,7 +28,7 @@ async function startServer() {
     // Start the server
     const { ensureTablesOnce } = require('./src/utils/ensureMediaTables');
     const CronJobManager = require('./src/utils/cron');
-    app.listen(PORT, async () => {
+    server.listen(PORT, async () => {
       console.log(`✅ Backend server started on port ${PORT}`);
       console.log(`   API: http://localhost:${PORT}/api`);
       console.log(`   Health: http://localhost:${PORT}/api/health`);
@@ -37,7 +45,7 @@ async function startServer() {
     });
     
     // Handle server errors
-    app.on('error', (error) => {
+    server.on('error', (error) => {
       if (error.code === 'EADDRINUSE') {
         console.error(`❌ Port ${PORT} is already in use`);
         console.error('   Please stop the other process or change PORT in .env');

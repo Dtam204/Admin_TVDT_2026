@@ -1,5 +1,86 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 
+const TAG_DEFINITIONS = [
+  // Core auth
+  { name: 'Auth', description: 'Đăng nhập và xác thực JWT' },
+
+  // Admin APIs
+  { name: 'Admin Dashboard', description: 'API tổng quan hệ thống cho Quản trị viên' },
+  { name: 'Admin Audit', description: 'Nhật ký thao tác và đối soát vận hành' },
+  { name: 'Admin Authors', description: 'Quản lý tác giả' },
+  { name: 'Admin BookCategories', description: 'Quản lý danh mục sách' },
+  { name: 'Admin BookLoans', description: 'Quản lý luồng mượn - trả theo nghiệp vụ chi tiết' },
+  { name: 'Admin Books', description: 'Quản lý ấn phẩm/sách trong kho' },
+  { name: 'Admin Collections', description: 'Quản lý bộ sưu tập hiển thị' },
+  { name: 'Admin Comments', description: 'Quản trị bình luận của người dùng' },
+  { name: 'Admin CourseCategories', description: 'Quản lý danh mục khóa học' },
+  { name: 'Admin Courses', description: 'Quản lý khóa học' },
+  { name: 'Admin Loans', description: 'Quản lý mượn trả sách cấp admin' },
+  { name: 'Admin Media', description: 'Quản lý tệp media và thư mục media' },
+  { name: 'Admin MemberActions', description: 'Nghiệp vụ hội viên và lịch sử thao tác thủ công' },
+  { name: 'Admin Members', description: 'Quản lý hội viên' },
+  { name: 'Admin Membership', description: 'Quản lý yêu cầu gói hội viên' },
+  { name: 'Admin Menus', description: 'Quản lý menu giao diện' },
+  { name: 'Admin News', description: 'Quản lý tin tức' },
+  { name: 'Admin Payments', description: 'Quản lý giao dịch tài chính và ví' },
+  { name: 'Admin Publication', description: 'Nghiệp vụ AI/tác vụ mở rộng cho ấn phẩm' },
+  { name: 'Admin Publishers', description: 'Quản lý nhà xuất bản' },
+  { name: 'Admin Upload', description: 'Upload tệp phục vụ CMS' },
+
+  // Reader/App APIs
+  { name: 'Reader Portal', description: 'API nghiệp vụ bạn đọc (đăng nhập và thao tác cá nhân)' },
+  { name: 'Reader Wallet', description: 'API ví điện tử của bạn đọc' },
+  { name: 'Reader Actions', description: 'API hành vi bạn đọc (mượn, thao tác cá nhân)' },
+  { name: 'App Reader', description: 'API thông báo và tiện ích riêng cho Mobile App' },
+
+  // Public APIs
+  { name: 'Public Home', description: 'API dữ liệu trang chủ công khai' },
+  { name: 'Public Books', description: 'API dữ liệu ấn phẩm công khai' },
+  { name: 'Public Search', description: 'API tìm kiếm công khai' },
+  { name: 'Public News', description: 'API tin tức công khai' },
+  { name: 'Public Memberships', description: 'API thông tin gói hội viên công khai' },
+  { name: 'Resource Hub', description: 'API cây điều hướng và tài nguyên công khai' },
+  { name: 'Comments', description: 'API bình luận công khai' },
+
+  // Integrations
+  { name: 'Webhooks', description: 'Webhook tích hợp cổng thanh toán/ngân hàng' },
+];
+
+function filterPaths(paths, matcher) {
+  return Object.entries(paths || {}).reduce((acc, [path, operations]) => {
+    if (matcher(path)) {
+      acc[path] = operations;
+    }
+    return acc;
+  }, {});
+}
+
+function collectUsedTags(paths) {
+  const used = new Set();
+  Object.values(paths || {}).forEach((operations) => {
+    Object.values(operations || {}).forEach((operation) => {
+      (operation.tags || []).forEach((tagName) => used.add(tagName));
+    });
+  });
+  return used;
+}
+
+function createSubsetSpec(baseSpec, { title, description, matcher }) {
+  const subsetPaths = filterPaths(baseSpec.paths, matcher);
+  const usedTags = collectUsedTags(subsetPaths);
+
+  return {
+    ...baseSpec,
+    info: {
+      ...baseSpec.info,
+      title,
+      description,
+    },
+    tags: (baseSpec.tags || []).filter((tag) => usedTags.has(tag.name)),
+    paths: subsetPaths,
+  };
+}
+
 const options = {
   definition: {
     openapi: '3.0.0',
@@ -10,6 +91,12 @@ const options = {
         '## API Documentation - Thư viện TN Backend',
         '',
         'Hệ thống RESTful API phục vụ **CMS Quản trị** và **Mobile App 2026**.',
+        '',
+        '### Phân loại tài liệu Swagger (dễ theo dõi)',
+        '- `/api-docs` : Toàn bộ endpoint',
+        '- `/api-docs/admin` : Chỉ API khối Quản trị (CMS)',
+        '- `/api-docs/app` : Chỉ API Mobile/Public/Reader',
+        '- `/api-docs/integration` : Chỉ API tích hợp webhook',
         '',
         '### Xác thực',
         'Sử dụng **Bearer JWT Token** cho endpoint `/api/admin/*` và `/api/reader/*`.',
@@ -43,23 +130,7 @@ const options = {
       ].join('\n'),
     },
     servers: [{ url: 'http://localhost:5000', description: 'Local Development Server' }],
-    tags: [
-      { name: 'Auth', description: 'Xác thực và phân quyền người dùng' },
-      { name: 'Admin Dashboard', description: 'API tổng quan hệ thống dành cho Quản trị viên' },
-      { name: 'Admin Books', description: 'Quản lý ấn phẩm, sách, tác giả và nhà xuất bản' },
-      { name: 'Admin News', description: 'Quản lý tin tức, bài viết và danh mục tin tức' },
-      { name: 'Admin Loans', description: 'Quản lý mượn trả sách, gia hạn và đặt chỗ' },
-      { name: 'Admin Members', description: 'Quản lý hội viên, nâng cấp gói và giao dịch nạp tiền' },
-      { name: 'Admin Media', description: 'Quản lý thư viện hình ảnh và tệp tin' },
-      { name: 'Admin System', description: 'Quản lý người dùng, vai trò, quyền và cài đặt hệ thống' },
-      { name: 'Resource Hub', description: '🔵 [Mobile] Khám phá và điều hướng tài nguyên thư viện' },
-      { name: 'Public Home', description: '🔵 [Mobile] Dữ liệu trang chủ: Banner, đề xuất, xu hướng' },
-      { name: 'Public Books', description: '🔵 [Mobile] Xem chi tiết ấn phẩm' },
-      { name: 'Public Search', description: '🔵 [Mobile] Tìm kiếm ấn phẩm công khai' },
-      { name: 'Public News', description: '🔵 [Mobile] Tin tức dành cho người đọc' },
-      { name: 'Public Membership', description: '🔵 [Mobile] Thông tin gói hội viên' },
-      { name: 'App Reader', description: '🔵 [Mobile] API dành riêng cho tài khoản người đọc' },
-    ],
+    tags: TAG_DEFINITIONS,
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -128,9 +199,11 @@ const options = {
         Pagination: {
           type: 'object',
           properties: {
-            page:       { type: 'integer', example: 1 },
+            page:       { type: 'integer', example: 1, description: 'Trang hiện tại (chuẩn mới)' },
+            currentPage:{ type: 'integer', example: 1, description: 'Trang hiện tại (tương thích ngược)' },
             limit:      { type: 'integer', example: 20 },
-            total:      { type: 'integer', example: 100 },
+            total:      { type: 'integer', example: 100, description: 'Tổng bản ghi (chuẩn mới)' },
+            totalItems: { type: 'integer', example: 100, description: 'Tổng bản ghi (tương thích ngược)' },
             totalPages: { type: 'integer', example: 5 },
           },
         },
@@ -185,8 +258,62 @@ const options = {
             plan_name:   { type: 'string' },
             amount:      { type: 'number' },
             status:      { type: 'string', enum: ['pending', 'approved', 'rejected'] },
+            external_txn_id: { type: 'string', description: 'Mã giao dịch ngân hàng (SePay)' },
+            gateway:      { type: 'string', description: 'Cổng thanh toán (MBBank, etc.)' },
             created_at:  { type: 'string', format: 'date-time' },
           },
+        },
+        Payment: {
+          type: 'object',
+          description: 'Thông tin giao dịch tài chính',
+          properties: {
+            id:             { type: 'integer' },
+            transaction_id: { type: 'string', example: 'DEP-123456' },
+            member_id:      { type: 'integer' },
+            member_name:    { type: 'string' },
+            type:           { type: 'string', enum: ['wallet_deposit', 'membership', 'fee_penalty', 'book_rental'], description: 'Loại giao dịch' },
+            amount:         { type: 'number' },
+            status:         { type: 'string', enum: ['pending', 'completed', 'failed', 'refunded'] },
+            payment_method: { type: 'string', example: 'bank_transfer' },
+            external_txn_id:{ type: 'string', nullable: true, description: 'Mã giao dịch từ SePay/Ngân hàng' },
+            gateway:        { type: 'string', nullable: true },
+            payment_content:{ type: 'string', nullable: true, description: 'Nội dung chuyển khoản gốc' },
+            sync_status:    { type: 'string', enum: ['manual', 'automated'] },
+            paid_at:        { type: 'string', format: 'date-time', nullable: true },
+            created_at:     { type: 'string', format: 'date-time' },
+          },
+        },
+        WalletDepositOrder: {
+          type: 'object',
+          description: 'Lệnh nạp tiền ví từ App để đồng bộ webhook',
+          properties: {
+            id: { type: 'integer' },
+            member_id: { type: 'integer' },
+            amount: { type: 'number' },
+            client_reference: { type: 'string', example: 'NAP-R14-1712623400000' },
+            transfer_code: { type: 'string', example: 'NAP-R14-1712623400000' },
+            status: { type: 'string', enum: ['pending', 'credited', 'failed', 'expired', 'cancelled'] },
+            expires_at: { type: 'string', format: 'date-time' },
+            matched_external_txn_id: { type: 'string', nullable: true },
+            credited_at: { type: 'string', format: 'date-time', nullable: true },
+            failure_reason: { type: 'string', nullable: true },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' }
+          }
+        },
+        WebhookEvent: {
+          type: 'object',
+          description: 'Nhật ký xử lý webhook để idempotency và audit',
+          properties: {
+            id: { type: 'integer' },
+            provider: { type: 'string', example: 'SEPAY' },
+            external_txn_id: { type: 'string' },
+            processing_status: { type: 'string', enum: ['received', 'processed', 'ignored', 'duplicated', 'failed'] },
+            signature_valid: { type: 'boolean' },
+            error_message: { type: 'string', nullable: true },
+            created_at: { type: 'string', format: 'date-time' },
+            processed_at: { type: 'string', format: 'date-time', nullable: true }
+          }
         },
         BookLoan: {
           type: 'object',
@@ -210,6 +337,16 @@ const options = {
             isbn:             { type: 'string' },
             title:            { type: 'string' },
             author:           { type: 'string' },
+            authors_list: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'integer' },
+                  name: { type: 'string' }
+                }
+              }
+            },
             slug:             { type: 'string' },
             publisher_name:   { type: 'string', nullable: true },
             description:      { type: 'string' },
@@ -220,11 +357,265 @@ const options = {
             status:           { type: 'string', default: 'available' },
             media_type:       { type: 'string', enum: ['Physical', 'Digital', 'Hybrid'] },
             is_digital:       { type: 'boolean' },
+            format:           { type: 'string', enum: ['Physical', 'Digital', 'Hybrid'] },
+            access_policy:    { type: 'string', enum: ['basic', 'premium', 'vip'] },
+            cooperation_status: { type: 'string', nullable: true, example: 'cooperating' },
+            copy_count:       { type: 'integer', example: 12 },
+            total_copies:     { type: 'integer', example: 12 },
+            countCopies:      { type: 'integer', example: 12 },
+            view_count:       { type: 'integer', example: 120 },
+            favorite_count:   { type: 'integer', example: 45 },
             rating_average:   { type: 'number' },
             total_reviews:    { type: 'integer' },
             dominant_color:   { type: 'string', example: '#4f46e5' },
             created_at:       { type: 'string', format: 'date-time' },
           },
+        },
+        PublicationRelatedItem: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer' },
+            code: { type: 'string', nullable: true },
+            isbn: { type: 'string', nullable: true },
+            title: { type: 'string' },
+            author: { type: 'string' },
+            authors_list: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'integer' },
+                  name: { type: 'string' }
+                }
+              }
+            },
+            slug: { type: 'string', nullable: true },
+            cover_image: { type: 'string', nullable: true },
+            thumbnail: { type: 'string', nullable: true },
+            publication_year: { type: 'integer', nullable: true },
+            pages: { type: 'integer', nullable: true },
+            status: { type: 'string', nullable: true },
+            media_type: { type: 'string', enum: ['Physical', 'Digital', 'Hybrid'], nullable: true },
+            is_digital: { type: 'boolean', nullable: true },
+            format: { type: 'string', enum: ['Physical', 'Digital', 'Hybrid'], nullable: true },
+            access_policy: { type: 'string', nullable: true },
+            cooperation_status: { type: 'string', nullable: true },
+            copy_count: { type: 'integer', nullable: true },
+            total_copies: { type: 'integer', nullable: true },
+            countCopies: { type: 'integer', nullable: true },
+            related_score: { type: 'number', nullable: true },
+            view_count: { type: 'integer', nullable: true },
+            favorite_count: { type: 'integer', nullable: true },
+            publisher_name: { type: 'string', nullable: true }
+          }
+        },
+        PublicationDetail: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer' },
+            code: { type: 'string', nullable: true },
+            isbn: { type: 'string', nullable: true },
+            title: { type: 'string' },
+            author: { type: 'string' },
+            authors_list: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'integer' },
+                  name: { type: 'string' }
+                }
+              }
+            },
+            slug: { type: 'string', nullable: true },
+            publisher_name: { type: 'string', nullable: true },
+            description: { type: 'string' },
+            cover_image: { type: 'string', nullable: true },
+            thumbnail: { type: 'string', nullable: true },
+            dominant_color: { type: 'string', nullable: true, example: '#4f46e5' },
+            publication_year: { type: 'integer', nullable: true },
+            pages: { type: 'integer', nullable: true },
+            status: { type: 'string' },
+            media_type: { type: 'string', enum: ['Physical', 'Digital', 'Hybrid'] },
+            is_digital: { type: 'boolean' },
+            format: { type: 'string', enum: ['Physical', 'Digital', 'Hybrid'] },
+            cooperation_status: { type: 'string', nullable: true },
+            view_count: { type: 'integer' },
+            favorite_count: { type: 'integer' },
+            copy_count: { type: 'integer' },
+            content_url: { type: 'string', nullable: true },
+            digital_file_url: { type: 'string', nullable: true },
+            access_policy: { type: 'string', enum: ['basic', 'premium', 'vip'] },
+            canRead: { type: 'boolean' },
+            current_collection: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'integer' },
+                name: { type: 'string', nullable: true }
+              }
+            },
+            collection_list: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'integer' },
+                  name: { type: 'string' },
+                  publication_count: { type: 'integer' }
+                }
+              }
+            },
+            copies: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  barcode: { type: 'string' },
+                  copy_number: { type: 'string' },
+                  price: { type: 'number' },
+                  status: { type: 'string' },
+                  condition: { type: 'string' },
+                  storage_location_id: { type: 'integer', nullable: true },
+                  storage_name: { type: 'string', nullable: true }
+                }
+              }
+            },
+            related_documents: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/PublicationRelatedItem' }
+            },
+            information_fields: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  key: { type: 'string' },
+                  label: { type: 'string' },
+                  value: {
+                    oneOf: [
+                      { type: 'string' },
+                      { type: 'number' },
+                      { type: 'boolean' }
+                    ]
+                  }
+                }
+              }
+            },
+            trailerInfo: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                url: { type: 'string', nullable: true },
+                provider: { type: 'string', nullable: true },
+                thumbnail: { type: 'string', nullable: true },
+                duration: { type: 'string', nullable: true },
+                title: { type: 'string', nullable: true }
+              }
+            },
+            preview_pages: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  index: { type: 'integer' },
+                  label: { type: 'string' },
+                  value: {
+                    oneOf: [
+                      { type: 'string' },
+                      { type: 'object' }
+                    ]
+                  }
+                }
+              }
+            },
+            digitized_files: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  name: { type: 'string' },
+                  type: { type: 'string' },
+                  url: { type: 'string' },
+                  path: { type: 'string', nullable: true },
+                  size: { type: 'number', nullable: true }
+                }
+              }
+            },
+            user_interaction: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                isFavorited: { type: 'boolean' },
+                hasDownloaded: { type: 'boolean' },
+                readCount: { type: 'integer' }
+              }
+            }
+          }
+        },
+        PublicationLookups: {
+          type: 'object',
+          properties: {
+            authors: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'integer' },
+                  name: { type: 'string' },
+                  publication_count: { type: 'integer' }
+                }
+              }
+            },
+            publishers: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'integer' },
+                  name: { type: 'string' },
+                  publication_count: { type: 'integer' }
+                }
+              }
+            },
+            collections: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'integer' },
+                  name: { type: 'string' },
+                  publication_count: { type: 'integer' }
+                }
+              }
+            },
+            years: {
+              type: 'array',
+              items: { type: 'integer' }
+            },
+            languages: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  language: { type: 'string' },
+                  publication_count: { type: 'integer' }
+                }
+              }
+            },
+            media_types: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  media_type: { type: 'string' },
+                  publication_count: { type: 'integer' }
+                }
+              }
+            }
+          }
         },
         Publisher: {
           type: 'object',
@@ -289,11 +680,13 @@ const options = {
           type: 'object',
           properties: {
             id:           { type: 'integer' },
-            recipient_id: { type: 'integer' },
-            title:        { type: 'string' },
-            message:      { type: 'string' },
-            type:         { type: 'string' },
+            member_id:    { type: 'integer' },
+            title:        { type: 'object', description: 'Tiêu đề đa ngôn ngữ (JSONB)' },
+            message:      { type: 'object', description: 'Nội dung đa ngôn ngữ (JSONB)' },
+            type:         { type: 'string', enum: ['overdue', 'renewal', 'system', 'payment'] },
             is_read:      { type: 'boolean', default: false },
+            related_id:   { type: 'string', nullable: true, description: 'ID liên quan (Transaction ID, etc.)' },
+            related_type: { type: 'string', nullable: true },
             created_at:   { type: 'string', format: 'date-time' },
           },
         },
@@ -306,4 +699,39 @@ const options = {
 
 const swaggerSpec = swaggerJsdoc(options);
 
-module.exports = { swaggerSpec };
+const adminSwaggerSpec = createSubsetSpec(swaggerSpec, {
+  title: 'Thư viện TN CMS API - Admin',
+  description: [
+    'Swagger chuyên biệt cho khối **Admin/CMS**.',
+    '',
+    'Bao gồm endpoint: `/api/admin/*` và `/api/auth/*` để vận hành đầy đủ luồng quản trị.',
+  ].join('\n'),
+  matcher: (path) => path.startsWith('/api/admin/') || path.startsWith('/api/auth/'),
+});
+
+const appSwaggerSpec = createSubsetSpec(swaggerSpec, {
+  title: 'Thư viện TN CMS API - App/Reader/Public',
+  description: [
+    'Swagger chuyên biệt cho khối **Mobile App + Public API + Reader API**.',
+    '',
+    'Bao gồm endpoint: `/api/reader/*`, `/api/public/*` và `/api/auth/*` để frontend/mobile dễ theo dõi.',
+  ].join('\n'),
+  matcher: (path) => (
+    path.startsWith('/api/reader/') ||
+    path.startsWith('/api/public/') ||
+    path.startsWith('/api/auth/')
+  ),
+});
+
+const integrationSwaggerSpec = createSubsetSpec(swaggerSpec, {
+  title: 'Thư viện TN CMS API - Integration/Webhooks',
+  description: 'Swagger chuyên biệt cho khối tích hợp ngoài hệ thống: `/api/webhooks/*`.',
+  matcher: (path) => path.startsWith('/api/webhooks/'),
+});
+
+module.exports = {
+  swaggerSpec,
+  adminSwaggerSpec,
+  appSwaggerSpec,
+  integrationSwaggerSpec,
+};

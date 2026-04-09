@@ -1,5 +1,24 @@
 const { pool } = require('../config/database');
 
+// Helper để tạo response chuẩn 7 trường
+const sendResponse = (res, status, message, data = null, errors = null, pagination = null) => {
+  const response = {
+    code: status,
+    success: status >= 200 && status < 300,
+    message: message,
+    data: data,
+    errorId: null,
+    appId: null,
+    errors: errors
+  };
+
+  if (pagination) {
+    response.pagination = pagination;
+  }
+
+  return res.status(status).json(response);
+};
+
 // Helper function để parse locale field
 const parseLocaleField = (value, locale = 'vi') => {
   if (!value) return '';
@@ -45,7 +64,7 @@ exports.getPublicNews = async (req, res, next) => {
       author: parseLocaleField(row.author, locale)
     }));
 
-    return res.json({ success: true, data });
+    return sendResponse(res, 200, "Lấy danh sách tin tức thành công", data);
   } catch (error) {
     return next(error);
   }
@@ -65,7 +84,7 @@ exports.getPublicNewsDetail = async (req, res, next) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
+      return sendResponse(res, 404, "Không tìm thấy bài viết", null, ["News post not found"]);
     }
 
     const row = rows[0];
@@ -86,7 +105,7 @@ exports.getPublicNewsDetail = async (req, res, next) => {
       })()
     };
 
-    return res.json({ success: true, data });
+    return sendResponse(res, 200, "Lấy chi tiết tin tức thành công", data);
   } catch (error) {
     return next(error);
   }

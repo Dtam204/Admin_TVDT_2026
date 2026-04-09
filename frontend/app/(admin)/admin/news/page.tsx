@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { adminApiCall, AdminEndpoints } from "@/lib/api/admin";
 import { getCleanValue } from "@/lib/utils/locale-admin";
+import { buildUrl } from "@/lib/api/base";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,13 @@ interface NewsItem {
   slug?: string;
   isFeatured?: boolean;
   commentsCount?: number;
+}
+
+function normalizeImageUrl(url?: string): string {
+  if (!url) return "";
+  if (url.startsWith("http") || url.startsWith("data:")) return url;
+  if (url.startsWith("/")) return buildUrl(url);
+  return url;
 }
 
 
@@ -291,7 +299,7 @@ export default function AdminNewsPage() {
                     <div className="flex items-center gap-4">
                       {item.imageUrl && (
                         <div className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform bg-slate-100">
-                          <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                          <img src={normalizeImageUrl(item.imageUrl)} alt="" className="w-full h-full object-cover" />
                         </div>
                       )}
                       <div className="min-w-0">

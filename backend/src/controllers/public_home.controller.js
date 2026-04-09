@@ -1,5 +1,24 @@
 const { pool } = require('../config/database');
 
+// Helper để tạo response chuẩn 7 trường
+const sendResponse = (res, status, message, data = null, errors = null, pagination = null) => {
+  const response = {
+    code: status,
+    success: status >= 200 && status < 300,
+    message: message,
+    data: data,
+    errorId: null,
+    appId: null,
+    errors: errors
+  };
+
+  if (pagination) {
+    response.pagination = pagination;
+  }
+
+  return res.status(status).json(response);
+};
+
 /**
  * Helper để parse jsonb title cho Frontend (thường Frontend cần chuỗi hoặc object)
  */
@@ -39,7 +58,7 @@ const isSectionActive = async (sectionType) => {
 exports.getSuggestBooks = async (req, res, next) => {
   try {
     if (!(await isSectionActive('SUGGEST'))) {
-      return res.json({ success: true, data: [], message: "Section disabled by admin" });
+      return sendResponse(res, 200, "Section disabled by admin", []);
     }
     const query = `
       SELECT id, title, cover_image as thumbnail, author, publication_year, dominant_color, is_digital
@@ -49,7 +68,7 @@ exports.getSuggestBooks = async (req, res, next) => {
       LIMIT 10
     `;
     const { rows } = await pool.query(query);
-    res.json({ success: true, data: rows.map(r => ({ ...r, title: parseTitle(r) })) });
+    return sendResponse(res, 200, "Lấy danh sách ấn phẩm đề xuất thành công", rows.map(r => ({ ...r, title: parseTitle(r) })));
   } catch (error) { next(error); }
 };
 
@@ -60,7 +79,7 @@ exports.getSuggestBooks = async (req, res, next) => {
 exports.getUpdatedBooks = async (req, res, next) => {
   try {
     if (!(await isSectionActive('UPDATED'))) {
-      return res.json({ success: true, data: [], message: "Section disabled by admin" });
+      return sendResponse(res, 200, "Section disabled by admin", []);
     }
     const query = `
       SELECT id, title, cover_image as thumbnail, author, publication_year, dominant_color, is_digital, created_at
@@ -70,7 +89,7 @@ exports.getUpdatedBooks = async (req, res, next) => {
       LIMIT 10
     `;
     const { rows } = await pool.query(query);
-    res.json({ success: true, data: rows.map(r => ({ ...r, title: parseTitle(r) })) });
+    return sendResponse(res, 200, "Lấy danh sách ấn phẩm mới nhất thành công", rows.map(r => ({ ...r, title: parseTitle(r) })));
   } catch (error) { next(error); }
 };
 
@@ -82,7 +101,7 @@ exports.getUpdatedBooks = async (req, res, next) => {
 exports.getMostViewedBooksOfTheWeek = async (req, res, next) => {
   try {
     if (!(await isSectionActive('MOST_VIEWED'))) {
-      return res.json({ success: true, data: [], message: "Section disabled by admin" });
+      return sendResponse(res, 200, "Section disabled by admin", []);
     }
     // Nếu db có cột view_count (hoặc views) thì order by DESC.
     const query = `
@@ -93,7 +112,7 @@ exports.getMostViewedBooksOfTheWeek = async (req, res, next) => {
       LIMIT 10
     `;
     const { rows } = await pool.query(query);
-    res.json({ success: true, data: rows.map(r => ({ ...r, title: parseTitle(r) })) });
+    return sendResponse(res, 200, "Lấy danh sách xem nhiều nhất tuần thành công", rows.map(r => ({ ...r, title: parseTitle(r) })));
   } catch (error) { next(error); }
 };
 
@@ -104,7 +123,7 @@ exports.getMostViewedBooksOfTheWeek = async (req, res, next) => {
 exports.getMostBorrowedDocuments = async (req, res, next) => {
   try {
     if (!(await isSectionActive('MOST_BORROWED'))) {
-      return res.json({ success: true, data: [], message: "Section disabled by admin" });
+      return sendResponse(res, 200, "Section disabled by admin", []);
     }
     const query = `
       SELECT b.id, b.title, b.cover_image as thumbnail, b.author, b.publication_year, b.dominant_color, b.is_digital,
@@ -117,7 +136,7 @@ exports.getMostBorrowedDocuments = async (req, res, next) => {
       LIMIT 10
     `;
     const { rows } = await pool.query(query);
-    res.json({ success: true, data: rows.map(r => ({ ...r, title: parseTitle(r) })) });
+    return sendResponse(res, 200, "Lấy danh sách mượn nhiều nhất thành công", rows.map(r => ({ ...r, title: parseTitle(r) })));
   } catch (error) { next(error); }
 };
 
@@ -128,7 +147,7 @@ exports.getMostBorrowedDocuments = async (req, res, next) => {
 exports.getTopFavorite = async (req, res, next) => {
   try {
     if (!(await isSectionActive('FAVORITE'))) {
-      return res.json({ success: true, data: [], message: "Section disabled by admin" });
+      return sendResponse(res, 200, "Section disabled by admin", []);
     }
     // Ưu tiên sách số (is_digital) và sách mới nhất
     const query = `
@@ -139,7 +158,7 @@ exports.getTopFavorite = async (req, res, next) => {
       LIMIT 10
     `;
     const { rows } = await pool.query(query);
-    res.json({ success: true, data: rows.map(r => ({ ...r, title: parseTitle(r) })) });
+    return sendResponse(res, 200, "Lấy danh sách yêu thích/nổi bật thành công", rows.map(r => ({ ...r, title: parseTitle(r) })));
   } catch (error) { next(error); }
 };
 
@@ -150,7 +169,7 @@ exports.getTopFavorite = async (req, res, next) => {
 exports.getTopRecommend = async (req, res, next) => {
   try {
     if (!(await isSectionActive('RECOMMEND'))) {
-      return res.json({ success: true, data: [], message: "Section disabled by admin" });
+      return sendResponse(res, 200, "Section disabled by admin", []);
     }
     const query = `
       SELECT id, title, cover_image as thumbnail, author, publication_year, dominant_color, is_digital, description
@@ -160,26 +179,23 @@ exports.getTopRecommend = async (req, res, next) => {
       LIMIT 5
     `;
     const { rows } = await pool.query(query);
-    res.json({ 
-      success: true, 
-      data: rows.map(r => {
-        let parsedDesc = r.description;
-        if (typeof parsedDesc === 'string') {
-          try {
-            const temp = JSON.parse(parsedDesc);
-            parsedDesc = temp.vi || temp.en || parsedDesc;
-          } catch(e){}
-        } else if (parsedDesc && parsedDesc.vi) {
-           parsedDesc = parsedDesc.vi;
-        }
+    return sendResponse(res, 200, "Lấy danh sách đề cử (Banner) thành công", rows.map(r => {
+      let parsedDesc = r.description;
+      if (typeof parsedDesc === 'string') {
+        try {
+          const temp = JSON.parse(parsedDesc);
+          parsedDesc = temp.vi || temp.en || parsedDesc;
+        } catch(e){}
+      } else if (parsedDesc && parsedDesc.vi) {
+         parsedDesc = parsedDesc.vi;
+      }
 
-        return { 
-          ...r, 
-          title: parseTitle(r),
-          description: parsedDesc
-        };
-      }) 
-    });
+      return { 
+        ...r, 
+        title: parseTitle(r),
+        description: parsedDesc
+      };
+    }));
   } catch (error) { next(error); }
 };
 
@@ -206,14 +222,7 @@ exports.getMembershipPlans = async (req, res, next) => {
     );
     const total = parseInt(countRows[0].count, 10);
 
-    res.json({
-      code: 0,
-      success: true,
-      message: 'Danh sách gói hội viên',
-      data: rows,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-      errors: null
-    });
+    return sendResponse(res, 200, 'Danh sách gói hội viên', rows, null, { page, limit, total, totalPages: Math.ceil(total / limit) });
   } catch (error) { next(error); }
 };
 
@@ -244,12 +253,7 @@ exports.getMembershipPlanDetail = async (req, res, next) => {
       });
     }
 
-    res.json({
-      code: 0, success: true,
-      message: 'Chi tiết gói hội viên',
-      data: rows[0],
-      errors: null
-    });
+    return sendResponse(res, 200, 'Chi tiết gói hội viên', rows[0]);
   } catch (error) { next(error); }
 };
 
@@ -257,8 +261,16 @@ exports.getMembershipPlanDetail = async (req, res, next) => {
  * Tổng hợp Data Hub (API gộp như trước, dành cho trường hợp dùng ít request)
  */
 exports.getHomeData = async (req, res, next) => {
-  return res.json({ 
-    success: true, 
-    message: "Các endpoint trang chủ: /get-suggest-books, /get-updated-books, /get-most-viewed-books-of-the-week, /get-most-borrowed-documents, /get-top-favorite, /get-top-recommend, /membership-plans, /membership-plans/:id" 
+  return sendResponse(res, 200, "Dữ liệu API Home", {
+    endpoints: [
+      "/get-suggest-books", 
+      "/get-updated-books", 
+      "/get-most-viewed-books-of-the-week", 
+      "/get-most-borrowed-documents", 
+      "/get-top-favorite", 
+      "/get-top-recommend", 
+      "/membership-plans", 
+      "/membership-plans/:id"
+    ]
   });
 };

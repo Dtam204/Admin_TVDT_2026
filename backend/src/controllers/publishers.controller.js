@@ -39,23 +39,33 @@ exports.getAll = async (req, res, next) => {
     const { page = 1, limit = 20, search, status } = req.query;
     const offset = (page - 1) * limit;
 
-    let query = `SELECT * FROM publishers WHERE 1=1`;
+    let query = `
+      SELECT
+        p.*,
+        COALESCE((
+          SELECT COUNT(*)::int
+          FROM books b
+          WHERE b.publisher_id = p.id
+        ), 0) AS publication_count
+      FROM publishers p
+      WHERE 1=1
+    `;
     const params = [];
     let paramIndex = 1;
 
     if (search) {
-      query += ` AND (slug ILIKE $${paramIndex} OR name::text ILIKE $${paramIndex})`;
+      query += ` AND (p.slug ILIKE $${paramIndex} OR p.name::text ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
 
     if (status && status !== 'undefined') {
-      query += ` AND status = $${paramIndex}`;
+      query += ` AND p.status = $${paramIndex}`;
       params.push(status);
       paramIndex++;
     }
 
-    query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    query += ` ORDER BY p.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(parseInt(limit), offset);
 
     const { rows } = await pool.query(query, params);
@@ -82,7 +92,10 @@ exports.getAll = async (req, res, next) => {
     const standardizedData = rows.map(p => ({
       ...p,
       name: parseMultilang(p.name),
-      description: parseMultilang(p.description)
+      description: parseMultilang(p.description),
+      publication_count: parseInt(p.publication_count || 0),
+      book_count: parseInt(p.publication_count || 0),
+      total_books: parseInt(p.publication_count || 0)
     }));
 
     return res.json({
@@ -90,6 +103,7 @@ exports.getAll = async (req, res, next) => {
       data: standardizedData,
       pagination: {
         page: parseInt(page),
+        currentPage: parseInt(page),
         limit: parseInt(limit),
         total: parseInt(countRows[0].total),
         totalPages: Math.ceil(countRows[0].total / limit),
@@ -104,7 +118,17 @@ exports.getAll = async (req, res, next) => {
 exports.getById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { rows } = await pool.query('SELECT * FROM publishers WHERE id = $1', [id]);
+    const { rows } = await pool.query(`
+      SELECT
+        p.*,
+        COALESCE((
+          SELECT COUNT(*)::int
+          FROM books b
+          WHERE b.publisher_id = p.id
+        ), 0) AS publication_count
+      FROM publishers p
+      WHERE p.id = $1
+    `, [id]);
 
     if (rows.length === 0) {
       return res.status(404).json({
@@ -119,7 +143,10 @@ exports.getById = async (req, res, next) => {
       data: {
         ...p,
         name: parseMultilang(p.name),
-        description: parseMultilang(p.description)
+        description: parseMultilang(p.description),
+        publication_count: parseInt(p.publication_count || 0),
+        book_count: parseInt(p.publication_count || 0),
+        total_books: parseInt(p.publication_count || 0)
       },
     });
   } catch (error) {

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const menuController = require('../controllers/menu.controller');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 /**
  * @swagger
@@ -17,7 +18,7 @@ const menuController = require('../controllers/menu.controller');
  *     summary: Lấy danh sách menu
  *     tags: [Admin Menus]
  */
-router.get('/', menuController.getMenus);
+router.get('/', checkPermission('menus.view'), menuController.getMenus);
 
 /**
  * @swagger
@@ -26,7 +27,7 @@ router.get('/', menuController.getMenus);
  *     summary: Lấy chi tiết menu
  *     tags: [Admin Menus]
  */
-router.get('/:id', menuController.getMenuById);
+router.get('/:id', checkPermission('menus.view'), menuController.getMenuById);
 
 /**
  * @swagger
@@ -35,7 +36,7 @@ router.get('/:id', menuController.getMenuById);
  *     summary: Tạo menu mới
  *     tags: [Admin Menus]
  */
-router.post('/', menuController.createMenu);
+router.post('/', checkPermission('menus.manage'), menuController.createMenu);
 
 /**
  * @swagger
@@ -44,7 +45,7 @@ router.post('/', menuController.createMenu);
  *     summary: Cập nhật menu
  *     tags: [Admin Menus]
  */
-router.put('/:id', menuController.updateMenu);
+router.put('/:id', checkPermission('menus.manage'), menuController.updateMenu);
 
 /**
  * @swagger
@@ -53,7 +54,7 @@ router.put('/:id', menuController.updateMenu);
  *     summary: Xóa menu
  *     tags: [Admin Menus]
  */
-router.delete('/:id', menuController.deleteMenu);
+router.delete('/:id', checkPermission('menus.manage'), menuController.deleteMenu);
 
 module.exports = router;
 

@@ -264,7 +264,7 @@ export default function EditBookPage() {
     setFormData({
       ...formData,
       copies: [...formData.copies, { 
-        storage_id: 'KHO-CHINH', 
+        storage_location_id: '', 
         barcode: autoBarcode, 
         copy_number: nextIndex.toString(), 
         price: 0, 
@@ -283,6 +283,15 @@ export default function EditBookPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const publicationYear = Number(formData.publication.publicationYear) || new Date().getFullYear();
+    const pageCount = Number(formData.publication.pageCount) || 0;
+    const normalizedKeywords = Array.isArray(formData.publication.keywords)
+      ? formData.publication.keywords
+      : String(formData.publication.keywords || '')
+          .split(',')
+          .map((k: string) => k.trim())
+          .filter(Boolean);
     
     // Gửi trực tiếp dưới dạng chuỗi (Plain String) để đồng bộ với DB phẳng
     const submissionData = {
@@ -290,8 +299,16 @@ export default function EditBookPage() {
       publication: {
         ...formData.publication,
         title: formData.publication.title,
+        code: formData.publication.code,
+        isbn: formData.publication.isbn || formData.publication.isbdContent || formData.publication.code,
+        author: formData.publication.author || 'Nhiều tác giả',
+        publication_year: publicationYear,
+        pages: pageCount,
         description: formData.publication.description,
-        keywords: Array.isArray(formData.publication.keywords) ? formData.publication.keywords : formData.publication.keywords.split(',').map((k: string) => k.trim()),
+        keywords: normalizedKeywords,
+        ai_summary: formData.publication.aiSummary || null,
+        dominant_color: formData.publication.dominantColor || '#4f46e5',
+        cover_image: formData.publication.thumbnail || null,
         toc: formData.publication.toc || [],
         access_policy: formData.publication.access_policy || 'basic',
         author_ids: formData.publication.author_ids || [],
@@ -403,7 +420,7 @@ export default function EditBookPage() {
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-none shadow-2xl">
                         {collections?.data?.map((c: any) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

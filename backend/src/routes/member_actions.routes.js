@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/member_actions.controller');
 const requireAuth = require('../middlewares/auth.middleware');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 /**
  * @swagger
@@ -45,7 +46,7 @@ const requireAuth = require('../middlewares/auth.middleware');
  *                       items:
  *                         $ref: '#/components/schemas/MemberTransaction'
  */
-router.get('/all-transactions', requireAuth, controller.getAllTransactions);
+router.get('/all-transactions', requireAuth, checkPermission('members.view'), controller.getAllTransactions);
 
 /**
  * @swagger
@@ -78,7 +79,7 @@ router.get('/all-transactions', requireAuth, controller.getAllTransactions);
  *             schema:
  *               $ref: '#/components/schemas/BaseResponse'
  */
-router.post('/transactions', requireAuth, controller.createTransaction);
+router.post('/transactions', requireAuth, checkPermission('members.manage'), controller.createTransaction);
 
 /**
  * @swagger
@@ -108,7 +109,7 @@ router.post('/transactions', requireAuth, controller.createTransaction);
  *             schema:
  *               $ref: '#/components/schemas/BaseResponse'
  */
-router.post('/fines', requireAuth, controller.createFine);
+router.post('/fines', requireAuth, checkPermission('members.manage'), controller.createFine);
 
 /**
  * @swagger
@@ -138,7 +139,7 @@ router.post('/fines', requireAuth, controller.createFine);
  *             schema:
  *               $ref: '#/components/schemas/BaseResponse'
  */
-router.post('/refunds', requireAuth, controller.createRefund);
+router.post('/refunds', requireAuth, checkPermission('members.manage'), controller.createRefund);
 
 /**
  * @swagger
@@ -169,7 +170,7 @@ router.post('/refunds', requireAuth, controller.createRefund);
  *                       items:
  *                         $ref: '#/components/schemas/MemberActivity'
  */
-router.get('/:id/activities', requireAuth, controller.getActivities);
+router.get('/:id/activities', requireAuth, checkPermission('members.view'), controller.getActivities);
 
 /**
  * @swagger
@@ -199,7 +200,7 @@ router.get('/:id/activities', requireAuth, controller.getActivities);
  *                       items:
  *                         $ref: '#/components/schemas/MemberTransaction'
  */
-router.get('/:id/transactions', requireAuth, controller.getTransactions);
+router.get('/:id/transactions', requireAuth, checkPermission('members.view'), controller.getTransactions);
 
 /**
  * @swagger
@@ -232,7 +233,7 @@ router.get('/:id/transactions', requireAuth, controller.getTransactions);
  *             schema:
  *               $ref: '#/components/schemas/BaseResponse'
  */
-router.post('/:id/deposit', requireAuth, controller.deposit);
+router.post('/:id/deposit', requireAuth, checkPermission('members.manage'), controller.deposit);
 
 /**
  * @swagger
@@ -256,6 +257,6 @@ router.post('/:id/deposit', requireAuth, controller.deposit);
  *             schema:
  *               $ref: '#/components/schemas/BaseResponse'
  */
-router.post('/:id/reset-password', requireAuth, controller.resetPassword);
+router.post('/:id/reset-password', requireAuth, checkPermission('members.manage'), controller.resetPassword);
 
 module.exports = router;

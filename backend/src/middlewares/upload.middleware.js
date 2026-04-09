@@ -60,23 +60,35 @@ const handleUploadError = (err, req, res, next) => {
   next();
 };
 
-// 5. Cấu hình upload cho Media (Ảnh, Thumbnail)
+// 5. Cấu hình upload cho Media Library (image/file)
 const mediaDir = path.join(process.cwd(), 'uploads/media');
 if (!fs.existsSync(mediaDir)) {
   fs.mkdirSync(mediaDir, { recursive: true });
 }
 
+function getMediaDestination(req) {
+  const folderId = req.body?.folder_id ? parseInt(req.body.folder_id, 10) : null;
+  if (folderId && !Number.isNaN(folderId)) {
+    const folderPath = path.join(mediaDir, `folder-${folderId}`);
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath, { recursive: true });
+    }
+    return folderPath;
+  }
+  return mediaDir;
+}
+
 const mediaStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, mediaDir);
+  destination: (req, _file, cb) => {
+    cb(null, getMediaDestination(req));
   },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, `img-${uniqueSuffix}${path.extname(file.originalname)}`);
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, `media-${uniqueSuffix}${path.extname(file.originalname)}`);
   }
 });
 
-const mediaFilter = (req, file, cb) => {
+const imageFilter = (_req, file, cb) => {
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
@@ -84,16 +96,47 @@ const mediaFilter = (req, file, cb) => {
   }
 };
 
-const uploadMedia = multer({
+const mediaFileFilter = (_req, file, cb) => {
+  const allowedMimeGroups = [
+    /^image\//,
+    /^video\//,
+    /^audio\//,
+    /^application\/pdf$/,
+    /^application\/(msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document)$/,
+    /^application\/(vnd\.ms-excel|vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet)$/,
+    /^application\/(vnd\.ms-powerpoint|vnd\.openxmlformats-officedocument\.presentationml\.presentation)$/,
+    /^text\//,
+    /^application\/zip$/,
+    /^application\/x-zip-compressed$/
+  ];
+
+  const isAllowed = allowedMimeGroups.some((rule) => rule.test(file.mimetype));
+  if (isAllowed) {
+    cb(null, true);
+    return;
+  }
+  cb(new Error('Định dạng file chưa được hỗ trợ trong Media Library.'), false);
+};
+
+const uploadMediaImage = multer({
   storage: mediaStorage,
-  fileFilter: mediaFilter,
+  fileFilter: imageFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB
+    fileSize: 10 * 1024 * 1024 // 10MB
+  }
+});
+
+const uploadMediaAny = multer({
+  storage: mediaStorage,
+  fileFilter: mediaFileFilter,
+  limits: {
+    fileSize: 100 * 1024 * 1024 // 100MB
   }
 });
 
 module.exports = {
   uploadPdf,
-  uploadMedia,
+  uploadMediaImage,
+  uploadMediaAny,
   handleUploadError
 };

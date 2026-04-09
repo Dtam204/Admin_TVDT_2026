@@ -1,5 +1,6 @@
 const express = require('express');
 const { getSummary } = require('../controllers/dashboard.controller');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
 
@@ -30,6 +31,6 @@ const router = express.Router();
  *                         newOrdersToday: { type: 'integer' }
  *                         revenueToday: { type: 'number' }
  */
-router.get('/summary', getSummary);
+router.get('/summary', checkPermission('dashboard.view'), getSummary);
 
 module.exports = router;

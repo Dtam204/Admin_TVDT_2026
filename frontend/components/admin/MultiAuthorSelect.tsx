@@ -20,6 +20,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useAuthors } from '@/lib/hooks/useAuthors';
 import Link from 'next/link';
+import { getCleanValue } from '@/lib/utils/locale-admin';
 
 interface MultiAuthorSelectProps {
   selectedIds: number[];
@@ -61,7 +62,7 @@ export function MultiAuthorSelect({
           >
             <User className="w-3 h-3 text-blue-500" />
             <span className="text-xs font-medium text-slate-700">
-              {author.name?.vi || author.name?.en || 'Tác giả'}
+              {getCleanValue(author.name) || 'Tác giả'}
             </span>
             <button
               type="button"
@@ -110,7 +111,7 @@ export function MultiAuthorSelect({
                   return (
                     <CommandItem
                       key={author.id}
-                      value={author.name?.vi || author.name?.en || ''}
+                      value={getCleanValue(author.name)}
                       onSelect={() => {
                         if (isSelected) {
                           onChange(selectedIds.filter((id) => id !== author.id));
@@ -133,7 +134,7 @@ export function MultiAuthorSelect({
                              </div>
                            )}
                            <span className="text-sm">
-                             {author.name?.vi || author.name?.en}
+                             {getCleanValue(author.name)}
                            </span>
                         </div>
                         <Check

@@ -3,6 +3,8 @@ const router = express.Router();
 const publicPubController = require('../controllers/public_publication.controller');
 const interactionController = require('../controllers/interaction.controller');
 const requireAuth = require('../middlewares/auth.middleware');
+const { authenticateTokenOptional } = require('../middlewares/auth.middleware');
+const { pool } = require('../config/database');
 
 /**
  * @openapi
@@ -44,6 +46,10 @@ const requireAuth = require('../middlewares/auth.middleware');
  *         schema: { type: string, enum: [Physical, Digital, Hybrid] }
  *         description: "Dạng tài liệu"
  *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [available, unavailable, archived], default: all }
+ *         description: "Lọc trạng thái ấn phẩm. Mặc định all để lấy toàn bộ ấn phẩm còn hợp tác"
+ *       - in: query
  *         name: sort_by
  *         schema: { type: string, enum: [year, title, views, favorites] }
  *       - in: query
@@ -66,12 +72,9 @@ const requireAuth = require('../middlewares/auth.middleware');
  *                 - type: object
  *                   properties:
  *                     data:
- *                       type: object
- *                       properties:
- *                         publications:
- *                           type: array
- *                           items: { $ref: '#/components/schemas/Publication' }
- *                         pagination: { $ref: '#/components/schemas/Pagination' }
+ *                       type: array
+ *                       items: { $ref: '#/components/schemas/Publication' }
+ *                     pagination: { $ref: '#/components/schemas/Pagination' }
  *       500:
  *         description: "Lỗi hệ thống"
  *         content:
@@ -82,12 +85,70 @@ router.get('/', publicPubController.getPublications);
 
 /**
  * @openapi
+ * /api/public/publications/lookups:
+ *   get:
+ *     tags: [Public Books]
+ *     summary: "Danh sách trường lọc ấn phẩm cho App"
+ *     description: "Trả về danh sách tác giả, nhà xuất bản, bộ sưu tập, năm xuất bản, ngôn ngữ, media_type để map filter trên giao diện App."
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: "Danh sách lookup/filter thành công"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/PublicationLookups'
+ */
+router.get('/lookups', publicPubController.getPublicationLookups);
+
+/**
+ * @openapi
+ * /api/public/publications/home-unified:
+ *   get:
+ *     tags: [Public Books]
+ *     summary: "Dữ liệu Trang chủ tập trung (All-in-one)"
+ *     description: "Trả về dữ liệu tổng hợp cho trang Home: Banners, Trending, Newest, Categories."
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: "Dữ liệu trang chủ tích hợp"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         banners: { type: array, items: { $ref: '#/components/schemas/Publication' } }
+ *                         trending: { type: array, items: { $ref: '#/components/schemas/Publication' } }
+ *                         newest: { type: array, items: { $ref: '#/components/schemas/Publication' } }
+ *                         categories:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id: { type: string }
+ *                               name: { type: string }
+ *                               icon: { type: string }
+ */
+router.get('/home-unified', publicPubController.getHomePageData);
+/**
+ * @openapi
  * /api/public/publications/{id}:
  *   get:
  *     tags: [Public Books]
  *     summary: "Chi tiết ấn phẩm (Tự động tăng lượt xem)"
  *     description: |
  *       Lấy toàn bộ thông tin chi tiết một ấn phẩm bao gồm: metadata, danh sách copies, thông tin tác giả/nhà xuất bản.
+ *       Kèm theo danh sách **tài liệu liên quan**, trailerInfo, trang xem trước và tệp số hóa phục vụ UI chi tiết của App.
  *       Mỗi lần gọi sẽ **tự động tăng view_count** của ấn phẩm.
  *     security: []
  *     parameters:
@@ -106,7 +167,7 @@ router.get('/', publicPubController.getPublications);
  *                 - $ref: '#/components/schemas/BaseResponse'
  *                 - type: object
  *                   properties:
- *                     data: { $ref: '#/components/schemas/Publication' }
+ *                     data: { $ref: '#/components/schemas/PublicationDetail' }
  *       404:
  *         description: "Không tìm thấy ấn phẩm"
  *         content:
@@ -114,6 +175,39 @@ router.get('/', publicPubController.getPublications);
  *             schema: { $ref: '#/components/schemas/ErrorResponse' }
  */
 router.get('/:id', publicPubController.getPublicationById);
+
+/**
+ * @openapi
+ * /api/public/publications/{id}/related:
+ *   get:
+ *     tags: [Public Books]
+ *     summary: "Danh sách tài liệu liên quan"
+ *     description: "Trả về danh sách ấn phẩm liên quan theo bộ sưu tập, NXB, năm, ngôn ngữ để map section 'Tài liệu liên quan'."
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *         description: "ID hoặc slug của ấn phẩm"
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 12, minimum: 1, maximum: 24 }
+ *     responses:
+ *       200:
+ *         description: "Danh sách tài liệu liên quan"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items: { $ref: '#/components/schemas/PublicationRelatedItem' }
+ */
+router.get('/:id/related', publicPubController.getRelatedPublications);
 
 /**
  * @openapi
@@ -149,6 +243,7 @@ router.get('/:id', publicPubController.getPublicationById);
  *                           price: { type: number }
  *                           status: { type: string }
  *                           condition: { type: string }
+ *                           storage_location_id: { type: integer, nullable: true }
  *                           storage_name: { type: string, description: "Tên kệ/kho lưu trữ" }
  */
 router.get('/:id/copies', publicPubController.getPublicationCopies);
@@ -183,6 +278,11 @@ router.get('/:id/copies', publicPubController.getPublicationCopies);
  *                       properties:
  *                         summary: { type: string, description: "Nội dung tóm tắt" }
  *                         cached: { type: boolean, description: "Lấy từ cache hay mới tạo" }
+ *       404:
+ *         description: "Không tìm thấy ấn phẩm để tóm tắt"
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
  */
 router.post('/:id/summarize', publicPubController.summarizePublication);
 
@@ -209,15 +309,26 @@ router.post('/:id/summarize', publicPubController.summarizePublication);
  *                 - type: object
  *                   properties:
  *                     data:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           id: { type: integer }
- *                           rating: { type: integer, minimum: 1, maximum: 5 }
- *                           comment: { type: string }
- *                           member_name: { type: string }
- *                           created_at: { type: string, format: date-time }
+ *                       type: object
+ *                       properties:
+ *                         reviews:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id: { type: integer }
+ *                               memberId: { type: integer, nullable: true }
+ *                               rating: { type: integer, minimum: 1, maximum: 5 }
+ *                               comment: { type: string }
+ *                               fullName: { type: string }
+ *                               createdAt: { type: string, format: date-time }
+ *                         stats:
+ *                           type: object
+ *                           properties:
+ *                             avgRating: { type: number }
+ *                             avg_rating: { type: number }
+ *                             totalReviews: { type: integer }
+ *                             total_reviews: { type: integer }
  */
 router.get('/:id/reviews', interactionController.getBookReviews);
 
@@ -251,8 +362,13 @@ router.get('/:id/reviews', interactionController.getBookReviews);
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
+ *       201:
+ *         description: "Đánh giá mới đã được ghi nhận"
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/BaseResponse' }
  */
-router.post('/:id/reviews', interactionController.submitReview);
+router.post('/:id/reviews', authenticateTokenOptional, interactionController.submitReview);
 
 /**
  * @openapi
@@ -267,11 +383,22 @@ router.post('/:id/reviews', interactionController.submitReview);
  *         required: true
  *         schema: { type: integer }
  *     responses:
- *       200:
+ *       201:
  *         description: "Đã thêm vào danh sách yêu thích"
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         isFavorited: { type: boolean }
+ *                         is_favorited: { type: boolean }
+ *                         favoriteCount: { type: integer }
+ *                         favorite_count: { type: integer }
  *       401:
  *         description: "Chưa đăng nhập"
  *         content:
@@ -297,7 +424,18 @@ router.post('/:id/favorite', requireAuth, interactionController.addToWishlist);
  *         description: "Đã gỡ khỏi danh sách yêu thích"
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         isFavorited: { type: boolean }
+ *                         is_favorited: { type: boolean }
+ *                         favoriteCount: { type: integer }
+ *                         favorite_count: { type: integer }
  */
 router.delete('/:id/favorite', requireAuth, interactionController.removeFromWishlist);
 
@@ -315,13 +453,23 @@ router.delete('/:id/favorite', requireAuth, interactionController.removeFromWish
  *         required: true
  *         schema: { type: integer }
  *     responses:
- *       200:
+ *       201:
  *         description: "Ghi nhận thành công"
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         viewCount: { type: integer }
+ *                         view_count: { type: integer }
+ *                         tracked: { type: boolean }
  */
-router.post('/:id/read', interactionController.recordRead);
+router.post('/:id/read', authenticateTokenOptional, interactionController.recordRead);
 
 /**
  * @openapi
@@ -337,12 +485,22 @@ router.post('/:id/read', interactionController.recordRead);
  *         required: true
  *         schema: { type: integer }
  *     responses:
- *       200:
+ *       201:
  *         description: "Ghi nhận thành công"
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         viewCount: { type: integer }
+ *                         view_count: { type: integer }
+ *                         tracked: { type: boolean }
  */
-router.post('/:id/download', interactionController.recordDownload);
+router.post('/:id/download', authenticateTokenOptional, interactionController.recordDownload);
 
 module.exports = router;

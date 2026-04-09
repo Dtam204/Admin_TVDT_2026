@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { buildUrl } from '@/lib/api/base';
 
 export default function ReadingPage() {
   const { id } = useParams();
@@ -36,7 +37,7 @@ export default function ReadingPage() {
   const fetchReadingContent = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/public/publications/${id}`, {
+         const res = await fetch(buildUrl(`/api/public/publications/${id}`), {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       const json = await res.json();
@@ -62,7 +63,7 @@ export default function ReadingPage() {
     if (!token) return;
 
     try {
-      await fetch(`http://localhost:5000/api/reader/actions/progress`, {
+         await fetch(buildUrl(`/api/reader/actions/progress`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,6 +92,21 @@ export default function ReadingPage() {
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-900 text-white">Đang tải trình đọc...</div>;
 
+   const parseMaybeJsonText = (value: any) => {
+      if (typeof value !== 'string') return value;
+      try {
+         const parsed = JSON.parse(value);
+         if (parsed && typeof parsed === 'object') {
+            return parsed.vi || parsed.en || value;
+         }
+         return value;
+      } catch {
+         return value;
+      }
+   };
+
+   const title = parseMaybeJsonText(book?.title) || 'Chưa có tiêu đề';
+
   return (
     <div className="h-screen bg-slate-100 flex flex-col overflow-hidden">
       {/* Top Bar Reader */}
@@ -101,7 +117,7 @@ export default function ReadingPage() {
             </Button>
             <div>
                <h2 className="text-sm font-bold line-clamp-1 max-w-[150px]">
-                  {typeof book.title === 'string' ? JSON.parse(book.title).vi : book.title?.vi || book.title}
+                  {title}
                </h2>
                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">Trang {currentPage} / {totalPages}</p>
             </div>

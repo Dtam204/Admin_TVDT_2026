@@ -57,8 +57,9 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import Link from "next/link";
+import NextImage from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { removeAuthToken } from "@/lib/auth/token";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -219,7 +220,7 @@ const menuItems: AdminNavItem[] = [
         label: "Thông báo App",
         href: "/admin/notifications",
         icon: Bell,
-        requiredPermissions: [],
+        requiredPermissions: ["notifications.view", "notifications.manage", "admin"],
       },
       {
         id: "reviews",
@@ -233,7 +234,7 @@ const menuItems: AdminNavItem[] = [
         label: "Quản lý bình luận",
         href: "/admin/comments",
         icon: MessageSquare,
-        requiredPermissions: [], // Để trống để tạm thời mọi người có quyền quan sát đều thấy được
+        requiredPermissions: ["books.view", "books.manage", "admin"],
       },
       {
         id: "category",
@@ -376,6 +377,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [userEmail, setUserEmail] = useState("admin@gmail.com");
   const [userPermissions, setUserPermissions] = useState<Set<string>>(new Set());
   const [mounted, setMounted] = useState(false);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const [headerElevated, setHeaderElevated] = useState(false);
 
   const pathname = usePathname() || "/admin";
   const router = useRouter();
@@ -428,6 +431,35 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (!mounted) return;
+
+    let lastScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      setHeaderElevated(currentY > 8);
+
+      if (currentY <= 20) {
+        setHeaderVisible(true);
+        lastScrollY = currentY;
+        return;
+      }
+
+      if (currentY > lastScrollY + 4) {
+        setHeaderVisible(false);
+      } else if (currentY < lastScrollY - 4) {
+        setHeaderVisible(true);
+      }
+
+      lastScrollY = currentY;
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [mounted]);
+
   const handleLogout = async () => {
     try {
       await fetch("/api/admin/logout", { method: "POST" });
@@ -440,34 +472,44 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     router.refresh();
   };
 
+  const mainTopPadding = headerVisible ? 104 : 76;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       {/* Sidebar */}
       <aside
         className={`fixed left-0 top-0 z-40 h-screen transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } w-64 text-slate-100 shadow-2xl border-r border-white/10`}
+          } w-64 text-slate-100 shadow-2xl border-r border-white/10 overflow-hidden`}
         style={{
           background: "linear-gradient(180deg, #020617 0%, #0f172a 100%)"
         }}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full min-h-0">
           {/* Logo Section */}
           <div className="h-14 flex items-center px-6 border-b border-white/10 backdrop-blur-md">
-            <div className="w-8 h-8 flex items-center justify-center bg-indigo-500 rounded-lg shadow-lg shadow-indigo-500/20 border border-white/20">
-              <BookOpen className="w-4 h-4 text-white" />
+            <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/20 bg-white/95 shadow-lg shadow-indigo-500/20 flex items-center justify-center">
+              <NextImage
+                src="/images/admin-logo.png"
+                alt="Digital Library TN"
+                width={36}
+                height={36}
+                className="h-full w-full object-cover"
+                priority
+              />
             </div>
             <div className="ml-3 flex flex-col">
-              <span className="text-[12px] font-black text-white leading-tight tracking-tight uppercase">Library Admin</span>
-              <span className="text-[8px] text-indigo-400 font-black opacity-80 uppercase tracking-[1.5px]">Master Suite</span>
+              <span className="text-[12px] font-black text-white leading-tight tracking-tight uppercase">Digital Library</span>
+              <span className="text-[8px] text-cyan-300 font-black opacity-90 uppercase tracking-[1.4px]">TN Admin Panel</span>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
+          <nav className="flex-1 min-h-0 overflow-y-auto scroll-smooth px-4 py-6 space-y-2 pr-2 [scrollbar-width:thin] [scrollbar-color:rgba(148,163,184,0.45)_transparent]">
             {menuItems.map((item) => {
               const Icon = item.icon;
               const hasSubmenu = item.children && item.children.length > 0;
               const isSubmenuOpen = openSubmenus.has(item.id);
+              const isSectionStart = item.id === "system";
 
               // Kiểm tra permission - ẩn item nếu không có quyền (sau khi đã mount)
               // Dashboard luôn hiện cho Admin
@@ -493,88 +535,112 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
               if (hasSubmenu) {
                 return (
-                  <Collapsible
+                  <div
                     key={item.id}
-                    open={isSubmenuOpen}
-                    onOpenChange={(open) => {
-                      setOpenSubmenus((prev) => {
-                        const next = new Set(prev);
-                        if (open) {
-                          next.add(item.id);
-                        } else {
-                          next.delete(item.id);
-                        }
-                        return next;
-                      });
-                    }}
-                    suppressHydrationWarning
+                    className={isSectionStart ? "mt-3 pt-3 border-t border-white/10" : ""}
                   >
-                    <CollapsibleTrigger
-                      className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all text-[11px] font-bold uppercase tracking-wider ${isActive
-                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/50 border border-white/10"
-                        : "text-slate-400 hover:bg-white/5 hover:text-white"
-                        }`}
+                    <Collapsible
+                      open={isSubmenuOpen}
+                      onOpenChange={(open) => {
+                        setOpenSubmenus((prev) => {
+                          const next = new Set(prev);
+                          if (open) {
+                            next.add(item.id);
+                          } else {
+                            next.delete(item.id);
+                          }
+                          return next;
+                        });
+                      }}
                       suppressHydrationWarning
                     >
-                      <div className="flex items-center">
-                        <Icon className="w-5 h-5" />
-                        <span className="ml-3">{item.label}</span>
-                      </div>
-                      {isSubmenuOpen ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4" />
-                      )}
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-1 space-y-1" suppressHydrationWarning>
-                      {item.children?.map((child) => {
-                        const ChildIcon = child.icon;
-                        const isChildActive =
-                          pathname === child.href ||
-                          (child.href && pathname.startsWith(child.href));
+                      <CollapsibleTrigger
+                        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all text-[11px] font-bold uppercase tracking-wider ${isActive
+                          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/50 border border-white/10"
+                          : "text-slate-400 hover:bg-white/5 hover:text-white"
+                          }`}
+                        suppressHydrationWarning
+                      >
+                        <div className="flex items-center">
+                          <Icon className="w-5 h-5" />
+                          <span className="ml-3">{item.label}</span>
+                        </div>
+                        {isSubmenuOpen ? (
+                          <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4" />
+                        )}
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-1 space-y-1" suppressHydrationWarning>
+                        {item.children?.map((child) => {
+                          const ChildIcon = child.icon;
+                          const isChildActive =
+                            pathname === child.href ||
+                            (child.href && pathname.startsWith(child.href));
+                          const isSystemFeaturedItem =
+                            item.id === "system" &&
+                            ["users", "permissions", "settings"].includes(child.id);
 
-                        // Kiểm tra permission cho child - ẩn nếu không có quyền (sau khi đã mount)
-                        // Trên server hoặc chưa mount, hiển thị tất cả để tránh hydration mismatch
-                        const childHasPermission = !mounted || userPermissions.size === 0
-                          ? true
-                          : !child.requiredPermissions ||
-                          child.requiredPermissions.length === 0 ||
-                          child.requiredPermissions.some((perm) => userPermissions.has(perm)) ||
-                          userPermissions.has("admin");
+                          // Kiểm tra permission cho child - ẩn nếu không có quyền (sau khi đã mount)
+                          // Trên server hoặc chưa mount, hiển thị tất cả để tránh hydration mismatch
+                          const childHasPermission = !mounted || userPermissions.size === 0
+                            ? true
+                            : !child.requiredPermissions ||
+                            child.requiredPermissions.length === 0 ||
+                            child.requiredPermissions.some((perm) => userPermissions.has(perm)) ||
+                            userPermissions.has("admin");
 
-                        if (!childHasPermission) return null;
+                          if (!childHasPermission) return null;
 
-                        return (
-                          <Link
-                            key={child.id}
-                            href={child.href || "#"}
-                            className={`w-full flex items-center pl-10 pr-4 py-2 rounded-xl transition-all text-[11px] font-bold ${isChildActive
-                              ? "bg-white/10 text-white border-l-4 border-indigo-400"
-                              : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-                              }`}
-                          >
-                            <ChildIcon className="w-3.5 h-3.5" />
-                            <span className="ml-3">{child.label}</span>
-                          </Link>
-                        );
-                      })}
-                    </CollapsibleContent>
-                  </Collapsible>
+                          return (
+                            <Link
+                              key={child.id}
+                              href={child.href || "#"}
+                              className={`w-full flex items-center rounded-xl transition-all text-[11px] font-bold ${isSystemFeaturedItem
+                                ? isChildActive
+                                  ? "pl-4 pr-4 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-500 text-white border border-indigo-200/25 shadow-lg shadow-indigo-900/35"
+                                  : "pl-4 pr-4 py-2.5 bg-white/[0.03] text-slate-200 border border-white/10 hover:bg-white/10 hover:border-indigo-300/25 hover:text-white"
+                                : isChildActive
+                                  ? "pl-10 pr-4 py-2 bg-white/10 text-white border-l-4 border-indigo-400"
+                                  : "pl-10 pr-4 py-2 text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                                }`}
+                            >
+                              <span
+                                className={`inline-flex items-center justify-center rounded-lg ${isSystemFeaturedItem
+                                  ? isChildActive
+                                    ? "w-6 h-6 bg-white/20"
+                                    : "w-6 h-6 bg-white/5 border border-white/10"
+                                  : ""
+                                  }`}
+                              >
+                                <ChildIcon className="w-3.5 h-3.5" />
+                              </span>
+                              <span className="ml-3 tracking-wide">{child.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
                 );
               }
 
               return (
-                <Link
+                <div
                   key={item.id}
-                  href={item.href || "#"}
-                  className={`w-full flex items-center px-4 py-3 rounded-lg transition-all text-sm ${isActive
-                    ? "bg-indigo-600/20 text-white shadow-xl shadow-black/20 border border-white/10"
-                    : "text-slate-400 hover:bg-white/5 hover:text-white"
-                    }`}
+                  className={isSectionStart ? "mt-3 pt-3 border-t border-white/10" : ""}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span className="ml-3">{item.label}</span>
-                </Link>
+                  <Link
+                    href={item.href || "#"}
+                    className={`w-full flex items-center px-4 py-3 rounded-lg transition-all text-sm ${isActive
+                      ? "bg-indigo-600/20 text-white shadow-xl shadow-black/20 border border-white/10"
+                      : "text-slate-400 hover:bg-white/5 hover:text-white"
+                      }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="ml-3">{item.label}</span>
+                  </Link>
+                </div>
               );
             })}
           </nav>
@@ -596,7 +662,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <div className={`transition-all ${sidebarOpen ? "ml-64" : "ml-0"}`}>
         {/* Top Header Section */}
         <header
-          className="h-14 bg-white/80 backdrop-blur-xl border-b border-slate-200 fixed top-0 right-0 left-0 z-30 transition-all duration-300"
+          className={`h-14 bg-white/90 backdrop-blur-xl border-b border-slate-200 fixed top-0 right-0 left-0 z-30 transition-all duration-300 ${
+            headerVisible ? "translate-y-0" : "-translate-y-full"
+          } ${headerElevated ? "shadow-lg shadow-slate-900/10" : "shadow-none"}`}
           style={{ marginLeft: sidebarOpen ? "16rem" : "0" }}
         >
           <div className="h-full px-6 flex items-center justify-between">
@@ -608,6 +676,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               >
                 <Menu className="w-5 h-5" />
               </Button>
+
+              <div className="hidden lg:flex items-center gap-2.5 pr-1">
+                <div className="w-8 h-8 rounded-lg border border-slate-200 overflow-hidden bg-white">
+                  <NextImage
+                    src="/images/admin-logo.png"
+                    alt="Digital Library TN"
+                    width={32}
+                    height={32}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Digital Library TN</span>
+              </div>
 
               <div className="relative w-96 hidden md:block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -673,9 +754,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page Content */}
-        <main className="pt-16 min-h-screen">
+        <main className="min-h-screen transition-all duration-300" style={{ paddingTop: `${mainTopPadding}px` }}>
           <QueryClientProvider client={queryClient}>
-            {children}
+            <div className="px-4 md:px-6 lg:px-8 pb-8">
+              {children}
+            </div>
           </QueryClientProvider>
         </main>
       </div>

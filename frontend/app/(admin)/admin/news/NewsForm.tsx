@@ -168,6 +168,7 @@ export default function NewsForm({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 onClick={onCancel}
@@ -188,6 +189,7 @@ export default function NewsForm({
             </div>
             <div className="flex items-center gap-3">
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => setShowMobilePreview(true)}
                 className="hidden sm:flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
@@ -196,6 +198,7 @@ export default function NewsForm({
                 Xem trước
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 onClick={onCancel}
                 disabled={saving}
@@ -568,11 +571,11 @@ export default function NewsForm({
                         )}
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" className="flex-1" onClick={() => setShowImageDialog(true)}>
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => setShowImageDialog(true)}>
                           {formData.imageUrl ? "Thay đổi ảnh" : "Chọn ảnh"}
                         </Button>
                         {formData.imageUrl && (
-                          <Button variant="ghost" size="icon" className="text-red-500" onClick={() => setFormData({ ...formData, imageUrl: "" })}>
+                          <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={() => setFormData({ ...formData, imageUrl: "" })}>
                             <Trash className="w-4 h-4" />
                           </Button>
                         )}
@@ -601,8 +604,8 @@ export default function NewsForm({
             <DialogTitle>Thư viện Media</DialogTitle>
           </DialogHeader>
           <div className="flex gap-2 mb-4 bg-gray-100 p-1 rounded-lg w-fit">
-            <Button size="sm" variant={imageTab === "library" ? "default" : "ghost"} onClick={() => setImageTab("library")}>Thư viện</Button>
-            <Button size="sm" variant={imageTab === "upload" ? "default" : "ghost"} onClick={() => setImageTab("upload")}>Tải lên</Button>
+            <Button type="button" size="sm" variant={imageTab === "library" ? "default" : "ghost"} onClick={() => setImageTab("library")}>Thư viện</Button>
+            <Button type="button" size="sm" variant={imageTab === "upload" ? "default" : "ghost"} onClick={() => setImageTab("upload")}>Tải lên</Button>
           </div>
           <div className="flex-1 overflow-y-auto">
             {imageTab === "library" ? (

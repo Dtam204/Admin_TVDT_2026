@@ -6,6 +6,7 @@ const {
   updateCategory,
   deleteCategory,
 } = require('../controllers/newsCategories.controller');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
 
@@ -31,7 +32,7 @@ const router = express.Router();
  *                   items:
  *                     $ref: '#/components/schemas/NewsCategory'
  */
-router.get('/', getCategories);
+router.get('/', checkPermission('news_categories.view'), getCategories);
 
 /**
  * @openapi
@@ -52,7 +53,7 @@ router.get('/', getCategories);
  *       404:
  *         description: Không tìm thấy danh mục
  */
-router.get('/:code', getCategoryByCode);
+router.get('/:code', checkPermission('news_categories.view'), getCategoryByCode);
 
 /**
  * @openapi
@@ -73,7 +74,7 @@ router.get('/:code', getCategoryByCode);
  *       409:
  *         description: Trùng mã code
  */
-router.post('/', createCategory);
+router.post('/', checkPermission('news_categories.manage'), createCategory);
 
 /**
  * @openapi
@@ -100,7 +101,7 @@ router.post('/', createCategory);
  *       404:
  *         description: Không tìm thấy danh mục
  */
-router.put('/:code', updateCategory);
+router.put('/:code', checkPermission('news_categories.manage'), updateCategory);
 
 /**
  * @openapi
@@ -121,7 +122,7 @@ router.put('/:code', updateCategory);
  *       404:
  *         description: Không tìm thấy danh mục
  */
-router.delete('/:code', deleteCategory);
+router.delete('/:code', checkPermission('news_categories.manage'), deleteCategory);
 
 module.exports = router;
 

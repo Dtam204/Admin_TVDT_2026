@@ -7,6 +7,7 @@ const {
   remove,
 } = require('../controllers/publishers.controller');
 const requireAuth = require('../middlewares/auth.middleware');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
 
@@ -47,7 +48,7 @@ const router = express.Router();
  *                     pagination:
  *                       $ref: '#/components/schemas/Pagination'
  */
-router.get('/', getAll);
+router.get('/', checkPermission('publishers.view'), getAll);
 
 /**
  * @openapi
@@ -75,7 +76,7 @@ router.get('/', getAll);
  *                     data:
  *                       $ref: '#/components/schemas/Publisher'
  */
-router.get('/:id', getById);
+router.get('/:id', checkPermission('publishers.view'), getById);
 
 /**
  * @openapi
@@ -99,7 +100,7 @@ router.get('/:id', getById);
  *             schema:
  *               $ref: '#/components/schemas/BaseResponse'
  */
-router.post('/', create);
+router.post('/', checkPermission('publishers.manage'), create);
 
 /**
  * @openapi
@@ -128,7 +129,7 @@ router.post('/', create);
  *             schema:
  *               $ref: '#/components/schemas/BaseResponse'
  */
-router.put('/:id', update);
+router.put('/:id', checkPermission('publishers.manage'), update);
 
 /**
  * @openapi
@@ -151,6 +152,6 @@ router.put('/:id', update);
  *             schema:
  *               $ref: '#/components/schemas/BaseResponse'
  */
-router.delete('/:id', remove);
+router.delete('/:id', checkPermission('publishers.manage'), remove);
 
 module.exports = router;

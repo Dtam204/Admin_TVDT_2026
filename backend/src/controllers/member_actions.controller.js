@@ -109,6 +109,17 @@ exports.createTransaction = async (req, res) => {
       await AuditService.log(adminId, 'CREATE', 'TRANSACTION', txnRows[0].id, null, txnRows[0]);
     }
 
+    // [Socket] Đồng bộ App ngay lập tức
+    try {
+      const { getIO } = require('../socket');
+      const { rows: members } = await client.query('SELECT balance FROM members WHERE id = $1', [member_id]);
+      getIO().to(`member_${member_id}`).emit('wallet_balance_updated', {
+        amount: balanceChange,
+        new_balance: parseFloat(members[0].balance || 0),
+        message: 'Có sự thay đổi số dư từ Thư viện'
+      });
+    } catch(e) {}
+
     await client.query('COMMIT');
     res.json({ success: true, message: 'Giao dịch thành công và đã cập nhật số dư' });
   } catch (error) {
@@ -146,6 +157,16 @@ exports.createFine = async (req, res) => {
       await AuditService.log(adminId, 'CREATE', 'FINE', rows[0].id, null, rows[0]);
     }
 
+    // [Socket] Thông báo cho App là có phiếu phạt mới
+    try {
+      const { getIO } = require('../socket');
+      getIO().to(`member_${member_id}`).emit('new_notification', {
+        type: 'FINE_ISSUED',
+        amount: Math.abs(amount),
+        message: `Bạn vừa có một phiếu phạt mới: ${amount.toLocaleString()} VNĐ. Nội dung: ${description}`
+      });
+    } catch(e) {}
+
     res.json({ success: true, message: 'Đã gửi phiếu phí phạt cho hội viên (Trạng thái: Chờ đóng)', payment_id: rows[0].id });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -178,6 +199,17 @@ exports.createRefund = async (req, res) => {
     if (adminId) {
       await AuditService.log(adminId, 'CREATE', 'REFUND', txnRows[0].id, null, txnRows[0]);
     }
+
+    // [Socket] Đồng bộ App ngay lập tức
+    try {
+      const { getIO } = require('../socket');
+      const { rows: members } = await client.query('SELECT balance FROM members WHERE id = $1', [member_id]);
+      getIO().to(`member_${member_id}`).emit('wallet_balance_updated', {
+        amount: refundAmount,
+        new_balance: parseFloat(members[0].balance || 0),
+        message: 'Thư viện vừa hoàn tiền trả bạn'
+      });
+    } catch(e) {}
 
     await client.query('COMMIT');
     res.json({ success: true, message: 'Đã hoàn tiền thành công vào ví' });
@@ -243,6 +275,29 @@ exports.deposit = async (req, res) => {
     if (adminId) {
       await AuditService.log(adminId, 'CREATE', 'DEPOSIT', txnRows[0].id, null, txnRows[0]);
     }
+
+    // [Socket] Đồng bộ App & Thông báo cho Admin khác
+    try {
+      const { getIO } = require('../socket');
+      const io = getIO();
+      const { rows: members } = await client.query('SELECT balance, full_name FROM members WHERE id = $1', [id]);
+      
+      // Báo cho App
+      io.to(`member_${id}`).emit('wallet_balance_updated', {
+        amount: amount,
+        new_balance: parseFloat(members[0].balance || 0),
+        message: 'Admin vừa nạp tiền vào ví cho bạn'
+      });
+
+      // Báo cho các Admin khác
+      io.to('admins').emit('new_transaction', {
+        id: txnRows[0].id,
+        type: 'DEPOSIT',
+        member_name: members[0].full_name,
+        amount: amount,
+        message: `Admin vừa nạp ${amount.toLocaleString()}đ cho hội viên ${members[0].full_name}`
+      });
+    } catch(e) {}
 
     await client.query('COMMIT');
     res.json({ success: true, message: 'Nạp tiền thành công và đã cập nhật vào bảng thanh toán' });

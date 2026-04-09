@@ -175,7 +175,7 @@ exports.reportComment = async (req, res, next) => {
 // GET /api/admin/comments
 exports.adminGetComments = async (req, res, next) => {
   try {
-    const { status, objectType } = req.query;
+    const { status, objectType, objectId } = req.query;
     
     // Đã loại bỏ bảng 'courses' vì chưa tồn tại trong Database
     let query = `
@@ -204,6 +204,11 @@ exports.adminGetComments = async (req, res, next) => {
     if (objectType) {
       params.push(objectType);
       query += ` AND c.object_type = $${params.length}`;
+    }
+
+    if (objectId) {
+      params.push(parseInt(objectId, 10));
+      query += ` AND c.object_id = $${params.length}`;
     }
 
     query += ` ORDER BY c.created_at DESC`;
@@ -251,6 +256,76 @@ exports.adminModerateComment = async (req, res, next) => {
     );
 
     return res.json({ success: true, data: rows[0] });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// DELETE /api/admin/comments/:id
+exports.adminDeleteComment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const { rows: checkRows } = await pool.query(
+      'SELECT id FROM comments WHERE id = $1',
+      [id]
+    );
+
+    if (!checkRows.length) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy bình luận' });
+    }
+
+    await pool.query(
+      'UPDATE comments SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      ['deleted', id]
+    );
+
+    return res.json({ success: true, message: 'Bình luận đã được xóa' });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// POST /api/admin/comments/:id/reply
+exports.adminReplyComment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    const userId = req.user.id;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ success: false, message: 'Nội dung phản hồi không được để trống' });
+    }
+
+    const { rows: parentRows } = await pool.query(
+      'SELECT id, parent_id, object_id, object_type, user_id FROM comments WHERE id = $1 LIMIT 1',
+      [id]
+    );
+
+    if (!parentRows.length) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy bình luận cần phản hồi' });
+    }
+
+    const parent = parentRows[0];
+    const parentId = parent.parent_id || parent.id;
+
+    const { rows } = await pool.query(
+      `INSERT INTO comments (user_id, object_id, object_type, parent_id, reply_to_user_id, content, status, rating, guest_name)
+       VALUES ($1, $2, $3, $4, $5, $6, 'approved', 0, NULL)
+       RETURNING *`,
+      [userId, parent.object_id, parent.object_type, parentId, parent.user_id, content]
+    );
+
+    const { rows: fullRow } = await pool.query(
+      `SELECT c.*, COALESCE(u.name, c.guest_name, 'Khách') as user_name, u.email as user_email, rt.name as reply_to_name
+       FROM comments c
+       LEFT JOIN users u ON c.user_id = u.id
+       LEFT JOIN users rt ON c.reply_to_user_id = rt.id
+       WHERE c.id = $1`,
+      [rows[0].id]
+    );
+
+    return res.status(201).json({ success: true, data: fullRow[0] });
   } catch (error) {
     return next(error);
   }

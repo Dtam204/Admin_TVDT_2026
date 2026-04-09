@@ -304,26 +304,26 @@ export default function RichTextEditor({
     <div className={`border border-gray-200 rounded-lg overflow-hidden relative transition-all ${isFullScreen ? 'fixed inset-4 z-[100] bg-white shadow-2xl flex flex-col' : ''}`}>
       <div className="flex flex-nowrap overflow-x-auto no-scrollbar gap-1 p-2 bg-gray-50 border-b border-gray-200">
         {/* Basic formatting buttons */}
-        <Button size="icon" variant="ghost" onClick={() => execCommand("undo")}><Undo className="w-4 h-4" /></Button>
-        <Button size="icon" variant="ghost" onClick={() => execCommand("redo")}><Redo className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("undo")}><Undo className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("redo")}><Redo className="w-4 h-4" /></Button>
         <div className="w-px h-8 bg-gray-300 mx-1" />
-        <Button size="icon" variant="ghost" onClick={() => execCommand("bold")}><Bold className="w-4 h-4" /></Button>
-        <Button size="icon" variant="ghost" onClick={() => execCommand("italic")}><Italic className="w-4 h-4" /></Button>
-        <Button size="icon" variant="ghost" onClick={() => execCommand("underline")}><Underline className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("bold")}><Bold className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("italic")}><Italic className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("underline")}><Underline className="w-4 h-4" /></Button>
         <div className="w-px h-8 bg-gray-300 mx-1" />
-        <Button size="icon" variant="ghost" onClick={() => execCommand("formatBlock", "h1")}><Heading1 className="w-4 h-4" /></Button>
-        <Button size="icon" variant="ghost" onClick={() => execCommand("formatBlock", "h2")}><Heading2 className="w-4 h-4" /></Button>
-        <Button size="icon" variant="ghost" onClick={() => execCommand("formatBlock", "p")}><Type className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("formatBlock", "h1")}><Heading1 className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("formatBlock", "h2")}><Heading2 className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("formatBlock", "p")}><Type className="w-4 h-4" /></Button>
         <div className="w-px h-8 bg-gray-300 mx-1" />
-        <Button size="icon" variant="ghost" onClick={() => execCommand("justifyLeft")}><AlignLeft className="w-4 h-4" /></Button>
-        <Button size="icon" variant="ghost" onClick={() => execCommand("justifyCenter")}><AlignCenter className="w-4 h-4" /></Button>
-        <Button size="icon" variant="ghost" onClick={() => execCommand("justifyRight")}><AlignRight className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("justifyLeft")}><AlignLeft className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("justifyCenter")}><AlignCenter className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("justifyRight")}><AlignRight className="w-4 h-4" /></Button>
         <div className="w-px h-8 bg-gray-300 mx-1" />
-        <Button size="icon" variant="ghost" onClick={() => execCommand("insertUnorderedList")}><List className="w-4 h-4" /></Button>
-        <Button size="icon" variant="ghost" onClick={() => execCommand("insertOrderedList")}><ListOrdered className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("insertUnorderedList")}><List className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => execCommand("insertOrderedList")}><ListOrdered className="w-4 h-4" /></Button>
         <div className="w-px h-8 bg-gray-300 mx-1" />
-        <Button size="icon" variant="ghost" onClick={() => setShowMediaDialog(true)}><ImageIcon className="w-4 h-4" /></Button>
-        <Button size="icon" variant="ghost" onClick={() => setIsFullScreen(!isFullScreen)}>
+        <Button type="button" size="icon" variant="ghost" onClick={() => setShowMediaDialog(true)}><ImageIcon className="w-4 h-4" /></Button>
+        <Button type="button" size="icon" variant="ghost" onClick={() => setIsFullScreen(!isFullScreen)}>
           {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
         </Button>
       </div>
@@ -359,7 +359,7 @@ export default function RichTextEditor({
             <TabsContent value="upload" className="flex-1 pt-4">
               <div className="border-2 border-dashed rounded-lg p-10 text-center">
                 <input ref={mediaFileInputRef} type="file" className="hidden" onChange={handleMediaFileUpload} />
-                <Button onClick={() => mediaFileInputRef.current?.click()} disabled={uploading}>
+                <Button type="button" onClick={() => mediaFileInputRef.current?.click()} disabled={uploading}>
                   {uploading ? <Loader2 className="animate-spin mr-2" /> : <Upload className="mr-2" />}
                   Chọn file tải lên
                 </Button>

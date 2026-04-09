@@ -157,7 +157,7 @@ export default function MembersPage() {
           <div className="relative flex-1 group">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900" />
             <Input
-              placeholder="Tìm kiếm theo tên, email, mã thẻ..."
+              placeholder="Tìm kiếm theo ID, tên, email, mã thẻ..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10 h-10 border-none bg-slate-50/50 focus:bg-white text-[11px] rounded-xl transition-all shadow-sm"
@@ -182,6 +182,7 @@ export default function MembersPage() {
             <TableHeader className="bg-slate-50 border-b-2 border-slate-200">
               <TableRow className="hover:bg-transparent h-11">
                 <TableHead className="font-black text-slate-800 pl-6 uppercase text-[10px] tracking-wider">Hội viên & Định danh</TableHead>
+                <TableHead className="font-black text-slate-800 uppercase text-[10px] tracking-wider px-4 w-[130px]">ID Bạn đọc</TableHead>
                 <TableHead className="font-black text-slate-800 uppercase text-[10px] tracking-wider px-4">Thông tin liên lạc</TableHead>
                 <TableHead className="font-black text-slate-800 uppercase text-[10px] tracking-wider px-4">Hạng thẻ & Ví</TableHead>
                 <TableHead className="text-center font-black text-slate-800 uppercase text-[10px] tracking-wider px-4 w-[120px]">Trạng thái</TableHead>
@@ -191,7 +192,7 @@ export default function MembersPage() {
             <TableBody className="divide-y divide-slate-100">
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-20">
+                  <TableCell colSpan={6} className="text-center py-20">
                      <div className="flex flex-col items-center gap-3">
                         <div className="w-8 h-8 border-3 border-slate-900 border-t-transparent rounded-full animate-spin" />
                         <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Loading Member Data...</span>
@@ -200,7 +201,7 @@ export default function MembersPage() {
                 </TableRow>
               ) : data?.data?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-32">
+                  <TableCell colSpan={6} className="text-center py-32">
                      <Users className="w-16 h-16 mx-auto mb-3 text-slate-100" />
                      <span className="text-sm font-bold text-slate-300 uppercase tracking-widest">No Members Found</span>
                   </TableCell>
@@ -219,6 +220,11 @@ export default function MembersPage() {
                             <div className="font-black uppercase text-[12px] tracking-tight group-hover:text-indigo-600 transition-colors line-clamp-1">{displayName}</div>
                             <div className="text-[10px] font-bold text-slate-400 font-mono mt-0.5 tracking-tighter">CARD: {item.card_number || 'N/A'}</div>
                           </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-4 text-slate-900">
+                        <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-[11px] font-bold tracking-tight text-slate-700">
+                          #{item.id}
                         </div>
                       </TableCell>
                       <TableCell className="px-4 text-slate-900">

@@ -8,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { AIProvider } from '@/lib/hooks/useTranslationControls';
+
+type AIProvider = "openai" | "gemini";
 
 interface AIProviderSelectorProps {
   value: AIProvider;

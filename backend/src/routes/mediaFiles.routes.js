@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mediaController = require('../controllers/media.controller');
 const requireAuth = require('../middlewares/auth.middleware');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 /**
  * @openapi
@@ -35,7 +36,7 @@ const requireAuth = require('../middlewares/auth.middleware');
  *                       type: array
  *                       items: { $ref: '#/components/schemas/MediaFile' }
  */
-router.get('/', requireAuth, mediaController.getFiles);
+router.get('/', requireAuth, checkPermission('media.view'), mediaController.getFiles);
 
 /**
  * @openapi
@@ -104,8 +105,8 @@ router.get('/', requireAuth, mediaController.getFiles);
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
  */
-router.get('/:id', requireAuth, mediaController.getFileById);
-router.delete('/:id', requireAuth, mediaController.deleteFile);
-router.put('/:id', requireAuth, mediaController.updateFile);
+router.get('/:id', requireAuth, checkPermission('media.view'), mediaController.getFileById);
+router.delete('/:id', requireAuth, checkPermission('media.manage'), mediaController.deleteFile);
+router.put('/:id', requireAuth, checkPermission('media.manage'), mediaController.updateFile);
 
 module.exports = router;

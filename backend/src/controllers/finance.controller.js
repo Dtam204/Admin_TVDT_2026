@@ -10,19 +10,19 @@ const { pool } = require('../config/database');
  */
 exports.getFinanceStats = async (req, res, next) => {
   try {
-    // 1. Total Daily Revenue (Sum of all 'completed' payments today)
     const dailyRevenueRes = await pool.query(`
       SELECT COALESCE(SUM(amount), 0) as total 
       FROM payments 
       WHERE status = 'completed' 
+      AND type IN ('wallet_deposit', 'course', 'manual_payment')
       AND created_at >= CURRENT_DATE
     `);
     
-    // 2. Previous Daily Revenue (for calculating trend percentage)
     const prevDailyRevenueRes = await pool.query(`
       SELECT COALESCE(SUM(amount), 0) as total 
       FROM payments 
       WHERE status = 'completed' 
+      AND type IN ('wallet_deposit', 'course', 'manual_payment')
       AND created_at >= CURRENT_DATE - INTERVAL '1 day' 
       AND created_at < CURRENT_DATE
     `);

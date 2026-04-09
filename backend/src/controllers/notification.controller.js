@@ -8,14 +8,22 @@ const { pool } = require('../config/database');
 // Lấy danh sách thông báo của tôi (Hội viên hiện tại)
 exports.getMyNotifications = async (req, res, next) => {
   try {
-    const memberId = req.user.id; // Từ authMiddleware
+    const memberId = req.user.member_id || req.user.sub || req.user.id; // Hỗ trợ nhiều chuẩn token
     const { limit = 20, unreadOnly = false } = req.query;
 
     let query = `
-      SELECT id, type, title, message, is_read as "isRead", related_id as "relatedId", 
-             related_type as "relatedType", created_at as "createdAt"
+      SELECT
+        id,
+        type,
+        title,
+        message,
+        metadata,
+        CASE WHEN member_id = $1 THEN is_read ELSE false END as "isRead",
+        related_id as "relatedId",
+        related_type as "relatedType",
+        created_at as "createdAt"
       FROM notifications
-      WHERE member_id = $1
+      WHERE member_id = $1 OR target_type = 'all'
     `;
     const params = [memberId];
 
@@ -28,6 +36,20 @@ exports.getMyNotifications = async (req, res, next) => {
 
     const { rows } = await pool.query(query, params);
 
+    // Lấy thông báo toàn hệ thống cần hiển thị ngay khi mở app
+    const { rows: startupRows } = await pool.query(
+      `SELECT id, type, title, message, metadata, created_at as "createdAt"
+       FROM notifications
+       WHERE target_type = 'all'
+         AND (
+           metadata->'presentation'->>'show_on_app_open' = 'true'
+           OR metadata->>'show_on_app_open' = 'true'
+         )
+       ORDER BY created_at DESC
+       LIMIT 1`
+    );
+    const startupAnnouncement = startupRows[0] || null;
+
     // Lấy số lượng chưa đọc
     const { rows: countRows } = await pool.query(
       'SELECT COUNT(*) FROM notifications WHERE member_id = $1 AND is_read = false',
@@ -37,6 +59,7 @@ exports.getMyNotifications = async (req, res, next) => {
     return res.json({
       success: true,
       data: rows,
+      startupAnnouncement,
       unreadCount: parseInt(countRows[0].count),
       code: 0
     });

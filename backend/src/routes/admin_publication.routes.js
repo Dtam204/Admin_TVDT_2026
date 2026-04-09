@@ -10,7 +10,7 @@ const { checkPermission } = require('../middlewares/rbac.middleware');
 
 /**
  * @openapi
- * /api/admin/publication:
+ * /api/admin/publications:
  *   get:
  *     tags: [Admin Books]
  *     summary: Danh sách ấn phẩm (Admin)
@@ -50,7 +50,7 @@ const { checkPermission } = require('../middlewares/rbac.middleware');
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
- * /api/admin/publication/summarize:
+ * /api/admin/publications/summarize:
  *   post:
  *     tags: [Admin Books]
  *     summary: Tóm tắt nội dung bằng AI
@@ -70,7 +70,7 @@ const { checkPermission } = require('../middlewares/rbac.middleware');
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
- * /api/admin/publication/storage-locations:
+ * /api/admin/publications/storage-locations:
  *   get:
  *     tags: [Admin Books]
  *     summary: Danh sách vị trí lưu trữ (Kho)
@@ -82,7 +82,7 @@ const { checkPermission } = require('../middlewares/rbac.middleware');
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
- * /api/admin/publication/dashboard/stats:
+ * /api/admin/publications/dashboard/stats:
  *   get:
  *     tags: [Admin Books]
  *     summary: Thống kê ấn phẩm cho Dashboard
@@ -94,7 +94,33 @@ const { checkPermission } = require('../middlewares/rbac.middleware');
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
- * /api/admin/publication/{id}:
+ * /api/admin/publications/all/select:
+ *   get:
+ *     tags: [Admin Books]
+ *     summary: Lấy toàn bộ danh sách ấn phẩm (không phân trang)
+ *     description: Trả về danh sách rút gọn (ID, Mã, Tiêu đề, Tác giả) của tất cả ấn phẩm. Dùng cho dropdown/select UI.
+ *     responses:
+ *       200:
+ *         description: Thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: 'integer' }
+ *                           code: { type: 'string' }
+ *                           title: { type: 'string' }
+ *                           author: { type: 'string' }
+ *                           thumbnail: { type: 'string' }
+ * 
+ * /api/admin/publications/{id}:
  *   get:
  *     tags: [Admin Books]
  *     summary: Chi tiết ấn phẩm
@@ -152,6 +178,7 @@ router.post('/', checkPermission('books.manage'), adminPubController.create);
 router.post('/summarize', checkPermission('books.manage'), AdminAIController.summarize);
 router.get('/storage-locations', checkPermission('books.view'), adminPubController.getStorageLocations);
 router.get('/dashboard/stats', checkPermission('books.view'), adminPubController.getStats);
+router.get('/all/select', checkPermission('books.view'), adminPubController.getAllNoPagination);
 router.get('/:id', checkPermission('books.view'), adminPubController.getDetail);
 router.put('/:id', checkPermission('books.manage'), adminPubController.update);
 router.delete('/:id', checkPermission('books.manage'), adminPubController.delete);

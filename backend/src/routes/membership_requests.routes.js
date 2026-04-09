@@ -11,7 +11,7 @@ const { restrictToCMS, checkPermission } = require('../middlewares/rbac.middlewa
  *   get:
  *     tags: [Admin Membership]
  *     summary: Danh sách yêu cầu gia hạn hội viên
- *     description: Lấy danh sách các yêu cầu nâng cấp hoặc gia hạn gói hội viên đang chờ xử lý hoặc đã xử lý.
+ *     description: Lấy danh sách các yêu cầu nâng cấp hoặc gia hạn gói hội viên. Hỗ trợ lọc theo trạng thái và phân trang.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -26,7 +26,7 @@ const { restrictToCMS, checkPermission } = require('../middlewares/rbac.middlewa
  *         schema: { type: 'integer', default: 1 }
  *       - in: query
  *         name: limit
- *         schema: { type: 'integer', default: 20 }
+ *         schema: { type: 'integer', default: 10 }
  *     responses:
  *       200:
  *         description: Thành công

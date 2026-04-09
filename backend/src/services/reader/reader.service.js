@@ -1,6 +1,7 @@
 const { pool } = require('../../config/database');
 const bcrypt = require('bcrypt');
 const { getEffectiveMembership } = require('../../utils/member_helper');
+const mailService = require('../mail.service');
 
 /**
  * Reader Service - Xử lý nghiệp vụ chuyên nghiệp cho Bạn đọc (Account Module)
@@ -13,11 +14,13 @@ class ReaderService {
   async getProfile(readerId) {
     const { rows } = await pool.query(`
       SELECT 
-        m.id, m.full_name as "fullName", m.email, m.phone, m.card_number as "cardNumber", 
-        m.membership_expires as "membershipExpires", m.status, m.balance, m.avatar,
-        mp.name as "planName", mp.tier_code as "tierCode", mp.max_books_borrowed as "maxBorrowLimit",
-        (SELECT COUNT(*) FROM book_loans WHERE member_id = m.id AND status IN ('borrowing', 'overdue')) as "currentLoansCount",
-        (SELECT COALESCE(SUM(late_fee), 0) FROM book_loans WHERE member_id = m.id) as "totalFines"
+        m.id, m.full_name, m.email, m.phone, m.card_number, 
+        m.membership_expires, m.status, m.balance, m.avatar,
+        m.date_of_birth, m.identity_number,
+        m.gender, m.address,
+        mp.name as plan_name, mp.tier_code, mp.max_books_borrowed as max_borrow_limit,
+        (SELECT COUNT(*) FROM book_loans WHERE member_id = m.id AND status IN ('borrowing', 'overdue')) as current_loans_count,
+        (SELECT COALESCE(SUM(late_fee), 0) FROM book_loans WHERE member_id = m.id) as total_fines
       FROM members m 
       LEFT JOIN membership_plans mp ON m.membership_plan_id = mp.id
       WHERE m.id = $1
@@ -27,22 +30,40 @@ class ReaderService {
 
     const member = rows[0];
     
-    // Tính toán quyền lợi thực tế (Đồng bộ logic Expiry)
+    // 1. Tính toán quyền lợi thực tế (Đồng bộ logic Expiry)
     const effective = getEffectiveMembership({
-      membership_expires: member.membershipExpires,
-      tier_code: member.tierCode || 'basic',
-      plan_name: member.planName || 'Cơ bản',
-      max_books_borrowed: member.maxBorrowLimit || 3
+      membership_expires: member.membership_expires,
+      tier_code: member.tier_code || 'basic',
+      plan_name: member.plan_name || 'Cơ bản',
+      max_books_borrowed: member.max_borrow_limit || 3
     });
+
+    // 2. Tính tuổi (doTuoi) từ ngày sinh (date_of_birth)
+    let age = 0;
+    if (member.date_of_birth) {
+      const birthDate = new Date(member.date_of_birth);
+      const today = new Date();
+      age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+    }
+
+    // 3. Định dạng ngày tháng về YYYY-MM-DD để khớp Swagger
+    const formatDate = (date) => date ? new Date(date).toISOString().split('T')[0] : null;
 
     return {
       ...member,
-      planName: effective.plan_name,
-      tierCode: effective.tier_code,
-      maxBorrowLimit: effective.max_books_borrowed,
-      isExpired: effective.is_expired,
+      date_of_birth: formatDate(member.date_of_birth),
+      membership_expires: formatDate(member.membership_expires),
+      plan_name: effective.plan_name,
+      tier_code: effective.tier_code,
+      max_borrow_limit: effective.max_borrow_limit,
+      is_expired: effective.is_expired,
       balance: parseFloat(member.balance || 0),
-      totalFines: parseFloat(member.totalFines || 0)
+      total_fines: parseFloat(member.total_fines || 0),
+      age: age
     };
   }
 
@@ -83,7 +104,7 @@ class ReaderService {
           phone = COALESCE($2, phone),
           email = COALESCE($3, email),
           gender = COALESCE($4, gender),
-          birthday = COALESCE($5, birthday),
+          date_of_birth = COALESCE($5, date_of_birth),
           address = COALESCE($6, address),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = $7
@@ -136,10 +157,15 @@ class ReaderService {
       [email, otpCode, expiresAt]
     );
 
-    // Ghi chú: Trong thực tế sẽ tích hợp Nodemailer gửi mail tại đây
-    console.log(`[OTP] Mã xác thực cho ${email} là: ${otpCode}`);
+    // 4. Gửi Mail thực tế
+    console.log(`\n🔑 [TESTING] MÃ OTP CỦA BẠN LÀ: ${otpCode} (Dành cho email: ${email})\n`);
     
-    return { email, expiresIn: '15 minutes' };
+    await mailService.sendOTP(email, otpCode).catch(err => {
+      console.error('Mail delivery deferred:', err.message);
+      // Không chặn luồng nếu gửi mail lỗi, nhưng log lại
+    });
+    
+    return { email, expires_in: '15 minutes' };
   }
 
   /**
@@ -154,7 +180,12 @@ class ReaderService {
     if (rows.length === 0) throw new Error("Mã OTP không hợp lệ hoặc đã hết hạn");
 
     await pool.query('UPDATE password_resets SET is_verified = TRUE WHERE id = $1', [rows[0].id]);
-    return true;
+    
+    return { 
+      email: email,
+      verified: true,
+      verified_at: new Date().toISOString()
+    };
   }
 
   /**
@@ -186,7 +217,10 @@ class ReaderService {
       await client.query('DELETE FROM password_resets WHERE email = $1', [email]);
 
       await client.query('COMMIT');
-      return true;
+      return {
+        email: email,
+        reset: true
+      };
     } catch (e) {
       await client.query('ROLLBACK');
       throw e;

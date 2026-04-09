@@ -1,5 +1,34 @@
 const { pool } = require('../config/database');
 
+// Helper để tạo response chuẩn 7 trường
+const sendResponse = (res, status, message, data = null, errors = null, pagination = null) => {
+  const response = {
+    code: status >= 200 && status < 300 ? 0 : status,
+    success: status >= 200 && status < 300,
+    message: message,
+    data: data,
+    errorId: null,
+    appId: null,
+    errors: errors
+  };
+
+  if (pagination) {
+    response.pagination = pagination;
+  }
+
+  return res.status(status).json(response);
+};
+
+const toInt = (value, fallback = 0) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.trunc(n) : fallback;
+};
+
+const toFloat = (value, fallback = 0) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 /**
  * Interaction Controller - CHUẨN HÓA RESTFUL CHUYÊN NGHIỆP
  * Xử lý: Đánh giá, Yêu thích, Ghi nhận lượt Đọc/Tải
@@ -31,15 +60,14 @@ exports.getBookReviews = async (req, res, next) => {
       [bookId]
     );
 
-    return res.json({
-      success: true,
-      message: "Lấy danh sách đánh giá thành công",
-      data: rows,
+    return sendResponse(res, 200, "Lấy danh sách đánh giá thành công", {
+      reviews: rows,
       stats: {
-        avgRating: stats[0].avgRating || 0,
-        totalReviews: stats[0].totalReviews || 0
-      },
-      code: 0
+        avgRating: toFloat(stats[0].avgRating, 0),
+        avg_rating: toFloat(stats[0].avgRating, 0),
+        totalReviews: toInt(stats[0].totalReviews, 0),
+        total_reviews: toInt(stats[0].totalReviews, 0)
+      }
     });
   } catch (error) {
     return next(error);
@@ -58,7 +86,7 @@ exports.submitReview = async (req, res, next) => {
     const { rating, comment } = req.body;
 
     if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ success: false, message: 'Đánh giá phải từ 1 đến 5 sao', code: 400 });
+      return sendResponse(res, 400, 'Đánh giá phải từ 1 đến 5 sao', null, ["Rating range 1-5"]);
     }
 
     await client.query('BEGIN');
@@ -93,11 +121,10 @@ exports.submitReview = async (req, res, next) => {
 
     await client.query('COMMIT');
 
-    return res.status(isNew ? 201 : 200).json({
-      success: true,
-      message: 'Cảm ơn bạn đã đóng góp đánh giá cho ấn phẩm này',
-      data: result,
-      code: 0
+    return sendResponse(res, isNew ? 201 : 200, 'Cảm ơn bạn đã đóng góp đánh giá cho ấn phẩm này', {
+      ...result,
+      created_at: result.createdAt || null,
+      updated_at: result.updatedAt || null,
     });
   } catch (error) {
     if (client) await client.query('ROLLBACK');
@@ -125,12 +152,7 @@ exports.getMyWishlist = async (req, res, next) => {
       ORDER BY w.created_at DESC
     `, [memberId]);
 
-    return res.json({ 
-      success: true, 
-      message: "Lấy danh sách yêu thích thành công",
-      data: rows, 
-      code: 0 
-    });
+    return sendResponse(res, 200, "Lấy danh sách yêu thích thành công", rows);
   } catch (error) {
     return next(error);
   }
@@ -151,12 +173,13 @@ exports.addToWishlist = async (req, res, next) => {
 
     const { rows: countRes } = await pool.query('SELECT count(*) FROM wishlists WHERE book_id = $1', [bookId]);
     
-    return res.status(201).json({ 
-      success: true, 
-      message: 'Đã thêm ấn phẩm vào danh sách yêu thích', 
+    const favoriteCount = toInt(countRes[0].count, 0);
+
+    return sendResponse(res, 201, 'Đã thêm ấn phẩm vào danh sách yêu thích', {
       isFavorited: true,
-      favoriteCount: parseInt(countRes[0].count),
-      code: 0 
+      is_favorited: true,
+      favoriteCount,
+      favorite_count: favoriteCount,
     });
   } catch (error) {
     return next(error);
@@ -175,12 +198,13 @@ exports.removeFromWishlist = async (req, res, next) => {
 
     const { rows: countRes } = await pool.query('SELECT count(*) FROM wishlists WHERE book_id = $1', [bookId]);
     
-    return res.json({ 
-      success: true, 
-      message: 'Đã xóa ấn phẩm khỏi danh sách yêu thích', 
+    const favoriteCount = toInt(countRes[0].count, 0);
+
+    return sendResponse(res, 200, 'Đã xóa ấn phẩm khỏi danh sách yêu thích', {
       isFavorited: false,
-      favoriteCount: parseInt(countRes[0].count),
-      code: 0 
+      is_favorited: false,
+      favoriteCount,
+      favorite_count: favoriteCount,
     });
   } catch (error) {
     return next(error);
@@ -199,20 +223,29 @@ exports.recordRead = async (req, res, next) => {
     const { id: bookId } = req.params;
     const memberId = (req.user && (req.user.sub || req.user.id)) ? (req.user.sub || req.user.id) : null;
 
-    await pool.query(
-      'INSERT INTO interaction_logs (object_id, action_type, member_id, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)',
-      [bookId, 'read', memberId]
-    );
+    let tracked = true;
+    try {
+      await pool.query(
+        'INSERT INTO interaction_logs (object_id, object_type, action_type, member_id, created_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)',
+        [bookId, 'book', 'read', memberId]
+      );
+    } catch (logError) {
+      // Một số schema bắt buộc member_id NOT NULL; không để API public bị fail toàn bộ.
+      tracked = false;
+      console.warn('recordRead log warning:', logError.message);
+    }
 
     const { rows: countRes } = await pool.query(
       "SELECT count(*) FROM interaction_logs WHERE object_id = $1 AND action_type IN ('view', 'read', 'download')",
       [bookId]
     );
 
-    return res.status(201).json({ 
-      success: true, 
-      viewCount: parseInt(countRes[0].count), 
-      code: 0 
+    const viewCount = toInt(countRes[0].count, 0);
+
+    return sendResponse(res, 201, "Ghi nhận lượt đọc thành công", {
+      viewCount,
+      view_count: viewCount,
+      tracked,
     });
   } catch (error) {
     return next(error);
@@ -227,20 +260,29 @@ exports.recordDownload = async (req, res, next) => {
     const { id: bookId } = req.params;
     const memberId = (req.user && (req.user.sub || req.user.id)) ? (req.user.sub || req.user.id) : null;
 
-    await pool.query(
-      'INSERT INTO interaction_logs (object_id, action_type, member_id, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)',
-      [bookId, 'download', memberId]
-    );
+    let tracked = true;
+    try {
+      await pool.query(
+        'INSERT INTO interaction_logs (object_id, object_type, action_type, member_id, created_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)',
+        [bookId, 'book', 'download', memberId]
+      );
+    } catch (logError) {
+      // Một số schema bắt buộc member_id NOT NULL; không để API public bị fail toàn bộ.
+      tracked = false;
+      console.warn('recordDownload log warning:', logError.message);
+    }
 
     const { rows: countRes } = await pool.query(
       "SELECT count(*) FROM interaction_logs WHERE object_id = $1 AND action_type IN ('view', 'read', 'download')",
       [bookId]
     );
 
-    return res.status(201).json({ 
-      success: true, 
-      viewCount: parseInt(countRes[0].count), 
-      code: 0 
+    const viewCount = toInt(countRes[0].count, 0);
+
+    return sendResponse(res, 201, "Ghi nhận lượt tải thành công", {
+      viewCount,
+      view_count: viewCount,
+      tracked,
     });
   } catch (error) {
     return next(error);

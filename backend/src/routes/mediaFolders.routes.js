@@ -8,6 +8,7 @@ const {
   deleteFolder,
 } = require('../controllers/media.controller');
 const requireAuth = require('../middlewares/auth.middleware');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
 
@@ -124,11 +125,11 @@ const router = express.Router();
  *       200:
  *         description: Xóa thành công
  */
-router.get('/', requireAuth, getFolders);
-router.get('/tree', requireAuth, getFolderTree);
-router.get('/:id', requireAuth, getFolderById);
-router.post('/', requireAuth, createFolder);
-router.put('/:id', requireAuth, updateFolder);
-router.delete('/:id', requireAuth, deleteFolder);
+router.get('/', requireAuth, checkPermission('media.view'), getFolders);
+router.get('/tree', requireAuth, checkPermission('media.view'), getFolderTree);
+router.get('/:id', requireAuth, checkPermission('media.view'), getFolderById);
+router.post('/', requireAuth, checkPermission('media.manage'), createFolder);
+router.put('/:id', requireAuth, checkPermission('media.manage'), updateFolder);
+router.delete('/:id', requireAuth, checkPermission('media.manage'), deleteFolder);
 
 module.exports = router;

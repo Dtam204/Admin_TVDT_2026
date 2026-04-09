@@ -19,7 +19,7 @@ class DashboardService {
       
       // 2. Thống kê nâng cao theo yêu cầu
       totalViews: "SELECT COUNT(*) FROM interaction_logs WHERE action_type IN ('read', 'view', 'download')",
-      totalRevenue: "SELECT SUM(ABS(amount)) FROM payments WHERE type IN ('wallet_deposit', 'membership', 'book_rental', 'fee_penalty', 'course') AND status = 'completed'",
+      totalRevenue: "SELECT SUM(amount) FROM payments WHERE type IN ('wallet_deposit', 'course', 'manual_payment') AND status = 'completed'",
       totalFavorites: "SELECT COUNT(*) FROM interaction_logs WHERE action_type = 'favorite'",
       totalBorrows: "SELECT COUNT(*) FROM book_loans",
       totalOverdueLoans: "SELECT COUNT(*) FROM book_loans WHERE status = 'overdue' OR (status = 'borrowing' AND due_date < CURRENT_DATE)",

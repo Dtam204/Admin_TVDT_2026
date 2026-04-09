@@ -65,7 +65,9 @@ export default function NewBookPage() {
   const [formData, setFormData] = useState({
     publication: {
       code: '',
+      isbn: '',
       title: '',
+      author: '',
       publisher_id: '',
       collection_id: '',
       author_ids: [] as number[],
@@ -145,13 +147,31 @@ export default function NewBookPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const publicationYear = Number(formData.publication.publicationYear) || new Date().getFullYear();
+    const pageCount = Number(formData.publication.pageCount) || 0;
+    const normalizedKeywords = Array.isArray(formData.publication.keywords)
+      ? formData.publication.keywords
+      : String(formData.publication.keywords || '')
+          .split(',')
+          .map((k) => k.trim())
+          .filter(Boolean);
+
     const submissionData = {
       ...formData,
       publication: {
         ...formData.publication,
         title: formData.publication.title,
+        code: formData.publication.code,
+        isbn: formData.publication.isbn || formData.publication.isbdContent || formData.publication.code,
+        author: formData.publication.author || 'Nhiều tác giả',
+        publication_year: publicationYear,
+        pages: pageCount,
         description: formData.publication.description,
-        keywords: Array.isArray(formData.publication.keywords) ? formData.publication.keywords : (formData.publication.keywords as string).split(',').map(k => k.trim()),
+        keywords: normalizedKeywords,
+        ai_summary: formData.publication.aiSummary || null,
+        dominant_color: formData.publication.dominantColor || '#4f46e5',
+        cover_image: formData.publication.thumbnail || null,
         toc: formData.publication.toc || [],
         access_policy: formData.publication.access_policy || 'basic',
         digital_content: {
@@ -256,7 +276,7 @@ export default function NewBookPage() {
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-none shadow-2xl">
                         {collections?.data?.map((c: any) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

@@ -18,9 +18,9 @@ import { cn } from '@/components/ui/utils';
 export default function PaymentsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [filterMethod, setFilterMethod] = useState('all');
+  const [filterType, setFilterType] = useState('all');
 
-  const { data, isLoading } = usePayments({ page, limit: 20, search });
+  const { data, isLoading } = usePayments({ page, limit: 20, search, type: filterType });
   const { data: statsData } = useFinanceStats();
   const { mutate: deleteItem } = useDeletePayment();
 
@@ -89,6 +89,24 @@ export default function PaymentsPage() {
       </div>
     );
     return null;
+  };
+
+  const getTypeBadge = (type: string) => {
+    const normalized = String(type || '').toLowerCase();
+    const map: any = {
+      wallet_deposit: { label: 'Nap vi', cls: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+      membership: { label: 'Hoi vien', cls: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
+      fee_penalty: { label: 'Tien phat', cls: 'bg-amber-50 text-amber-700 border-amber-100' },
+      manual_payment: { label: 'Manual', cls: 'bg-slate-50 text-slate-700 border-slate-100' },
+      refund: { label: 'Hoan tien', cls: 'bg-cyan-50 text-cyan-700 border-cyan-100' },
+      wallet_withdrawal: { label: 'Rut vi', cls: 'bg-rose-50 text-rose-700 border-rose-100' }
+    };
+    const cfg = map[normalized] || { label: normalized || 'N/A', cls: 'bg-slate-50 text-slate-600 border-slate-100' };
+    return (
+      <Badge className={cn('px-2 py-0.5 rounded-md text-[9px] font-black uppercase border', cfg.cls)}>
+        {cfg.label}
+      </Badge>
+    );
   };
 
   return (
@@ -183,6 +201,18 @@ export default function PaymentsPage() {
       </div>
 
       <div className="max-w-[1440px] mx-auto px-6 -mt-6 space-y-4 relative z-20">
+        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-black text-indigo-700 uppercase tracking-wider">Payment Sync V2 Enabled</p>
+            <p className="text-[12px] text-indigo-900">
+              Bang nay da dong bo theo luong moi: external txn, sync status, reference id va doi soat webhook.
+            </p>
+          </div>
+          <Link href="/api-docs" className="text-[11px] font-black text-indigo-700 underline underline-offset-2">
+            Mo Swagger de doi chieu
+          </Link>
+        </div>
+
         {/* COMPACT TOOLBAR */}
         <div className="bg-white rounded-3xl p-3 shadow-xl flex flex-col md:flex-row items-center gap-3 border border-slate-100">
           <div className="relative flex-1 w-full">
@@ -195,10 +225,24 @@ export default function PaymentsPage() {
             />
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
-             <Button variant="ghost" className="h-11 rounded-xl gap-2 font-black text-[10px] uppercase tracking-widest text-slate-500 hover:text-indigo-600 px-4">
-                <Filter className="w-3.5 h-3.5" />
-                LỌC
-             </Button>
+             <div className="flex items-center gap-2">
+                <Filter className="w-3.5 h-3.5 text-slate-400" />
+                <select
+                  value={filterType}
+                  onChange={(e) => {
+                    setPage(1);
+                    setFilterType(e.target.value);
+                  }}
+                  className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black uppercase tracking-widest text-slate-600"
+                >
+                  <option value="all">Tat ca</option>
+                  <option value="wallet_deposit">Nap vi</option>
+                  <option value="membership">Hoi vien</option>
+                  <option value="fee_penalty">Tien phat</option>
+                  <option value="manual_payment">Manual</option>
+                  <option value="refund">Hoan tien</option>
+                </select>
+             </div>
              <div className="h-6 w-[1px] bg-slate-200 hidden md:block" />
              <Button variant="ghost" className="h-11 rounded-xl gap-2 font-black text-[10px] uppercase tracking-widest text-slate-500 px-4">
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -215,6 +259,7 @@ export default function PaymentsPage() {
                 <TableRow className="hover:bg-transparent h-16">
                   <TableHead className="px-8 font-black text-slate-500 uppercase text-[10px] tracking-widest w-[140px]">Đối soát</TableHead>
                   <TableHead className="px-4 font-black text-slate-500 uppercase text-[10px] tracking-widest">Hội viên & Thẻ</TableHead>
+                  <TableHead className="px-4 font-black text-slate-500 uppercase text-[10px] tracking-widest text-center">Nghiệp vụ</TableHead>
                   <TableHead className="px-4 font-black text-slate-500 uppercase text-[10px] tracking-widest text-center">Nguồn tiền</TableHead>
                   <TableHead className="px-4 font-black text-slate-500 uppercase text-[10px] tracking-widest text-right">Số tiền</TableHead>
                   <TableHead className="px-4 font-black text-slate-500 uppercase text-[10px] tracking-widest text-center">Trạng thái</TableHead>
@@ -225,7 +270,7 @@ export default function PaymentsPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-32">
+                    <TableCell colSpan={8} className="text-center py-32">
                        <div className="flex flex-col items-center gap-6">
                           <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin shadow-lg shadow-indigo-200" />
                           <span className="text-slate-400 font-black uppercase text-[11px] tracking-[0.3em] animate-pulse">Syncing Financial Cloud...</span>
@@ -234,7 +279,7 @@ export default function PaymentsPage() {
                   </TableRow>
                 ) : data?.data?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-40">
+                    <TableCell colSpan={8} className="text-center py-40">
                        <div className="bg-slate-50 w-24 h-24 rounded-[2rem] flex items-center justify-center mx-auto mb-6 transform rotate-12">
                           <CreditCard className="w-10 h-10 text-slate-200" />
                        </div>
@@ -263,6 +308,14 @@ export default function PaymentsPage() {
                             <span className="text-[13px] font-black text-slate-900 uppercase truncate leading-tight">{item.member_name || '-'}</span>
                             <span className="text-[10px] text-indigo-500 font-bold font-mono tracking-tighter">CARD: {item.card_number || 'ST-GUEST'}</span>
                          </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 text-center">
+                      <div className="flex flex-col items-center gap-1.5">
+                        {getTypeBadge(item.type || item.transaction_type)}
+                        <span className="text-[9px] text-slate-400 font-mono truncate max-w-[110px]">
+                          {item.reference_id || '-'}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 text-center">

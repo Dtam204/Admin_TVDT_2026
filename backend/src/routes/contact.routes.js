@@ -22,34 +22,35 @@ const {
   deleteRequest,
   submitRequest,
 } = require('../controllers/contact.controller');
+const { checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
 
 // Hero routes
-router.get('/hero', getHero);
-router.put('/hero', updateHero);
+router.get('/hero', checkPermission('contact.view'), getHero);
+router.put('/hero', checkPermission('contact.manage'), updateHero);
 
 // Info Cards routes
-router.get('/info-cards', getInfoCards);
-router.put('/info-cards', updateInfoCards);
+router.get('/info-cards', checkPermission('contact.view'), getInfoCards);
+router.put('/info-cards', checkPermission('contact.manage'), updateInfoCards);
 
 // Form routes
-router.get('/form', getForm);
-router.put('/form', updateForm);
+router.get('/form', checkPermission('contact.view'), getForm);
+router.put('/form', checkPermission('contact.manage'), updateForm);
 
 // Sidebar routes
-router.get('/sidebar', getSidebar);
-router.put('/sidebar', updateSidebar);
+router.get('/sidebar', checkPermission('contact.view'), getSidebar);
+router.put('/sidebar', checkPermission('contact.manage'), updateSidebar);
 
 // Map routes
-router.get('/map', getMap);
-router.put('/map', updateMap);
+router.get('/map', checkPermission('contact.view'), getMap);
+router.put('/map', checkPermission('contact.manage'), updateMap);
 
 // Contact Requests routes
-router.get('/requests', getRequests);
-router.get('/requests/:id', getRequest);
-router.put('/requests/:id', updateRequest);
-router.delete('/requests/:id', deleteRequest);
+router.get('/requests', checkPermission('contact.view'), getRequests);
+router.get('/requests/:id', checkPermission('contact.view'), getRequest);
+router.put('/requests/:id', checkPermission('contact.manage'), updateRequest);
+router.delete('/requests/:id', checkPermission('contact.manage'), deleteRequest);
 
 module.exports = router;
 

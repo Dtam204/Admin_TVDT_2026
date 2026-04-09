@@ -138,11 +138,14 @@ exports.createNews = async (req, res, next) => {
   try {
     const adminId = req.user?.id || null;
     const {
-      title, summary, content = '', status = 'draft', imageUrl = '',
+      title, summary, excerpt, content = '', status = 'draft', imageUrl, image_url,
       author = '', readTime = '', slug = '',
       publishedDate = new Date().toISOString().split('T')[0],
       isFeatured = false, galleryImages = [], galleryPosition = null, showAuthorBox = true
     } = req.body;
+
+    const finalSummary = summary ?? excerpt ?? '';
+    const finalImageUrl = imageUrl ?? image_url ?? '';
 
     const insertQuery = `
       INSERT INTO news (
@@ -154,8 +157,8 @@ exports.createNews = async (req, res, next) => {
     `;
 
     const params = [
-      processLocaleField(title), slug, processLocaleField(summary || ''),
-      processLocaleField(content), status, imageUrl, processLocaleField(author),
+      processLocaleField(title), slug, processLocaleField(finalSummary),
+      processLocaleField(content), status, finalImageUrl, processLocaleField(author),
       processLocaleField(readTime), publishedDate, isFeatured, 
       JSON.stringify(galleryImages), galleryPosition, showAuthorBox
     ];
@@ -191,7 +194,16 @@ exports.updateNews = async (req, res, next) => {
     }
     const oldNews = existing[0];
 
-    const data = req.body;
+    const data = {
+      ...req.body,
+      image_url: req.body.image_url ?? req.body.imageUrl,
+      summary: req.body.summary ?? req.body.excerpt,
+      published_date: req.body.published_date ?? req.body.publishedDate,
+      is_featured: req.body.is_featured ?? req.body.isFeatured,
+      gallery_position: req.body.gallery_position ?? req.body.galleryPosition,
+      show_author_box: req.body.show_author_box ?? req.body.showAuthorBox,
+      read_time: req.body.read_time ?? req.body.readTime,
+    };
     const fields = [];
     const params = [];
 
@@ -206,12 +218,12 @@ exports.updateNews = async (req, res, next) => {
       }
     });
 
-    if (data.title) { params.push(processLocaleField(data.title)); fields.push(`title = $${params.length}`); }
-    if (data.summary) { params.push(processLocaleField(data.summary)); fields.push(`summary = $${params.length}`); }
-    if (data.content) { params.push(processLocaleField(data.content)); fields.push(`content = $${params.length}`); }
-    if (data.author) { params.push(processLocaleField(data.author)); fields.push(`author = $${params.length}`); }
-    if (data.readTime) { params.push(processLocaleField(data.readTime)); fields.push(`read_time = $${params.length}`); }
-    if (data.galleryImages) { params.push(JSON.stringify(data.galleryImages)); fields.push(`gallery_images = $${params.length}`); }
+    if (data.title !== undefined) { params.push(processLocaleField(data.title)); fields.push(`title = $${params.length}`); }
+    if (data.summary !== undefined) { params.push(processLocaleField(data.summary)); fields.push(`summary = $${params.length}`); }
+    if (data.content !== undefined) { params.push(processLocaleField(data.content)); fields.push(`content = $${params.length}`); }
+    if (data.author !== undefined) { params.push(processLocaleField(data.author)); fields.push(`author = $${params.length}`); }
+    if (data.read_time !== undefined) { params.push(processLocaleField(data.read_time)); fields.push(`read_time = $${params.length}`); }
+    if (data.galleryImages !== undefined) { params.push(JSON.stringify(data.galleryImages)); fields.push(`gallery_images = $${params.length}`); }
 
     if (fields.length === 0) return res.json({ success: true, data: mapNews(oldNews), code: 0 });
 

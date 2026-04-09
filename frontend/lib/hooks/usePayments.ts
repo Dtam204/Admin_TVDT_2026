@@ -9,7 +9,7 @@ import { adminApiCall } from '@/lib/api/admin/client';
 const paymentsApi = {
   getAll: async (params?: any) => {
     const query = new URLSearchParams(params).toString();
-    return adminApiCall(`/api/admin/member-actions/all-transactions?${query}`);
+    return adminApiCall(`/api/admin/payments?${query}`);
   },
 
   getById: async (id: number) => {
