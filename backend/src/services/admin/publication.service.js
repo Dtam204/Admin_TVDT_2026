@@ -1,5 +1,10 @@
 const { pool } = require('../../config/database');
 const AuditService = require('./audit.service');
+const { toPlainText } = require('../../utils/locale');
+const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
+const { PDFDocument } = require('pdf-lib');
 
 /**
  * Service xử lý nghiệp vụ Ấn phẩm (Publications)
@@ -73,6 +78,54 @@ class PublicationService {
     };
   }
 
+  static async resolvePdfBuffer(fileUrl) {
+    if (!fileUrl || typeof fileUrl !== 'string') return null;
+
+    const normalized = fileUrl.trim();
+    if (!normalized) return null;
+
+    // Trường hợp URL tĩnh nội bộ: /uploads/...
+    if (normalized.startsWith('/uploads/') || normalized.startsWith('uploads/')) {
+      const relativePath = normalized.replace(/^\//, '');
+      const localPath = path.join(process.cwd(), relativePath);
+      if (fs.existsSync(localPath)) {
+        return fs.promises.readFile(localPath);
+      }
+      return null;
+    }
+
+    // Trường hợp URL tuyệt đối từ CDN/host khác
+    if (/^https?:\/\//i.test(normalized)) {
+      const response = await axios.get(normalized, {
+        responseType: 'arraybuffer',
+        timeout: 8000,
+        maxContentLength: 50 * 1024 * 1024,
+        maxBodyLength: 50 * 1024 * 1024,
+      });
+      return Buffer.from(response.data);
+    }
+
+    // Trường hợp path tuyệt đối hoặc tương đối trong server
+    const localPath = path.isAbsolute(normalized)
+      ? normalized
+      : path.join(process.cwd(), normalized);
+
+    if (!fs.existsSync(localPath)) return null;
+    return fs.promises.readFile(localPath);
+  }
+
+  static async extractPdfPageCount(fileUrl) {
+    try {
+      const pdfBuffer = await this.resolvePdfBuffer(fileUrl);
+      if (!pdfBuffer) return null;
+      const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+      return pdfDoc.getPageCount();
+    } catch (error) {
+      console.warn('[PublicationService] Không thể đọc số trang PDF:', error.message);
+      return null;
+    }
+  }
+
   /**
    * Tạo mới Ấn phẩm kèm Bản sao
    */
@@ -82,7 +135,7 @@ class PublicationService {
       await client.query('BEGIN');
       const input = this.normalizePublicationInput(pubData);
       
-      const title = typeof input.title === 'string' ? input.title : (input.title?.vi || input.title?.en || "Chưa có tiêu đề");
+      const title = toPlainText(input.title, 'Chưa có tiêu đề');
       let slug = (input.slug || title).toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
       
       const { rows: existingSlug } = await client.query('SELECT id FROM books WHERE slug = $1', [slug]);
@@ -91,9 +144,7 @@ class PublicationService {
       const code = input.code || `PUB-${Date.now()}`;
       const isbn = input.isbn || code; 
       
-      const titleJson = { vi: title };
-      const description = typeof input.description === 'string' ? input.description : (input.description?.vi || "");
-      const descriptionJson = { vi: description };
+      const description = toPlainText(input.description, '');
 
       const mediaType = input.media_type || (input.is_digital ? 'Digital' : 'Physical');
       const isDigital = (mediaType === 'Digital' || mediaType === 'Hybrid');
@@ -108,8 +159,8 @@ class PublicationService {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27) 
         RETURNING id
       `, [
-        code, isbn, JSON.stringify(titleJson), input.author || "Nhiều tác giả", slug, 
-        input.publisher_id, input.collection_id, JSON.stringify(descriptionJson), 
+        code, isbn, title, input.author || "Nhiều tác giả", slug, 
+        input.publisher_id, input.collection_id, description, 
         input.cover_image, input.publication_year, 
         input.language, input.pages, isDigital, input.digital_file_url, 
         JSON.stringify(input.metadata || {}), input.status, input.ai_summary, 
@@ -167,16 +218,7 @@ class PublicationService {
    * Helper: Giải mã JSON an toàn (Dùng chung cho toàn bộ Service)
    */
   static parseJson(val, key = 'vi', defaultVal = "") {
-    if (!val) return defaultVal;
-    try {
-      const obj = typeof val === 'string' ? JSON.parse(val) : val;
-      if (obj && typeof obj === 'object') {
-        return obj[key] || obj.vi || obj.en || (typeof obj === 'object' && !Array.isArray(obj) ? "" : obj);
-      }
-      return obj || defaultVal;
-    } catch (e) { 
-      return val || defaultVal; 
-    }
+    return toPlainText(val, defaultVal);
   }
 
   static parseArraySafe(value, fallback = []) {
@@ -291,6 +333,20 @@ class PublicationService {
                WHERE ba.book_id = b.id
              ) as authors_list,
              EXISTS(SELECT 1 FROM wishlists WHERE book_id = b.id AND member_id = $2) as is_favorited,
+             (
+               SELECT br.rating
+               FROM book_reviews br
+               WHERE br.book_id = b.id AND br.member_id = $2 AND br.status = 'published'
+               ORDER BY br.updated_at DESC
+               LIMIT 1
+             ) as my_rating,
+             (
+               SELECT br.comment
+               FROM book_reviews br
+               WHERE br.book_id = b.id AND br.member_id = $2 AND br.status = 'published'
+               ORDER BY br.updated_at DESC
+               LIMIT 1
+             ) as my_comment,
              EXISTS(SELECT 1 FROM interaction_logs WHERE object_id = b.id AND member_id = $2 AND action_type = 'download') as has_downloaded,
              (SELECT count(*) FROM interaction_logs WHERE object_id = b.id AND member_id = $2 AND action_type = 'read') as read_count
       FROM books b
@@ -302,9 +358,27 @@ class PublicationService {
     if (pubRows.length === 0) return null;
     let publication = pubRows[0];
 
+    const mediaType = (publication.media_type || '').toLowerCase();
+    const shouldSyncPdfPages = (mediaType === 'digital' || mediaType === 'hybrid' || publication.is_digital === true)
+      && publication.digital_file_url;
+
+    if (shouldSyncPdfPages) {
+      const pdfPageCount = await this.extractPdfPageCount(publication.digital_file_url);
+      if (pdfPageCount && Number(pdfPageCount) > 0 && Number(publication.pages || 0) !== Number(pdfPageCount)) {
+        try {
+          await pool.query('UPDATE books SET pages = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [pdfPageCount, publication.id]);
+          publication.pages = pdfPageCount;
+        } catch (error) {
+          console.warn('[PublicationService] Không thể cập nhật số trang tự động:', error.message);
+        }
+      }
+    }
+
     // 2. Chuẩn hóa dữ liệu JSON & Interaction
     const userInteraction = readerId ? {
       isFavorited: publication.is_favor_ited || publication.is_favorited,
+      rating: parseInt(publication.my_rating || 0),
+      comment: publication.my_comment || '',
       hasDownloaded: publication.has_downloaded,
       readCount: parseInt(publication.read_count || 0)
     } : null;
@@ -430,7 +504,7 @@ class PublicationService {
     try {
       const { 
         page = 1, limit = 10, search = '', 
-        collection_id, status, cooperation_status, media_type,
+        collection, collection_id, status, cooperation_status, media_type,
         title, author, publisher_id, year_from, year_to, language, subject,
         sort_by = 'id', order = 'DESC'
       } = params;
@@ -446,6 +520,22 @@ class PublicationService {
       if (status && status !== 'all') { filter += ` AND b.status = $${idx++}`; values.push(status); }
       if (cooperation_status && cooperation_status !== 'all') { filter += ` AND b.cooperation_status = $${idx++}`; values.push(cooperation_status); }
       if (collection_id) { filter += ` AND b.collection_id = $${idx++}`; values.push(collection_id); }
+      if (collection) {
+        const collectionAsId = parseInt(collection, 10);
+        if (!isNaN(collectionAsId)) {
+          filter += ` AND b.collection_id = $${idx++}`;
+          values.push(collectionAsId);
+        } else {
+          filter += ` AND EXISTS (
+            SELECT 1
+            FROM collections c
+            WHERE c.id = b.collection_id
+              AND c.name::text ILIKE $${idx}
+          )`;
+          values.push(`%${collection}%`);
+          idx++;
+        }
+      }
       if (language) { filter += ` AND b.language = $${idx++}`; values.push(language); }
 
       // 2. Tìm kiếm nội dung (ILIKE)
@@ -598,7 +688,8 @@ class PublicationService {
       const mediaType = input.media_type || (input.is_digital ? 'Digital' : 'Physical');
       const isDigital = (mediaType === 'Digital' || mediaType === 'Hybrid');
       
-      const title = typeof input.title === 'string' ? input.title : (input.title?.vi || input.title?.en || "Không rõ");
+      const title = toPlainText(input.title, 'Không rõ');
+      const description = toPlainText(input.description, '');
 
       await client.query(`
         UPDATE books SET 
@@ -633,9 +724,9 @@ class PublicationService {
       `, [
         input.code || oldPub[0].code,
         input.isbn || oldPub[0].isbn,
-        JSON.stringify({ vi: title }),
+        title,
         input.author || oldPub[0].author,
-        JSON.stringify({ vi: typeof input.description === 'string' ? input.description : (input.description?.vi || "") }),
+        description,
         input.collection_id,
         input.publisher_id,
         input.publication_year,
@@ -885,11 +976,20 @@ class PublicationService {
       pool.query('SELECT COUNT(*)::int as total FROM publication_copies'),
     ]);
 
+    const totalPublications = pubCountRes.rows[0]?.total || 0;
+    const cooperatingPublications = activeCountRes.rows[0]?.total || 0;
+    const digitalOrHybridPublications = digitalCountRes.rows[0]?.total || 0;
+    const totalCopies = copiesRes.rows[0]?.total || 0;
+
     return {
-      total_publications: pubCountRes.rows[0]?.total || 0,
-      cooperating_publications: activeCountRes.rows[0]?.total || 0,
-      digital_or_hybrid_publications: digitalCountRes.rows[0]?.total || 0,
-      total_copies: copiesRes.rows[0]?.total || 0,
+      totalPublications,
+      cooperatingPublications,
+      digitalOrHybridPublications,
+      totalCopies,
+      total_publications: totalPublications,
+      cooperating_publications: cooperatingPublications,
+      digital_or_hybrid_publications: digitalOrHybridPublications,
+      total_copies: totalCopies,
     };
   }
 }

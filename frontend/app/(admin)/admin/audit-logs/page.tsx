@@ -28,6 +28,7 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from '@/components/ui/dialog';
+import { safeFormatDateTimeVN } from '@/lib/date';
 
 export default function AuditLogsPage() {
   const [page, setPage] = useState(1);
@@ -121,7 +122,7 @@ export default function AuditLogsPage() {
                   <TableRow key={log.id} className="group hover:bg-slate-50/50 transition-all border-slate-50">
                     <TableCell className="pl-6 py-4">
                       <div className="font-mono text-[11px] text-slate-400">
-                        {new Date(log.created_at).toLocaleString('vi-VN')}
+                        {safeFormatDateTimeVN(log.created_at)}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -163,7 +164,7 @@ export default function AuditLogsPage() {
                               Chi tiết Thay đổi
                             </DialogTitle>
                             <DialogDescription className="font-medium text-slate-500">
-                              Người thực hiện: <span className="text-indigo-600 font-bold">{log.user_name}</span> lúc {new Date(log.created_at).toLocaleString('vi-VN')}
+                              Người thực hiện: <span className="text-indigo-600 font-bold">{log.user_name}</span> lúc {safeFormatDateTimeVN(log.created_at)}
                             </DialogDescription>
                           </DialogHeader>
                           <div className="flex-1 overflow-auto p-6 grid grid-cols-2 gap-6 bg-slate-50/50">

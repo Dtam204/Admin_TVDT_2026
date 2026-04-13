@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { safeFormatDateVN } from '@/lib/date';
 
 export default function BookLoanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -275,11 +276,11 @@ export default function BookLoanDetailPage({ params }: { params: Promise<{ id: s
                     <div className="space-y-4">
                        <div className="flex flex-col">
                           <span className="text-[10px] text-slate-400 font-bold">Lưu thông từ</span>
-                          <span className="text-xs font-black text-slate-700">{loan.loan_date ? new Date(loan.loan_date).toLocaleDateString('vi-VN') : 'Pending'}</span>
+                          <span className="text-xs font-black text-slate-700">{safeFormatDateVN(loan.loan_date, 'Pending')}</span>
                        </div>
                        <div className="flex flex-col">
                           <span className="text-[10px] text-slate-400 font-bold">Hạn thu hồi</span>
-                          <span className="text-xs font-black text-indigo-600">{loan.due_date ? new Date(loan.due_date).toLocaleDateString('vi-VN') : 'Pending'}</span>
+                          <span className="text-xs font-black text-indigo-600">{safeFormatDateVN(loan.due_date, 'Pending')}</span>
                        </div>
                     </div>
                  </div>

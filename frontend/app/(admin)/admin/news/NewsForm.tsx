@@ -507,7 +507,9 @@ export default function NewsForm({
                             variant="outline" 
                             size="sm"
                             onClick={() => {
-                              const titleText = typeof formData.title === 'string' ? formData.title : (formData.title as any)?.vi || '';
+                              const titleText = typeof formData.title === 'string'
+                                ? formData.title
+                                : (Object.values((formData.title as any) || {}).find((v: any) => typeof v === 'string' && v.trim()) as string) || '';
                               setFormData({ ...formData, slug: generateSlug(titleText) });
                               setSlugManuallyEdited(false);
                             }}

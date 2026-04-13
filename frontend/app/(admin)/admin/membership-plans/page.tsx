@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMembershipPlans, useDeleteMembershipPlan } from '@/lib/hooks/useMembershipPlans';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,10 +24,33 @@ import { Plus, Search, Edit, Trash2, Package } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
+const toFeatureCount = (value: any) => {
+  if (!value) return 0;
+  if (Array.isArray(value)) return value.filter(Boolean).length;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.filter(Boolean).length;
+      if (parsed && typeof parsed === 'object') return Object.values(parsed).filter(Boolean).length;
+    } catch {
+      return value.split(/\r?\n|,/).map((x) => x.trim()).filter(Boolean).length;
+    }
+  }
+  if (typeof value === 'object') return Object.values(value).filter(Boolean).length;
+  return 0;
+};
+
+const formatVnd = (amount: any) => `${Number(amount || 0).toLocaleString('vi-VN')}đ`;
+
 export default function MembershipPlansPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<string>('all');
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const { data, isLoading } = useMembershipPlans({ 
     page, 
@@ -92,17 +115,21 @@ export default function MembershipPlansPage() {
           />
         </div>
         
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Trạng thái" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-          </SelectContent>
-        </Select>
+        {isMounted ? (
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Trạng thái" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="w-[200px] h-10 rounded-md border bg-background" />
+        )}
       </div>
 
       {/* Table */}
@@ -113,6 +140,9 @@ export default function MembershipPlansPage() {
               <TableHead>ID</TableHead>
               <TableHead>Tên Hạng Thẻ</TableHead>
               <TableHead>Phân cấp (Tier)</TableHead>
+              <TableHead>Giá / Thời hạn</TableHead>
+              <TableHead>Quyền lợi chính</TableHead>
+              <TableHead>Digital</TableHead>
               <TableHead className="text-center">Trạng thái</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
@@ -120,13 +150,13 @@ export default function MembershipPlansPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   Đang tải...
                 </TableCell>
               </TableRow>
             ) : data?.data?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   Chưa có dữ liệu
                 </TableCell>
               </TableRow>
@@ -140,12 +170,18 @@ export default function MembershipPlansPage() {
                   if (typeof nameField === 'string') {
                     try {
                       const parsed = JSON.parse(nameField);
-                      displayName = parsed.vi || parsed.en || parsed.ja || nameField;
+                      if (parsed && typeof parsed === 'object') {
+                        const firstString = Object.values(parsed).find((v) => typeof v === 'string' && String(v).trim());
+                        displayName = (firstString as string) || nameField;
+                      } else {
+                        displayName = nameField;
+                      }
                     } catch {
                       displayName = nameField;
                     }
                   } else if (typeof nameField === 'object') {
-                    displayName = nameField.vi || nameField.en || nameField.ja || 'N/A';
+                    const firstString = Object.values(nameField).find((v) => typeof v === 'string' && String(v).trim());
+                    displayName = (firstString as string) || 'N/A';
                   } else {
                     displayName = String(nameField);
                   }
@@ -159,6 +195,23 @@ export default function MembershipPlansPage() {
                       <Badge variant="outline" className="uppercase font-mono">
                         {item.tier_code || 'basic'}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm font-semibold">{formatVnd(item.price)}</div>
+                      <div className="text-xs text-muted-foreground">{item.duration_days || 0} ngày</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-xs">
+                        <div>Mượn: <span className="font-semibold">{item.max_books_borrowed || 0}</span></div>
+                        <div>Gia hạn: <span className="font-semibold">{item.max_renewal_limit || 0}</span></div>
+                        <div>Features: <span className="font-semibold">{toFeatureCount(item.features)}</span></div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1 text-xs">
+                        <Badge variant={item.allow_digital_read ? 'default' : 'secondary'} className="w-fit">{item.allow_digital_read ? 'Đọc online' : 'Không đọc số'}</Badge>
+                        <Badge variant={item.allow_download ? 'default' : 'secondary'} className="w-fit">{item.allow_download ? 'Tải offline' : 'Không tải'}</Badge>
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">{getStatusBadge(item.status)}</TableCell>
                     <TableCell className="text-right">

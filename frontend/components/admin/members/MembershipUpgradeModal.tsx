@@ -152,7 +152,7 @@ export function MembershipUpgradeModal({ member, isOpen, onClose }: MembershipUp
                         {plansData?.data?.map((plan: any) => (
                           <SelectItem key={plan.id} value={plan.id.toString()} className="font-bold py-2">
                             <div className="flex justify-between items-center w-full min-w-[200px]">
-                              <span className="text-[9px] uppercase tracking-tight">{plan.name?.vi || plan.name}</span>
+                              <span className="text-[9px] uppercase tracking-tight">{typeof plan.name === 'object' ? (Object.values(plan.name).find((v: any) => typeof v === 'string' && v.trim()) || 'N/A') : (plan.name || 'N/A')}</span>
                               <span className="text-[9px] text-indigo-600 font-black ml-4">{Number(plan.price).toLocaleString()}đ</span>
                             </div>
                           </SelectItem>

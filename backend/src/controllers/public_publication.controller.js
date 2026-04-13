@@ -148,6 +148,150 @@ const normalizeDigitizedFiles = (files = []) => {
   });
 };
 
+const normalizeChapters = (toc = [], totalPages = 0) => {
+  if (!Array.isArray(toc) || toc.length === 0) return [];
+
+  return toc.map((item, idx) => {
+    if (typeof item === 'string') {
+      return {
+        id: `chapter-${idx + 1}`,
+        title: item,
+        order: idx + 1,
+        start_page: idx + 1,
+        end_page: idx + 1,
+        page_range: `${idx + 1}-${idx + 1}`,
+      };
+    }
+
+    const start = Number(
+      item?.start_page ||
+      item?.page_from ||
+      item?.from ||
+      item?.page ||
+      item?.start ||
+      idx + 1
+    );
+
+    const endRaw = Number(
+      item?.end_page ||
+      item?.page_to ||
+      item?.to ||
+      item?.end ||
+      start
+    );
+
+    const startPage = Number.isFinite(start) && start > 0 ? start : idx + 1;
+    let endPage = Number.isFinite(endRaw) && endRaw > 0 ? endRaw : startPage;
+    if (endPage < startPage) endPage = startPage;
+    if (totalPages > 0 && endPage > totalPages) endPage = totalPages;
+
+    return {
+      id: item?.id || `chapter-${idx + 1}`,
+      title: item?.title || item?.name || item?.label || `Chương ${idx + 1}`,
+      order: Number(item?.order || idx + 1),
+      start_page: startPage,
+      end_page: endPage,
+      page_range: `${startPage}-${endPage}`,
+    };
+  });
+};
+
+const extractFullTextPayload = (pub = {}) => {
+  const digitalContent = pub.digital_content || {};
+  const metadata = pub.metadata || {};
+
+  const candidates = [
+    digitalContent.full_text_html,
+    digitalContent.fullTextHtml,
+    metadata.full_text_html,
+    metadata.fullTextHtml,
+    digitalContent.full_text_raw,
+    digitalContent.fullText,
+    metadata.full_text_raw,
+    metadata.fullText,
+    digitalContent.text,
+    digitalContent.content,
+    metadata.content,
+  ];
+
+  let content = '';
+  for (const source of candidates) {
+    if (typeof source === 'string' && source.trim()) {
+      content = source.trim();
+      break;
+    }
+  }
+
+  if (!content) {
+    return {
+      enabled: false,
+      format: null,
+      content: '',
+      word_count: 0,
+      excerpt: '',
+    };
+  }
+
+  const isHtml = /<[^>]+>/g.test(content);
+  const plain = isHtml ? content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : content;
+  const words = plain ? plain.split(/\s+/).filter(Boolean) : [];
+
+  return {
+    enabled: true,
+    format: isHtml ? 'html' : 'text',
+    content,
+    word_count: words.length,
+    excerpt: plain.slice(0, 280),
+  };
+};
+
+const buildReadingContentDto = (pub = {}, canRead = false) => {
+  const isDigitalLike = Boolean(pub.is_digital || pub.media_type === 'Digital' || pub.media_type === 'Hybrid');
+  const totalPages = Number(pub.pages || 0);
+  const pdfUrl = pub.digital_file_url || null;
+  const previewPages = normalizePreviewPages(pub.preview_pages || []);
+  const chapters = normalizeChapters(pub.toc || [], totalPages);
+  const fullText = extractFullTextPayload(pub);
+
+  const pageModeEnabled = Boolean(isDigitalLike && pdfUrl && totalPages > 0);
+  const chapterModeEnabled = Boolean(pageModeEnabled && chapters.length > 0);
+  const scrollModeEnabled = Boolean(fullText.enabled);
+
+  const availableModes = [
+    pageModeEnabled ? 'page' : null,
+    chapterModeEnabled ? 'chapter' : null,
+    scrollModeEnabled ? 'scroll' : null,
+  ].filter(Boolean);
+
+  const defaultMode = availableModes[0] || null;
+
+  return {
+    can_read: canRead,
+    source_policy: {
+      page: 'pdf',
+      chapter: 'pdf',
+      scroll: 'fulltext',
+    },
+    available_modes: availableModes,
+    default_mode: defaultMode,
+    page_mode: {
+      enabled: pageModeEnabled,
+      pdf_url: pdfUrl,
+      total_pages: totalPages,
+      preview_pages: previewPages,
+    },
+    chapter_mode: {
+      enabled: chapterModeEnabled,
+      total_chapters: chapters.length,
+      chapters,
+    },
+    scroll_mode: {
+      enabled: scrollModeEnabled,
+      full_text: fullText,
+    },
+  };
+};
+
 const buildPublicationDetailDto = (pub, canRead) => ({
   id: pub.id,
   code: pub.code || null,
@@ -183,6 +327,7 @@ const buildPublicationDetailDto = (pub, canRead) => ({
   trailerInfo: normalizeTrailerInfo(pub.trailerInfo),
   preview_pages: normalizePreviewPages(pub.preview_pages || []),
   digitized_files: normalizeDigitizedFiles(pub.digitized_files || []),
+  reading_content: buildReadingContentDto(pub, canRead),
   user_interaction: pub.user_interaction || null,
 });
 
@@ -271,12 +416,83 @@ exports.getPublicationById = async (req, res, next) => {
     const userRank = tierRank[readerTier.toLowerCase() || 'basic'] || 1;
     const canRead = (pub.access_policy === 'basic') || (token && userRank >= reqRank);
 
+    let readingProgress = null;
+    if (userId) {
+      try {
+        const { rows: progressRows } = await pool.query(
+          `SELECT user_id, book_id, last_page, progress_percent, is_finished, last_read_at, updated_at
+           FROM user_reading_progress
+           WHERE user_id = $1 AND book_id = $2
+           LIMIT 1`,
+          [userId, pub.id]
+        );
+        if (progressRows.length > 0) {
+          readingProgress = progressRows[0];
+        }
+      } catch (e) {
+        console.warn('Không lấy được tiến độ đọc:', e.message);
+      }
+    }
+
+    const detailDto = buildPublicationDetailDto(pub, canRead);
+    detailDto.readingProgress = readingProgress;
+
     return sendResponse(
       res,
       200,
       "Lấy thông tin chi tiết ấn phẩm thành công",
-      buildPublicationDetailDto(pub, canRead)
+      detailDto
     );
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Lấy dữ liệu đọc online chuẩn cho 3 chế độ: trang/chương (PDF) và cuộn (fulltext)
+ */
+exports.getPublicationReadingContent = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    let userId = null;
+    let readerTier = 'basic';
+
+    if (token) {
+      const jwt = require('jsonwebtoken');
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+        userId = decoded.sub || decoded.id;
+        readerTier = decoded.tierCode || decoded.tier_code || 'basic';
+      } catch (_) {
+        // token không hợp lệ thì xử lý như khách
+      }
+    }
+
+    const pub = await PublicationService.getPublicationDetail(id, userId);
+    if (!pub) {
+      return sendResponse(res, 404, 'Không tìm thấy ấn phẩm trên hệ thống', null, ['Publication not found']);
+    }
+
+    const tierRank = { basic: 1, premium: 2, vip: 3 };
+    const reqRank = tierRank[pub.access_policy?.toLowerCase() || 'basic'] || 1;
+    const userRank = tierRank[readerTier.toLowerCase() || 'basic'] || 1;
+    const canRead = (pub.access_policy === 'basic') || (token && userRank >= reqRank);
+
+    const readingContent = buildReadingContentDto(pub, canRead);
+
+    return sendResponse(res, 200, 'Lấy dữ liệu đọc online thành công', {
+      publication: {
+        id: pub.id,
+        title: pub.title || '',
+        author: pub.author || '',
+        thumbnail: pub.thumbnail || pub.cover_image || null,
+        media_type: pub.media_type || 'Physical',
+        access_policy: pub.access_policy || 'basic',
+      },
+      reading_content: readingContent,
+    });
   } catch (error) {
     return next(error);
   }

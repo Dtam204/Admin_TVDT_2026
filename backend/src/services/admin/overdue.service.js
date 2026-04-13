@@ -1,5 +1,6 @@
 const { pool } = require('../../config/database');
 const NotificationService = require('./notification.service');
+const { toPlainText } = require('../../utils/locale');
 
 /**
  * Overdue Service (Synchronized Phase 2)
@@ -19,7 +20,7 @@ class OverdueService {
       SELECT 
         bl.id as loan_id, bl.due_date,
         m.id as member_id, m.full_name,
-        b.id as book_id, b.title->>'vi' as book_title
+        b.id as book_id, b.title::text as book_title
       FROM book_loans bl
       JOIN members m ON bl.member_id = m.id
       JOIN books b ON bl.book_id = b.id
@@ -42,14 +43,8 @@ class OverdueService {
           member_id: loan.member_id,
           type: 'overdue',
           target_type: 'individual',
-          title: {
-            vi: 'Nhắc nhở: Sách mượn đã quá hạn',
-            en: 'Reminder: Overdue Book'
-          },
-          message: {
-            vi: `Cuốn sách "${loan.book_title}" bạn mượn đã quá hạn từ ngày ${new Date(loan.due_date).toLocaleDateString()}. Vui lòng trả sách sớm để tránh phát sinh chi phí.`,
-            en: `The book "${loan.book_title}" you borrowed is overdue since ${new Date(loan.due_date).toLocaleDateString()}. Please return it soon.`
-          },
+          title: 'Nhắc nhở: Sách mượn đã quá hạn',
+          message: `Cuốn sách "${toPlainText(loan.book_title, 'N/A')}" bạn mượn đã quá hạn từ ngày ${new Date(loan.due_date).toLocaleDateString()}. Vui lòng trả sách sớm để tránh phát sinh chi phí.`,
           related_id: loan.loan_id,
           related_type: 'book_loan',
           metadata: {

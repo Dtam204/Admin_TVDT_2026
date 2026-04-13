@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { safeFormatDateTimeVN } from '@/lib/date';
 
 interface Comment {
   id: number;
@@ -115,7 +116,7 @@ export default function NewsCommentsManager({ newsId }: NewsCommentsManagerProps
                   </span>
                 )}
               </div>
-              <div className="text-[10px] text-gray-400">{new Date(comment.created_at).toLocaleString('vi-VN')}</div>
+              <div className="text-[10px] text-gray-400">{safeFormatDateTimeVN(comment.created_at)}</div>
             </div>
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

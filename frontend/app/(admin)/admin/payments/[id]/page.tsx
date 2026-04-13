@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, CheckCircle2, AlertCircle, Clock, RefreshCcw, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { safeFormatDateTimeVN } from '@/lib/date';
 
 function getStatusBadge(status: string) {
   const key = String(status || '').toLowerCase();
@@ -96,7 +97,7 @@ export default function PaymentDetailPage({ params }: { params: Promise<{ id: st
           </div>
           <div className="p-3 rounded-md bg-slate-50 border">
             <p className="text-xs text-slate-500 mb-1">Created At</p>
-            <p className="font-semibold">{item.created_at ? new Date(item.created_at).toLocaleString('vi-VN') : '-'}</p>
+            <p className="font-semibold">{safeFormatDateTimeVN(item.created_at, '-')}</p>
           </div>
         </div>
 

@@ -363,9 +363,9 @@ export default function AdminHomepagePage() {
                             <Button size="sm" onClick={() => {
                               const slides = getBlockData('RECOMMEND', 'slides', []) as any[];
                               addArrayItem('RECOMMEND', 'slides', {
-                                title: { vi: '', en: '', ja: '' },
-                                description: { vi: '', en: '', ja: '' },
-                                buttonText: { vi: 'Xem ngay', en: 'View', ja: '見る' },
+                                title: '',
+                                description: '',
+                                buttonText: 'Xem ngay',
                                 buttonLink: '', image: '',
                               });
                               setEditingSlideIndex(slides.length);

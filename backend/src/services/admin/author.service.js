@@ -1,5 +1,6 @@
 const { pool } = require('../../config/database');
 const AuditService = require('./audit.service');
+const { toPlainText } = require('../../utils/locale');
 
 /**
  * Service xử lý nghiệp vụ Tác giả (Authors) chuyên nghiệp
@@ -55,8 +56,8 @@ class AuthorService {
 
     const data = rows.map(a => ({
       ...a,
-      name: a.name?.vi || a.name || '',
-      bio: a.bio?.vi || a.bio || ''
+      name: toPlainText(a.name, ''),
+      bio: toPlainText(a.bio, '')
     }));
 
     return {
@@ -83,8 +84,8 @@ class AuthorService {
     
     return {
       ...rows[0],
-      name: rows[0].name?.vi || rows[0].name || '',
-      bio: rows[0].bio?.vi || rows[0].bio || ''
+      name: toPlainText(rows[0].name, ''),
+      bio: toPlainText(rows[0].bio, '')
     };
   }
 
@@ -99,7 +100,7 @@ class AuthorService {
       website, social_links, featured, status 
     } = data;
     
-    const nameStr = typeof name === 'string' ? name : (name.vi || name.en || 'author');
+    const nameStr = toPlainText(name, 'author');
     let slug = customSlug;
     if (!slug) {
       slug = nameStr.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -122,12 +123,12 @@ class AuthorService {
     `;
 
     const values = [
-      JSON.stringify({ vi: nameStr }),
+      nameStr,
       slug,
       JSON.stringify(pseudonyms || {}),
       professional_title || null,
       gender || null,
-      JSON.stringify({ vi: typeof bio === 'string' ? bio : (bio?.vi || '') }),
+      toPlainText(bio, ''),
       avatar || null,
       cover_image || null,
       birth_year || null,
@@ -179,12 +180,12 @@ class AuthorService {
 
     if (data.name) {
       fields.push(`name = $${idx++}`);
-      values.push(JSON.stringify({ vi: typeof data.name === 'string' ? data.name : (data.name.vi || '') }));
+      values.push(toPlainText(data.name, ''));
     }
 
     if (data.bio) {
       fields.push(`bio = $${idx++}`);
-      values.push(JSON.stringify({ vi: typeof data.bio === 'string' ? data.bio : (data.bio.vi || '') }));
+      values.push(toPlainText(data.bio, ''));
     }
 
     const jsonFields = ['pseudonyms', 'education', 'awards', 'career_highlights', 'social_links'];

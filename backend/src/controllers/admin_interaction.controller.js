@@ -11,12 +11,13 @@ class AdminInteractionController {
    */
   static async getReviews(req, res) {
     try {
-      const { page, limit, status, bookId } = req.query;
+      const { page, limit, status, bookId, search } = req.query;
       const result = await InteractionService.getAllReviews({
         page: parseInt(page) || 1,
         limit: parseInt(limit) || 20,
         status,
-        bookId
+        bookId,
+        search
       });
       res.json({ success: true, ...result });
     } catch (error) {

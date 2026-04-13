@@ -39,10 +39,19 @@ export const LocaleInput: React.FC<LocaleInputProps> = ({
   const currentLocaleConfig = locales.find((l) => l.id === locale);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const localeIds = locales.map((l) => l.id) as Locale[];
+    const fallbackObject = localeIds.reduce((acc, id) => {
+      acc[id] = '';
+      return acc;
+    }, {} as Record<Locale, string>);
+
     // Đảm bảo value là object
     const valObj = (typeof value === 'object' && value !== null && !Array.isArray(value)) 
       ? { ...value } 
-      : { vi: typeof value === 'string' ? value : '', en: '', ja: '' };
+      : {
+          ...fallbackObject,
+          [locale]: typeof value === 'string' ? value : '',
+        };
 
     onChange({
       ...valObj,

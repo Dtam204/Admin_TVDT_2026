@@ -1,5 +1,6 @@
 const { pool } = require('../../config/database');
 const AuditService = require('./audit.service');
+const { toPlainText } = require('../../utils/locale');
 
 /**
  * Service xử lý nghiệp vụ Bộ sưu tập (Collections) hoàn thiện
@@ -17,8 +18,8 @@ class CollectionService {
     
     return rows.map(c => ({
       ...c,
-      name: c.name?.vi || c.name || '',
-      description: c.description?.vi || c.description || ''
+      name: toPlainText(c.name, ''),
+      description: toPlainText(c.description, '')
     }));
   }
 
@@ -34,8 +35,8 @@ class CollectionService {
 
     return {
       ...rows[0],
-      name: rows[0].name?.vi || rows[0].name || '',
-      description: rows[0].description?.vi || rows[0].description || ''
+      name: toPlainText(rows[0].name, ''),
+      description: toPlainText(rows[0].description, '')
     };
   }
 
@@ -45,14 +46,14 @@ class CollectionService {
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
-    const nameStr = typeof data.name === 'string' ? data.name : (data.name?.vi || '');
-    const descStr = typeof data.description === 'string' ? data.description : (data.description?.vi || '');
+    const nameStr = toPlainText(data.name, '');
+    const descStr = toPlainText(data.description, '');
 
     const values = [
-      JSON.stringify({ vi: nameStr }), 
+      nameStr, 
       data.parent_id, 
       data.icon, 
-      JSON.stringify({ vi: descStr }), 
+      descStr, 
       data.order_index || 0, 
       data.is_active !== false
     ];
@@ -78,14 +79,14 @@ class CollectionService {
       WHERE id = $7
       RETURNING *
     `;
-    const nameStr = typeof data.name === 'string' ? data.name : (data.name?.vi || '');
-    const descStr = typeof data.description === 'string' ? data.description : (data.description?.vi || '');
+    const nameStr = toPlainText(data.name, '');
+    const descStr = toPlainText(data.description, '');
 
     const values = [
-      JSON.stringify({ vi: nameStr }), 
+      nameStr, 
       data.parent_id, 
       data.icon, 
-      JSON.stringify({ vi: descStr }), 
+      descStr, 
       data.order_index, 
       data.is_active, 
       id

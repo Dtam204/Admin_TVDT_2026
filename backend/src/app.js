@@ -30,7 +30,6 @@ const readerRoutes = require('./routes/reader.routes');
 const publicPublicationRoutes = require('./routes/public_publication.routes');
 const publicHomeRoutes = require('./routes/public_home.routes');
 const publicSearchRoutes = require('./routes/public_search.routes');
-const publicMembershipPlansRoutes = require('./routes/public_membershipPlans.routes');
 const adminPublicationRoutes = require('./routes/admin_publication.routes');
 const collectionRoutes = require('./routes/collection.routes');
 const authorRoutes = require('./routes/authors.routes');
@@ -74,6 +73,72 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(compression());
 app.use(logger);
+
+// Chuẩn hóa mọi field locale-like về text thường để tránh hiển thị dạng {"vi": "..."} ở frontend.
+app.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+
+  const isLocaleLikeObject = (obj) => {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+    const keys = Object.keys(obj);
+    if (keys.length === 0) return false;
+    const localeKeys = ['vi', 'en', 'ja', 'text'];
+    return keys.every((k) => localeKeys.includes(k));
+  };
+
+  const pickText = (obj) => {
+    if (typeof obj.text === 'string' && obj.text.trim()) return obj.text;
+    if (typeof obj.vi === 'string' && obj.vi.trim()) return obj.vi;
+    if (typeof obj.en === 'string' && obj.en.trim()) return obj.en;
+    if (typeof obj.ja === 'string' && obj.ja.trim()) return obj.ja;
+    const firstString = Object.values(obj).find((v) => typeof v === 'string' && v.trim());
+    return firstString || '';
+  };
+
+  const normalizePayload = (value) => {
+    if (value === null || value === undefined) return value;
+
+    if (value instanceof Date) {
+      const time = value.getTime();
+      return Number.isNaN(time) ? null : value.toISOString();
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => normalizePayload(item));
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (isLocaleLikeObject(parsed)) return pickText(parsed);
+          return normalizePayload(parsed);
+        } catch {
+          return value;
+        }
+      }
+      return value;
+    }
+
+    if (typeof value === 'object') {
+      if (isLocaleLikeObject(value)) {
+        return pickText(value);
+      }
+
+      const result = {};
+      for (const [key, val] of Object.entries(value)) {
+        result[key] = normalizePayload(val);
+      }
+      return result;
+    }
+
+    return value;
+  };
+
+  res.json = (payload) => originalJson(normalizePayload(payload));
+  next();
+});
 
 app.use((req, res, next) => {
   const originalStatus = res.status;
@@ -157,7 +222,6 @@ app.use('/api/public/comments', publicCommentRoutes);
 app.use('/api/public/resource', publicResourceRoutes);
 app.use('/api/public/notifications', publicNotificationRoutes);
 app.use('/api/public/news', publicNewsRoutes);
-app.use('/api/public/membership-plans', publicMembershipPlansRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api', healthRoutes);
 

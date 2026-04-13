@@ -6,12 +6,13 @@ Tài liệu này dành cho đội ngũ lập trình viên Mobile (Flutter/React 
 ---
 
 ## 1. TỔNG QUAN KIẾN TRÚC TÌM KIẾM
-Hệ thống cung cấp **4 API** xử lý riêng biệt cho 4 hành vi tra cứu của người dùng trên App. Toàn bộ các API cũ rườm rà dư thừa đã được gỡ bỏ khỏi hệ thống.
+Hệ thống cung cấp **5 API** xử lý riêng biệt cho các hành vi tra cứu của người dùng trên App.
 
 1. **AI Smart Search (`/ai-smart`)**: Xử lý thanh tìm kiếm tự do (Natural Language).
 2. **Autocomplete (`/autocomplete`)**: Gợi ý siêu tốc khi người dùng đang gõ phím.
 3. **Tra cứu tiêu chuẩn (`/publications`)**: Tìm sách truyền thống bằng bộ lọc (Filter).
 4. **Quét Barcode/QR (`/barcode`)**: Tra nhanh bằng camera di động.
+5. **Gợi ý Tin tức (`/ai-news-suggest`)**: Gợi ý bài viết cho tab Tin tức.
 
 ---
 
@@ -78,6 +79,17 @@ Sử dụng khi user bấm vào nút [📷 Máy ảnh] trên App.
 
 - **Endpoint**: `GET /api/public/search/barcode/:code`
 - **Response**: Trả về trực tiếp JSON chi tiết của **duy nhất 1 cuốn sách** (Mô hình `Publication Detail`) để App đẩy thẳng sang màn hình Đọc Sách.
+
+---
+
+### 2.5. Gợi ý Tin tức cho News Tab
+Sử dụng cho màn hình Tin tức khi người dùng nhập từ khóa tìm bài viết.
+
+- **Endpoint**: `GET /api/public/search/ai-news-suggest?query=lap+trinh&pageIndex=1&pageSize=10`
+- **Response**:
+  - `data`: mảng bài viết tin tức
+  - `pagination`: thông tin phân trang
+  - `ai_interpreted`: thông tin từ khóa đã phân tích
 
 ---
 

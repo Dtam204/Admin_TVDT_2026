@@ -61,6 +61,7 @@ import NextImage from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { removeAuthToken } from "@/lib/auth/token";
+import { adminApiCall } from "@/lib/api/admin/client";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -223,6 +224,13 @@ const menuItems: AdminNavItem[] = [
         requiredPermissions: ["notifications.view", "notifications.manage", "admin"],
       },
       {
+        id: "internal-notifications",
+        label: "Thông báo nội bộ",
+        href: "/admin/internal-notifications",
+        icon: Bell,
+        requiredPermissions: ["dashboard.view", "admin"],
+      },
+      {
         id: "reviews",
         label: "Đánh giá & Phản hồi",
         href: "/admin/reviews",
@@ -345,6 +353,17 @@ type CmsUser = {
   permissions?: string[];
 };
 
+type SystemAlert = {
+  id: string;
+  type: string;
+  severity: "high" | "medium" | "info";
+  title: string;
+  message: string;
+  href?: string;
+  count?: number;
+  created_at?: string;
+};
+
 function getUserPermissionsFromCookie(): Set<string> {
   if (typeof document === "undefined") return new Set();
   try {
@@ -379,6 +398,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
   const [headerElevated, setHeaderElevated] = useState(false);
+  const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(false);
+  const [seenAlertIds, setSeenAlertIds] = useState<Set<string>>(new Set());
+  const [bellMenuOpen, setBellMenuOpen] = useState(false);
 
   const pathname = usePathname() || "/admin";
   const router = useRouter();
@@ -392,6 +415,26 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     const permissions = getUserPermissionsFromCookie();
     setUserPermissions(permissions);
   }, []);
+
+  // Khôi phục trạng thái "đã xem" của notification center
+  useEffect(() => {
+    if (!mounted || typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("admin_seen_alert_ids");
+      if (!raw) return;
+      const ids = JSON.parse(raw);
+      if (Array.isArray(ids)) {
+        setSeenAlertIds(new Set(ids.filter((id) => typeof id === "string")));
+      }
+    } catch {
+      // ignore parse error
+    }
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted || typeof window === "undefined") return;
+    window.localStorage.setItem("admin_seen_alert_ids", JSON.stringify(Array.from(seenAlertIds)));
+  }, [seenAlertIds, mounted]);
 
   // Không filter menu items trong useMemo để tránh hydration mismatch
   // Filter sẽ được thực hiện trong quá trình render dựa trên mounted state
@@ -459,6 +502,88 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    let active = true;
+    const fetchAlerts = async () => {
+      try {
+        setAlertsLoading(true);
+        const response = await adminApiCall<{ success: boolean; data?: { alerts?: SystemAlert[] } }>("/api/admin/dashboard/alerts");
+        if (!active) return;
+        const alerts = Array.isArray(response?.data?.alerts) ? response.data.alerts : [];
+        setSystemAlerts(alerts);
+      } catch {
+        if (active) {
+          setSystemAlerts([]);
+        }
+      } finally {
+        if (active) {
+          setAlertsLoading(false);
+        }
+      }
+    };
+
+    fetchAlerts();
+    const timer = window.setInterval(fetchAlerts, 60000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!bellMenuOpen || systemAlerts.length === 0) return;
+    setSeenAlertIds((prev) => {
+      const next = new Set(prev);
+      for (const alert of systemAlerts) {
+        next.add(alert.id);
+      }
+      return next;
+    });
+  }, [bellMenuOpen, systemAlerts]);
+
+  const unreadAlertCount = systemAlerts.reduce((sum, alert) => {
+    if (seenAlertIds.has(alert.id)) return sum;
+    return sum + (Number(alert.count) || 1);
+  }, 0);
+
+  const formatTimeAgo = (value?: string) => {
+    if (!value) return "";
+    const createdAt = new Date(value).getTime();
+    if (Number.isNaN(createdAt)) return "";
+    const diff = Date.now() - createdAt;
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+
+    if (diff < hour) return `${Math.max(1, Math.floor(diff / minute))} phút trước`;
+    if (diff < day) return `${Math.floor(diff / hour)} giờ trước`;
+    return `${Math.floor(diff / day)} ngày trước`;
+  };
+
+  const getAlertTone = (severity: SystemAlert["severity"]) => {
+    if (severity === "high") {
+      return {
+        badge: "bg-rose-50 text-rose-700 border-rose-200",
+        dot: "bg-rose-500",
+        label: "Khẩn cấp",
+      };
+    }
+    if (severity === "medium") {
+      return {
+        badge: "bg-amber-50 text-amber-700 border-amber-200",
+        dot: "bg-amber-500",
+        label: "Cần xử lý",
+      };
+    }
+    return {
+      badge: "bg-sky-50 text-sky-700 border-sky-200",
+      dot: "bg-sky-500",
+      label: "Thông tin",
+    };
+  };
 
   const handleLogout = async () => {
     try {
@@ -700,10 +825,95 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </div>
 
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-              </Button>
+              <DropdownMenu open={bellMenuOpen} onOpenChange={setBellMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="w-5 h-5" />
+                    {unreadAlertCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center border-2 border-white">
+                        {unreadAlertCount > 99 ? "99+" : unreadAlertCount}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[390px] p-0 rounded-2xl border-slate-200 overflow-hidden shadow-2xl shadow-slate-900/15">
+                  <div className="px-4 py-4 border-b border-slate-100 bg-gradient-to-br from-slate-50 via-white to-sky-50 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Thông báo nội bộ</p>
+                      <p className="text-xs text-slate-500">Các cảnh báo vận hành cần xử lý trên hệ thống quản trị</p>
+                    </div>
+                    {unreadAlertCount > 0 && (
+                      <span className="text-[10px] font-black bg-rose-100 text-rose-700 px-2.5 py-1 rounded-full border border-rose-200">
+                        {unreadAlertCount} mới
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="max-h-[420px] overflow-y-auto p-2.5 space-y-2 bg-white">
+                    {alertsLoading && (
+                      <div className="px-3 py-8 text-center text-xs text-slate-500">Đang tải danh sách thông báo...</div>
+                    )}
+
+                    {!alertsLoading && systemAlerts.length === 0 && (
+                      <div className="px-3 py-8 text-center text-sm text-slate-500">Không có cảnh báo cần xử lý.</div>
+                    )}
+
+                    {!alertsLoading &&
+                      systemAlerts.map((alert) => {
+                        const tone = getAlertTone(alert.severity);
+                        return (
+                          <button
+                            key={alert.id}
+                            type="button"
+                            onClick={() => {
+                              if (alert.href) {
+                                setBellMenuOpen(false);
+                                router.push(alert.href);
+                              }
+                            }}
+                            className="w-full text-left px-3.5 py-3 rounded-xl bg-slate-50/70 hover:bg-white transition-all border border-slate-200 hover:border-slate-300 hover:shadow-md"
+                          >
+                            <div className="flex items-start gap-2">
+                              <span className={`mt-1.5 w-2.5 h-2.5 rounded-full ${tone.dot} shadow-sm`} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-[13px] font-bold text-slate-900 truncate">{alert.title}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${tone.badge}`}>
+                                      {tone.label}
+                                    </span>
+                                    {Number(alert.count) > 0 && (
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-300 bg-white text-slate-700">
+                                        {alert.count}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <p className="text-[12px] text-slate-600 leading-relaxed mt-1 line-clamp-2">{alert.message}</p>
+                                {alert.created_at && (
+                                  <p className="text-[10px] text-slate-400 mt-1.5">{formatTimeAgo(alert.created_at)}</p>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
+
+                  <div className="px-3 py-2.5 border-t border-slate-100 bg-slate-50">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-center text-xs font-bold text-slate-700 hover:text-indigo-600 bg-white border border-slate-200 hover:border-indigo-200"
+                      onClick={() => {
+                        setBellMenuOpen(false);
+                        router.push('/admin/internal-notifications');
+                      }}
+                    >
+                      Mở trang thông báo nội bộ
+                    </Button>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

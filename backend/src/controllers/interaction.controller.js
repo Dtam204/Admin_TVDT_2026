@@ -43,7 +43,7 @@ const toFloat = (value, fallback = 0) => {
  */
 exports.getBookReviews = async (req, res, next) => {
   try {
-    const { id: bookId } = req.params;
+    const bookId = req.params.id || req.params.bookId;
     const { rows } = await pool.query(`
       SELECT 
         br.id, br.member_id as "memberId", br.rating, br.comment, 
@@ -81,7 +81,7 @@ exports.getBookReviews = async (req, res, next) => {
 exports.submitReview = async (req, res, next) => {
   const client = await pool.connect();
   try {
-    const { id: bookId } = req.params;
+    const bookId = req.params.id || req.params.bookId;
     const memberId = (req.user && (req.user.sub || req.user.id)) ? (req.user.sub || req.user.id) : null;
     const { rating, comment } = req.body;
 

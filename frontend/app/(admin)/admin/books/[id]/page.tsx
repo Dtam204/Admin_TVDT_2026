@@ -45,6 +45,7 @@ import {
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { MultiAuthorSelect } from '@/components/admin/MultiAuthorSelect';
+import { safeFormatDateVN } from '@/lib/date';
 
 // ─── LoanHistoryTab ─────────────────────────────────────────────────────────
 function LoanHistoryTab({ bookId }: { bookId: string }) {
@@ -59,7 +60,7 @@ function LoanHistoryTab({ bookId }: { bookId: string }) {
     cancelled: { label: 'Đã hủy',       cls: 'bg-slate-50 text-slate-400 border-slate-100',   icon: RotateCcw },
   };
 
-  const fmt = (d?: string | null) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
+  const fmt = (d?: string | null) => safeFormatDateVN(d, '—');
 
   if (isLoading) return (
     <div className="p-16 text-center">

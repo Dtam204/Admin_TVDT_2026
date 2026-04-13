@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { cn } from '@/components/ui/utils';
 import { ExtensionModal } from '@/components/admin/loans/ExtensionModal';
 import { ReturnConfirmModal } from '@/components/admin/loans/ReturnConfirmModal';
+import { safeFormatDateVN } from '@/lib/date';
 
 export default function BookLoansPage() {
   const [page, setPage] = useState(1);
@@ -107,8 +108,8 @@ export default function BookLoansPage() {
           member_id: loan.member_id || loan.memberId,
           type: 'overdue',
           target_type: 'individual',
-          title: { vi: 'Nhắc nhở: Sách mượn đã quá hạn' },
-          message: { vi: `Cuốn sách "${loan.book_title || loan.publicationName}" bạn đang mượn đã quá hạn. Vui lòng sắp xếp thời gian trả sách.` },
+          title: 'Nhắc nhở: Sách mượn đã quá hạn',
+          message: `Cuốn sách "${loan.book_title || loan.publicationName}" bạn đang mượn đã quá hạn. Vui lòng sắp xếp thời gian trả sách.`,
           related_id: loan.id,
           related_type: 'book_loan'
         })
@@ -258,7 +259,7 @@ export default function BookLoansPage() {
                              </div>
                           </TableCell>
                             <TableCell className="font-bold text-slate-600 text-xs">{res.publicationName || res.book_title}</TableCell>
-                            <TableCell className="text-slate-500 font-medium text-xs">{new Date(res.registerDate || res.requested_at).toLocaleDateString('vi-VN')}</TableCell>
+                            <TableCell className="text-slate-500 font-medium text-xs">{safeFormatDateVN(res.registerDate || res.requested_at)}</TableCell>
                             <TableCell className="text-center pr-6">
                               <Badge className="bg-indigo-100 text-indigo-600 border-none px-3 py-0.5 rounded-full text-[9px] font-black uppercase">Ưu tiên</Badge>
                             </TableCell>
@@ -333,12 +334,12 @@ export default function BookLoansPage() {
                              <div className="space-y-1">
                                 <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500">
                                    <Calendar className="w-3 h-3" />
-                                   <span>{ (item.borrowDate || item.loan_date) ? new Date(item.borrowDate || item.loan_date).toLocaleDateString('vi-VN') : 'Pending' }</span>
+                                    <span>{safeFormatDateVN(item.borrowDate || item.loan_date, 'Pending')}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-800">
                                    <Clock className="w-3 h-3 text-slate-400" />
                                    <span className={cn(item.status === 'overdue' && "text-red-500")}>
-                                      Hạn: { (item.dueDate || item.due_date) ? new Date(item.dueDate || item.due_date).toLocaleDateString('vi-VN') : '-' }
+                                      Hạn: {safeFormatDateVN(item.dueDate || item.due_date, '-')}
                                    </span>
                                 </div>
                              </div>

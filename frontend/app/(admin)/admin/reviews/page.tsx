@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { safeFormatDateVN } from '@/lib/date';
 
 export default function ReviewsPage() {
   const queryClient = useQueryClient();
@@ -28,10 +29,19 @@ export default function ReviewsPage() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   // 1. Fetch Reviews
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['admin-reviews', statusFilter, searchTerm],
-    queryFn: () => adminApiCall(`/api/admin/library/reviews?status=${statusFilter || ''}&search=${searchTerm}`),
+    queryFn: async () => {
+      const response: any = await adminApiCall(`/api/admin/library/reviews?status=${statusFilter || ''}&search=${searchTerm}`);
+      const payload = response?.data?.reviews ? response.data : response;
+      return {
+        reviews: Array.isArray(payload?.reviews) ? payload.reviews : [],
+        pagination: payload?.pagination || null,
+      };
+    },
   });
+
+  const reviews = Array.isArray(data?.reviews) ? data.reviews : [];
 
   // 2. Mutation: Update Status (Duyệt/Ẩn)
   const { mutate: updateStatus } = useMutation({
@@ -175,7 +185,18 @@ export default function ReviewsPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : data?.reviews?.length === 0 ? (
+              ) : isError ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-96 text-center">
+                    <div className="flex flex-col items-center gap-6 opacity-80">
+                       <AlertTriangle className="w-16 h-16 stroke-rose-300" />
+                       <p className="font-bold text-lg text-rose-500">
+                         {(error as Error)?.message || 'Không thể tải danh sách đánh giá'}
+                       </p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : reviews.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-96 text-center">
                     <div className="flex flex-col items-center gap-6 opacity-30">
@@ -185,7 +206,7 @@ export default function ReviewsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                data?.reviews?.map((review: any) => (
+                reviews.map((review: any) => (
                   <TableRow key={review.id} className="hover:bg-slate-50/70 border-slate-50 group transition-all duration-300">
                     <TableCell className="pl-10 py-8">
                        <div className="flex items-center gap-4">
@@ -216,7 +237,7 @@ export default function ReviewsPage() {
                     <TableCell>
                        <div className="flex items-center gap-2 text-slate-400 font-medium text-xs">
                           <Calendar className="w-3.5 h-3.5" />
-                          {new Date(review.created_at).toLocaleDateString('vi-VN')}
+                          {safeFormatDateVN(review.created_at)}
                        </div>
                     </TableCell>
                     <TableCell className="pr-10 text-right">

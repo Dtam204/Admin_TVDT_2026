@@ -174,7 +174,28 @@ export const publicationsApi = {
   },
 
   getStats: async () => {
-    return adminApiCall('/api/admin/publications/dashboard/stats');
+    const response = await adminApiCall<any>('/api/admin/publications/dashboard/stats');
+    const raw = response?.data || {};
+
+    const totalPublications = Number(raw.totalPublications ?? raw.total_publications ?? 0);
+    const cooperatingPublications = Number(raw.cooperatingPublications ?? raw.cooperating_publications ?? 0);
+    const digitalOrHybridPublications = Number(raw.digitalOrHybridPublications ?? raw.digital_or_hybrid_publications ?? 0);
+    const totalCopies = Number(raw.totalCopies ?? raw.total_copies ?? 0);
+
+    return {
+      ...response,
+      data: {
+        ...raw,
+        totalPublications,
+        cooperatingPublications,
+        digitalOrHybridPublications,
+        totalCopies,
+        total_publications: totalPublications,
+        cooperating_publications: cooperatingPublications,
+        digital_or_hybrid_publications: digitalOrHybridPublications,
+        total_copies: totalCopies,
+      },
+    };
   },
 
   getStorageLocations: async () => {

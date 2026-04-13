@@ -28,6 +28,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { safeFormatDateTimeVN } from '@/lib/date';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
@@ -121,8 +122,8 @@ export default function NotificationsPage() {
     mutationFn: (data: any) => adminApiCall('/api/admin/notifications/send', {
       method: 'POST',
       body: JSON.stringify({
-        title: { vi: data.title },
-        message: { vi: data.body }, // Đổi từ body -> message cho đồng bộ Backend
+        title: data.title,
+        message: data.body,
         target_type: data.target_type,
         member_id: data.target_type === 'individual' ? parseInt(data.member_id) : null,
         metadata: {
@@ -461,12 +462,8 @@ export default function NotificationsPage() {
                                <Bell className="w-5 h-5" />
                             </div>
                             <div>
-                               <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                                  {typeof item.title === 'string' ? item.title : (item.title?.vi || 'N/A')}
-                               </div>
-                               <div className="text-[11px] text-slate-500 line-clamp-1 max-w-[300px]">
-                                  {typeof item.body === 'string' ? item.body : (item.body?.vi || 'N/A')}
-                               </div>
+                               <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{item.title || 'N/A'}</div>
+                               <div className="text-[11px] text-slate-500 line-clamp-1 max-w-[300px]">{item.message || item.body || 'N/A'}</div>
                             </div>
                           </div>
                         </TableCell>
@@ -483,7 +480,7 @@ export default function NotificationsPage() {
                         </TableCell>
                         <TableCell className="text-slate-400 text-xs font-medium">
                            <div className="flex items-center gap-2">
-                             <Clock className="w-3.5 h-3.5" /> {new Date(item.created_at).toLocaleString('vi-VN')}
+                             <Clock className="w-3.5 h-3.5" /> {safeFormatDateTimeVN(item.created_at)}
                            </div>
                         </TableCell>
                       </TableRow>

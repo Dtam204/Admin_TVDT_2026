@@ -39,6 +39,7 @@ const publicHomeController = require('../controllers/public_home.controller');
  *                           thumbnail: { type: string, example: "https://..." }
  *                           author: { type: string, example: "Nguyễn Văn A" }
  *                           publication_year: { type: integer, example: 2023 }
+ *                           pages: { type: integer, example: 320, description: "Số trang" }
  *                           dominant_color: { type: string, example: "#4f46e5" }
  *                           is_digital: { type: boolean, example: false }
  *       500:
@@ -348,6 +349,36 @@ router.get('/membership-plans', publicHomeController.getMembershipPlans);
  *                         discount_percentage: { type: number }
  *                         priority_support: { type: boolean }
  *                         late_fee_per_day: { type: number }
+ *                         pricing:
+ *                           type: object
+ *                           properties:
+ *                             amount: { type: number }
+ *                             currency: { type: string, example: "VND" }
+ *                             duration_days: { type: integer }
+ *                             formatted_price: { type: string, example: "50.000đ" }
+ *                             formatted_period: { type: string, example: "30 ngày" }
+ *                             price_per_day: { type: integer }
+ *                             formatted_price_per_day: { type: string, example: "1.667đ/ngày" }
+ *                         benefit_cards:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               key: { type: string }
+ *                               label: { type: string }
+ *                               value: { oneOf: [{ type: integer }, { type: string }] }
+ *                               unit: { type: string, nullable: true }
+ *                               icon: { type: string }
+ *                               highlight: { type: boolean }
+ *                         highlight_features:
+ *                           type: array
+ *                           items: { type: string }
+ *                         cta:
+ *                           type: object
+ *                           properties:
+ *                             primary_text: { type: string, example: "Nâng cấp ngay" }
+ *                             secondary_text: { type: string, example: "Xem thêm quyền lợi" }
+ *                             note: { type: string }
  *       404:
  *         description: "Gói không tồn tại hoặc đã bị vô hiệu hóa"
  */

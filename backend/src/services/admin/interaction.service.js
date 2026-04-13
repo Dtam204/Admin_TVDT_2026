@@ -1,4 +1,5 @@
 const { pool } = require('../../config/database');
+const { toPlainText } = require('../../utils/locale');
 
 /**
  * Interaction Service (Phase 2 Library)
@@ -9,33 +10,54 @@ class InteractionService {
   /**
    * Lấy danh sách đánh giá của toàn hệ thống (Admin CMS)
    */
-  static async getAllReviews({ page = 1, limit = 20, status = null, bookId = null }) {
+  static async getAllReviews({ page = 1, limit = 20, status = null, bookId = null, search = '' }) {
     const offset = (page - 1) * limit;
-    let query = `
+    let baseQuery = `
       SELECT 
-        br.*, m.full_name as member_name, m.email as member_email,
-        b.title->>'vi' as book_title, b.isbn
+        br.*, 
+        COALESCE(m.full_name, 'Bạn đọc vãng lai') as member_name,
+        COALESCE(m.email, 'guest@local') as member_email,
+        b.title::text as book_title,
+        b.isbn
       FROM book_reviews br
-      JOIN members m ON br.member_id = m.id
+      LEFT JOIN members m ON br.member_id = m.id
       JOIN books b ON br.book_id = b.id
       WHERE 1=1
     `;
-    const params = [limit, offset];
+    const dataParams = [];
 
     if (status) {
-      query += ` AND br.status = $3`;
-      params.push(status);
+      dataParams.push(status);
+      baseQuery += ` AND br.status = $${dataParams.length}`;
     }
     if (bookId) {
-      query += ` AND br.book_id = $${params.length + 1}`;
-      params.push(bookId);
+      dataParams.push(bookId);
+      baseQuery += ` AND br.book_id = $${dataParams.length}`;
+    }
+    if (search && String(search).trim()) {
+      const keyword = `%${String(search).trim()}%`;
+      dataParams.push(keyword);
+      baseQuery += ` AND (
+        COALESCE(m.full_name, '') ILIKE $${dataParams.length}
+        OR COALESCE(m.email, '') ILIKE $${dataParams.length}
+        OR COALESCE(b.title::text, '') ILIKE $${dataParams.length}
+        OR COALESCE(br.comment, '') ILIKE $${dataParams.length}
+      )`;
     }
 
-    query += ` ORDER BY br.created_at DESC LIMIT $1 OFFSET $2`;
+    const query = `${baseQuery} ORDER BY br.created_at DESC LIMIT $${dataParams.length + 1} OFFSET $${dataParams.length + 2}`;
+    const params = [...dataParams, limit, offset];
     
-    const { rows: reviews } = await pool.query(query, params);
-    const { rows: countRes } = await pool.query('SELECT COUNT(*) FROM book_reviews');
+    const { rows: reviewsRaw } = await pool.query(query, params);
+    const { rows: countRes } = await pool.query(`SELECT COUNT(*) FROM (${baseQuery}) AS filtered_reviews`, dataParams);
     const totalCount = parseInt(countRes[0].count);
+    const reviews = reviewsRaw.map((item) => ({
+      ...item,
+      book_title: toPlainText(item.book_title, 'N/A'),
+      comment: toPlainText(item.comment, ''),
+      member_name: toPlainText(item.member_name, 'Bạn đọc vãng lai'),
+      member_email: toPlainText(item.member_email, 'guest@local'),
+    }));
 
     return {
       reviews,
@@ -81,7 +103,7 @@ class InteractionService {
   static async getWishlistStats({ limit = 10 }) {
     const { rows } = await pool.query(`
       SELECT 
-        b.id, b.title->>'vi' as title, b.isbn, b.cover_image,
+        b.id, b.title::text as title, b.isbn, b.cover_image,
         COUNT(w.id) as wishlist_count
       FROM wishlists w
       JOIN books b ON w.book_id = b.id
@@ -90,7 +112,10 @@ class InteractionService {
       LIMIT $1
     `, [limit]);
 
-    return rows;
+    return rows.map((item) => ({
+      ...item,
+      title: toPlainText(item.title, 'N/A'),
+    }));
   }
 }
 

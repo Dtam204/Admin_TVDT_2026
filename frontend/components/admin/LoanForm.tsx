@@ -211,7 +211,9 @@ export function LoanForm() {
               {bookSearch && !isLoadingBooks && (booksData?.data || []).length > 0 && (
                 <div className="rounded-xl border border-slate-100 overflow-hidden bg-white shadow-lg">
                   {booksData.data.map((b: any) => {
-                    const title = typeof b.title === 'string' ? b.title : b.title?.vi || b.title?.en || 'Chưa có tiêu đề';
+                    const title = typeof b.title === 'object'
+                      ? (Object.values(b.title).find((v: any) => typeof v === 'string' && v.trim()) || 'Chưa có tiêu đề')
+                      : (b.title || 'Chưa có tiêu đề');
                     return (
                       <div key={b.id}
                         className={cn("p-3 flex items-center gap-3 cursor-pointer hover:bg-orange-50 transition-colors border-b last:border-0 border-slate-50",
@@ -236,7 +238,9 @@ export function LoanForm() {
 
               {/* Sách đã chọn — hiển thị ngay từ selectedBookInfo */}
               {selectedBookId && (selectedBookInfo || selectedPub) && (() => {
-                const title = pubData?.title?.vi || pubData?.title || pubData?.name || 'Đang tải...';
+                const title = typeof pubData?.title === 'object'
+                  ? (Object.values(pubData.title).find((v: any) => typeof v === 'string' && v.trim()) || pubData?.name || 'Đang tải...')
+                  : (pubData?.title || pubData?.name || 'Đang tải...');
                 const thumbnail = pubData?.thumbnail || pubData?.cover_image || '';
                 return (
                   <div className="space-y-3 animate-in slide-in-from-top-2">

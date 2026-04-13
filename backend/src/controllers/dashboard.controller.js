@@ -21,6 +21,19 @@ exports.getSummary = async (req, res, next) => {
   }
 };
 
+exports.getAlerts = async (req, res, next) => {
+  try {
+    const alerts = await DashboardService.getSystemAlerts();
+    return res.json({
+      success: true,
+      data: alerts,
+    });
+  } catch (error) {
+    console.error('[Dashboard Alerts Error]:', error);
+    return next(error);
+  }
+};
+
 
 
 

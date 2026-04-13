@@ -38,6 +38,14 @@ class ReaderActionController {
       const { bookId, lastPage, progressPercent, isFinished } = req.body;
       const userId = req.user.id;
 
+      if (!bookId) {
+        return res.status(400).json({ success: false, message: 'bookId là bắt buộc' });
+      }
+
+      const safeLastPage = Math.max(parseInt(lastPage, 10) || 1, 1);
+      const safePercent = Math.min(Math.max(Number(progressPercent) || 0, 0), 100);
+      const safeFinished = Boolean(isFinished) || safePercent >= 100;
+
       const query = `
         INSERT INTO user_reading_progress (user_id, book_id, last_page, progress_percent, is_finished, updated_at)
         VALUES ($1, $2, $3, $4, $5, NOW())
@@ -46,13 +54,57 @@ class ReaderActionController {
           last_page = EXCLUDED.last_page,
           progress_percent = EXCLUDED.progress_percent,
           is_finished = EXCLUDED.is_finished,
+          last_read_at = NOW(),
           updated_at = NOW()
+        RETURNING user_id, book_id, last_page, progress_percent, is_finished, last_read_at, updated_at
       `;
 
-      await pool.query(query, [userId, bookId, lastPage || 1, progressPercent || 0, isFinished || false]);
-      res.json({ success: true, message: "Đã lưu tiến độ đọc" });
+      const { rows } = await pool.query(query, [userId, bookId, safeLastPage, safePercent, safeFinished]);
+      const progress = rows[0] || null;
+
+      res.json({ success: true, message: 'Đã lưu tiến độ đọc', data: progress });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // Lấy tiến độ đọc cho một ấn phẩm
+  static async getProgress(req, res) {
+    try {
+      const userId = req.user.id;
+      const { bookId } = req.params;
+
+      if (!bookId) {
+        return res.status(400).json({ success: false, message: 'bookId là bắt buộc' });
+      }
+
+      const { rows } = await pool.query(
+        `SELECT user_id, book_id, last_page, progress_percent, is_finished, last_read_at, updated_at
+         FROM user_reading_progress
+         WHERE user_id = $1 AND book_id = $2
+         LIMIT 1`,
+        [userId, bookId]
+      );
+
+      if (rows.length === 0) {
+        return res.json({
+          success: true,
+          message: 'Chưa có tiến độ đọc cho ấn phẩm này',
+          data: {
+            user_id: userId,
+            book_id: Number(bookId),
+            last_page: 1,
+            progress_percent: 0,
+            is_finished: false,
+            last_read_at: null,
+            updated_at: null,
+          },
+        });
+      }
+
+      return res.json({ success: true, data: rows[0] });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
     }
   }
 

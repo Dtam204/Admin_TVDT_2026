@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Bell, CheckCircle2, XCircle, Clock, Search, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { safeFormatDateTimeVN } from '@/lib/date';
 
 export default function MembershipRequestsPage() {
   const [status, setStatus] = useState('pending');
@@ -159,7 +160,7 @@ export default function MembershipRequestsPage() {
                         <p className="text-sm text-slate-600 italic line-clamp-2">{req.request_note || '-'}</p>
                       </TableCell>
                       <TableCell className="text-slate-500 text-sm">
-                        {new Date(req.created_at).toLocaleString('vi-VN')}
+                        {safeFormatDateTimeVN(req.created_at)}
                       </TableCell>
                       <TableCell className="text-right pr-6">
                         {req.status === 'pending' ? (

@@ -26,6 +26,7 @@ import {
   Dialog, DialogContent, DialogDescription, 
   DialogFooter, DialogHeader, DialogTitle, DialogTrigger 
 } from "@/components/ui/dialog";
+import { safeFormatDateTimeVN, safeFormatDateVN } from '@/lib/date';
 
 export default function MemberEditPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -349,7 +350,7 @@ export default function MemberEditPage({ params }: { params: Promise<{ id: strin
                     {item.is_expired ? 'HẾT HẠN (VỀ BASIC)' : (item.effective_plan?.toUpperCase() || 'GIẤY')}
                   </p>
                   <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                    Gói gốc: {item.membership_plan_name || 'N/A'} • {item.membership_expires ? `Hết: ${new Date(item.membership_expires).toLocaleDateString('vi-VN')}` : 'Vô hạn'}
+                    Gói gốc: {item.membership_plan_name || 'N/A'} • {item.membership_expires ? `Hết: ${safeFormatDateVN(item.membership_expires)}` : 'Vô hạn'}
                   </p>
                 </div>
               </CardContent>
@@ -391,7 +392,7 @@ export default function MemberEditPage({ params }: { params: Promise<{ id: strin
                       <SelectContent>
                         {plansData?.data?.map((plan: any) => (
                            <SelectItem key={plan.id} value={plan.id.toString()}>
-                             {plan.name?.vi || plan.name} {plan.tier_code ? `[Tier: ${plan.tier_code.toUpperCase()}]` : ''}
+                             {typeof plan.name === 'object' ? (Object.values(plan.name).find((v: any) => typeof v === 'string' && v.trim()) || 'N/A') : (plan.name || 'N/A')} {plan.tier_code ? `[Tier: ${plan.tier_code.toUpperCase()}]` : ''}
                            </SelectItem>
                         ))}
                       </SelectContent>
@@ -523,11 +524,11 @@ export default function MemberEditPage({ params }: { params: Promise<{ id: strin
                             </div>
                           </td>
                           <td className="py-4 px-4 text-slate-600 font-medium whitespace-nowrap">
-                            {loan.loan_date ? new Date(loan.loan_date).toLocaleDateString('vi-VN') : '---'}
+                            {safeFormatDateVN(loan.loan_date, '---')}
                           </td>
                           <td className="py-4 px-4 whitespace-nowrap">
                             <span className={`font-bold ${new Date(loan.due_date) < new Date() && loan.status !== 'returned' ? 'text-red-500' : 'text-slate-600'}`}>
-                              {new Date(loan.due_date).toLocaleDateString('vi-VN')}
+                              {safeFormatDateVN(loan.due_date)}
                             </span>
                           </td>
                           <td className="py-4 px-4">
@@ -612,7 +613,7 @@ export default function MemberEditPage({ params }: { params: Promise<{ id: strin
                       transactionsData.data.map((tx: any) => (
                         <tr key={tx.id} className="hover:bg-indigo-50/20 transition-colors">
                           <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
-                            {new Date(tx.created_at).toLocaleString('vi-VN')}
+                            {safeFormatDateTimeVN(tx.created_at)}
                           </td>
                           <td className="px-4 py-3">
                             {getTransactionTypeBadge(tx.transaction_type)}
@@ -662,7 +663,7 @@ export default function MemberEditPage({ params }: { params: Promise<{ id: strin
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-bold text-gray-900 capitalize">{act.activity_type.replace('_', ' ')}</p>
-                            <span className="text-[10px] text-muted-foreground">• {new Date(act.created_at).toLocaleString('vi-VN')}</span>
+                            <span className="text-[10px] text-muted-foreground">• {safeFormatDateTimeVN(act.created_at)}</span>
                           </div>
                           <p className="text-sm text-gray-600">{act.description}</p>
                           {act.ip_address && (
@@ -846,7 +847,7 @@ export default function MemberEditPage({ params }: { params: Promise<{ id: strin
 
       {/* Footer Info */}
       <div className="flex justify-center text-[10px] text-muted-foreground gap-4 border-t pt-4">
-        <span>Ngày tham gia: {item.created_at ? new Date(item.created_at).toLocaleString('vi-VN') : '---'}</span>
+        <span>Ngày tham gia: {safeFormatDateTimeVN(item.created_at)}</span>
         <span>ID Hệ thống: {item.id}</span>
       </div>
     </div>

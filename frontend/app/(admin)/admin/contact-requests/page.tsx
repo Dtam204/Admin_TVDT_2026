@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { safeFormatDateTimeVN } from "@/lib/date";
 
 type RequestStatus = "pending" | "processing" | "completed" | "cancelled";
 
@@ -234,7 +235,7 @@ export default function AdminContactRequestsPage() {
                           {request.message}
                         </p>
                         <div className="text-xs text-gray-400 mt-2">
-                          {new Date(request.createdAt).toLocaleString("vi-VN")}
+                          {safeFormatDateTimeVN(request.createdAt)}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
@@ -352,8 +353,8 @@ export default function AdminContactRequestsPage() {
                 </div>
               )}
               <div className="text-sm text-gray-500">
-                <p>Ngày tạo: {new Date(selectedRequest.createdAt).toLocaleString("vi-VN")}</p>
-                <p>Ngày cập nhật: {new Date(selectedRequest.updatedAt).toLocaleString("vi-VN")}</p>
+                <p>Ngày tạo: {safeFormatDateTimeVN(selectedRequest.createdAt)}</p>
+                <p>Ngày cập nhật: {safeFormatDateTimeVN(selectedRequest.updatedAt)}</p>
               </div>
             </div>
           )}

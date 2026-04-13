@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { safeFormatDateTimeVN } from "@/lib/date";
 
 interface Comment {
   id: number;
@@ -365,7 +366,7 @@ function CommentsManagerContent() {
                             </div>
                             <div className="text-[10px] text-gray-400 flex items-center gap-2">
                                <Clock className="w-3 h-3" />
-                               {new Date(comment.created_at).toLocaleString('vi-VN')}
+                               {safeFormatDateTimeVN(comment.created_at)}
                                {(comment.report_count || 0) > 0 && (
                                  <Badge className="bg-red-50 text-red-600 border-none px-1.5 h-4 text-[9px]">
                                    {comment.report_count} báo cáo
@@ -507,7 +508,7 @@ function CommentsManagerContent() {
                           </td>
                           <td className="px-6 py-5">
                              <span className="text-gray-500 text-xs">
-                               {new Date(report.created_at).toLocaleString('vi-VN')}
+                               {safeFormatDateTimeVN(report.created_at)}
                              </span>
                           </td>
                           <td className="px-6 py-5 text-right">

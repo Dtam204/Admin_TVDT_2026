@@ -115,10 +115,56 @@ function getLocalizedValue(value, locale = 'vi') {
   return String(value);
 }
 
+/**
+ * Normalize any localized value (object or JSON string) to plain text.
+ */
+function toPlainText(value, fallback = '') {
+  if (value === null || value === undefined) return fallback;
+
+  const pickFromObject = (obj) => {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+    if (typeof obj.text === 'string' && obj.text.trim()) return obj.text;
+    if (typeof obj.vi === 'string' && obj.vi.trim()) return obj.vi;
+    if (typeof obj.en === 'string' && obj.en.trim()) return obj.en;
+    if (typeof obj.ja === 'string' && obj.ja.trim()) return obj.ja;
+
+    for (const key of Object.keys(obj)) {
+      const item = obj[key];
+      if (typeof item === 'string' && item.trim()) return item;
+    }
+    return null;
+  };
+
+  if (typeof value === 'string') {
+    const raw = value.trim();
+    if (!raw) return fallback;
+
+    if ((raw.startsWith('{') && raw.endsWith('}')) || (raw.startsWith('[') && raw.endsWith(']'))) {
+      try {
+        const parsed = JSON.parse(raw);
+        const normalized = toPlainText(parsed, '');
+        return normalized || fallback || raw;
+      } catch {
+        return raw;
+      }
+    }
+
+    return raw;
+  }
+
+  if (typeof value === 'object') {
+    const picked = pickFromObject(value);
+    return picked || fallback;
+  }
+
+  return String(value);
+}
+
 module.exports = {
   applyLocaleToData,
   validateLocale,
   getLocaleFromRequest,
-  getLocalizedValue
+  getLocalizedValue,
+  toPlainText
 };
 

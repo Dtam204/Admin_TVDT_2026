@@ -139,12 +139,18 @@ export default function InstructorsPage() {
                   if (typeof nameField === 'string') {
                     try {
                       const parsed = JSON.parse(nameField);
-                      displayName = parsed.vi || parsed.en || parsed.ja || nameField;
+                      if (parsed && typeof parsed === 'object') {
+                        const firstString = Object.values(parsed).find((v) => typeof v === 'string' && String(v).trim());
+                        displayName = (firstString as string) || nameField;
+                      } else {
+                        displayName = nameField;
+                      }
                     } catch {
                       displayName = nameField;
                     }
                   } else if (typeof nameField === 'object') {
-                    displayName = nameField.vi || nameField.en || nameField.ja || 'N/A';
+                    const firstString = Object.values(nameField).find((v) => typeof v === 'string' && String(v).trim());
+                    displayName = (firstString as string) || 'N/A';
                   } else {
                     displayName = String(nameField);
                   }

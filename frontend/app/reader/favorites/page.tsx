@@ -121,7 +121,7 @@ export default function FavoritesPage() {
                 </div>
                 <div className="p-3">
                   <h3 className="font-bold text-slate-900 text-sm line-clamp-1">
-                    {book.title?.vi || book.title}
+                    {book.title}
                   </h3>
                   <p className="text-[10px] text-slate-400 font-medium line-clamp-1 mt-0.5">
                     {book.author}

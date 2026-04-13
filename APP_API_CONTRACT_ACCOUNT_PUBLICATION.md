@@ -1,4 +1,4 @@
-# APP API Contract - Account + Publication (2026-04-09)
+# APP API Contract - Account + Publication + News (2026-04-10)
 
 ## 1. Muc tieu
 - Chuan hoa API cho giao dien app theo luong on dinh.
@@ -34,13 +34,13 @@
 - Data item:
   - `id`, `status`, `amount`, `note`, `plan_name`, `transaction_id`, `created_at`
 
-## 3. API danh sach an pham cho app
+## 3. API tra cuu an pham cho app
 
-### 3.1 Danh sach an pham
-- Method: `GET /api/public/publications`
+### 3.1 Tra cuu an pham
+- Method: `GET /api/public/search/publications`
 - Auth: optional
 - Query:
-  - `search`, `title`, `author`, `year_from`, `year_to`, `publisher_id`, `media_type`, `sort_by`, `order`, `page`, `limit`
+  - `search`, `title`, `author`, `year`, `years`, `year_from`, `year_to`, `publisher_id`, `media_type`, `collection`, `sort_by`, `order`, `page`, `limit`
 - Runtime clamp:
   - `page >= 1`
   - `1 <= limit <= 100`
@@ -50,6 +50,12 @@
 
 - Item fields (app can render directly):
   - `id`, `code`, `isbn`, `title`, `author`, `slug`, `cover_image`, `thumbnail`, `publication_year`, `pages`, `media_type`, `status`, `access_policy`, `publisher_name`, `copy_count`, `view_count`, `favorite_count`
+
+### 3.2 Quet ma Barcode/QR
+- Method: `GET /api/public/search/barcode/{barcode}`
+- Auth: optional
+- Response data:
+  - `Publication detail` de app dieu huong vao man chi tiet ngay lap tuc
 
 ## 4. API chi tiet an pham cho app
 
@@ -66,24 +72,49 @@
 - Response data:
   - `summary`, `cached`
 
-## 5. Quy uoc response
+## 5. API tab Tin tuc (News)
+
+### 5.1 Danh sach tin tuc
+- Method: `GET /api/public/news?page=1&limit=10`
+- Auth: optional
+- Query:
+  - `search`, `category_id`, `featured`, `page`, `limit`
+
+### 5.2 Chi tiet tin tuc
+- Method: `GET /api/public/news/{slug}`
+- Auth: optional
+
+### 5.3 Goi y tin tuc theo tu khoa (cho News tab)
+- Method: `GET /api/public/search/ai-news-suggest?query=...&pageIndex=1&pageSize=10`
+- Auth: optional
+- Response:
+  - `data`: danh sach tin
+  - `pagination`: phan trang
+  - `ai_interpreted`: tham so da phan tich
+
+## 6. Quy uoc response
 - Success: `code = 0`
 - Fail: `code = HTTP status` (4xx/5xx)
 - Luon co `success` bool va `message` de app hien thong bao.
 
-## 6. Luu y tich hop frontend app
+## 7. Luu y tich hop frontend app
 - `title`/`description` co the la plain text hoac JSON string. Nen parse an toan.
 - Uu tien hien thi anh theo thu tu: `thumbnail` -> `cover_image`.
 - O detail, favorite state uu tien doc:
   - `data.user_interaction.isFavorited` sau do fallback `data.isFavorited`.
 
-## 7. Endpoints su dung de viet giao dien ngay
+## 8. Endpoints su dung de viet giao dien ngay
 - Account:
   - `GET /api/reader/profile/me`
   - `GET /api/reader/transactions`
   - `GET /api/reader/borrow-history`
   - `GET /api/reader/membership-requests`
 - Publication:
-  - `GET /api/public/publications`
+  - `GET /api/public/search/publications`
+  - `GET /api/public/search/barcode/{barcode}`
   - `GET /api/public/publications/{id_or_slug}`
   - `POST /api/public/publications/{id_or_slug}/summarize`
+- News:
+  - `GET /api/public/news`
+  - `GET /api/public/news/{slug}`
+  - `GET /api/public/search/ai-news-suggest`

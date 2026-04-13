@@ -20,6 +20,11 @@ const searchController = require('../controllers/search.controller');
  *       - Fallback an toàn nếu AI timeout
  *
  *       **Lưu ý:** Response `data.type = "books" | "news"` để App biết render component nào.
+ *
+ *       **Ví dụ test nhanh:**
+ *       - Query tự nhiên: `"sách lập trình python cho người mới"`
+ *       - Query có nhiễu meta: `"Trích xuất từ khóa tìm kiếm chính xác: về lập trình tôi"`
+ *         → Backend sẽ tự chuẩn hóa query và sanitize params trước khi tìm kiếm.
  *     security: []
  *     requestBody:
  *       required: true
@@ -41,6 +46,19 @@ const searchController = require('../controllers/search.controller');
  *                 type: integer
  *                 default: 10
  *                 example: 10
+ *           examples:
+ *             natural_query:
+ *               summary: Query tự nhiên
+ *               value:
+ *                 query: "sách lập trình python cho người mới"
+ *                 pageIndex: 1
+ *                 pageSize: 10
+ *             noisy_meta_query:
+ *               summary: Query có chỉ dẫn meta (backend sẽ làm sạch)
+ *               value:
+ *                 query: "Trích xuất từ khóa tìm kiếm chính xác: về lập trình tôi"
+ *                 pageIndex: 1
+ *                 pageSize: 10
  *     responses:
  *       200:
  *         description: "Tìm kiếm thành công"
@@ -83,10 +101,51 @@ const searchController = require('../controllers/search.controller');
  *                               enum: [searchBooks, searchNews]
  *                             params:
  *                               type: object
- *                               description: "Các tham số AI trích xuất được"
+ *                               description: "Tham số đã được backend sanitize trước khi search"
  *                             originalQuery:
  *                               type: string
- *                               description: "Câu hỏi gốc của người dùng"
+ *                               description: "Query đã được normalize và dùng để phân tích"
+ *                             rawQuery:
+ *                               type: string
+ *                               description: "Query gốc từ client trước khi normalize"
+ *                             strategy:
+ *                               type: object
+ *                               description: "Pipeline xử lý để debug và đánh giá chất lượng"
+ *                               properties:
+ *                                 mode:
+ *                                   type: string
+ *                                   example: function-calling+rerank
+ *                                 stages:
+ *                                   type: array
+ *                                   items: { type: string }
+ *                                   example: [normalize-query, function-call, sanitize-args, hybrid-retrieve, intent-rerank]
+ *             examples:
+ *               books_result:
+ *                 summary: Kết quả books với ai_interpreted đầy đủ
+ *                 value:
+ *                   code: 0
+ *                   success: true
+ *                   message: "Tìm kiếm thông minh thành công"
+ *                   data:
+ *                     type: books
+ *                     items: []
+ *                     totalRecords: 5
+ *                     totalPages: 1
+ *                     pageIndex: 1
+ *                     pageSize: 10
+ *                     ai_interpreted:
+ *                       function: searchBooks
+ *                       params:
+ *                         keywords: ["lập trình"]
+ *                         limit: 10
+ *                       originalQuery: "về lập trình tôi"
+ *                       rawQuery: "Trích xuất từ khóa tìm kiếm chính xác: về lập trình tôi"
+ *                       strategy:
+ *                         mode: function-calling+rerank
+ *                         stages: [normalize-query, function-call, sanitize-args, hybrid-retrieve, intent-rerank]
+ *                   errorId: null
+ *                   appId: null
+ *                   errors: null
  *       500:
  *         description: "Lỗi hệ thống"
  *         content:
@@ -94,6 +153,46 @@ const searchController = require('../controllers/search.controller');
  *             schema: { $ref: '#/components/schemas/ErrorResponse' }
  */
 router.post('/ai-smart', searchController.aiSmartSearch);
+
+/**
+ * @openapi
+ * /api/public/search/ai-news-suggest:
+ *   get:
+ *     tags: [Public Search]
+ *     summary: "Gợi ý tin tức theo từ khóa (News tab)"
+ *     description: |
+ *       API chuyên dụng cho tab Tin tức trên App.
+ *       Trả về trực tiếp danh sách bài viết đã xuất bản theo từ khóa tìm kiếm.
+ *     security: []
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         required: true
+ *         schema: { type: string, minLength: 2 }
+ *         description: "Từ khóa tìm tin tức"
+ *         example: "lập trình"
+ *       - in: query
+ *         name: pageIndex
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, default: 10, maximum: 50 }
+ *     responses:
+ *       200:
+ *         description: "Danh sách gợi ý tin tức"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items: { $ref: '#/components/schemas/News' }
+ *                     pagination: { $ref: '#/components/schemas/Pagination' }
+ */
+router.get('/ai-news-suggest', searchController.aiNewsSuggest);
 
 /**
  * @openapi
@@ -188,6 +287,10 @@ router.get('/autocomplete', searchController.autocomplete);
  *         name: media_type
  *         schema: { type: string, enum: [Physical, Digital, Hybrid] }
  *         description: "Loại ấn phẩm"
+ *       - in: query
+ *         name: collection
+ *         schema: { type: string }
+ *         description: "Lọc theo bộ sưu tập (nhận ID hoặc tên collection)"
  *       - in: query
  *         name: sort_by
  *         schema: { type: string, enum: [default, views, favorites, title, year] }

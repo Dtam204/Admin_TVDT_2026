@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Calendar } from 'lucide-react';
+import { safeFormatDateVN } from '@/lib/date';
 
 interface ExtensionModalProps {
   isOpen: boolean;
@@ -84,7 +85,7 @@ export function ExtensionModal({ isOpen, onClose, onConfirm, loan, isPending }: 
           </div>
 
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 italic text-xs text-slate-500">
-            Hạn trả hiện tại: {new Date(loan.dueDate || loan.due_date).toLocaleDateString('vi-VN')}
+            Hạn trả hiện tại: {safeFormatDateVN(loan.dueDate || loan.due_date)}
           </div>
         </div>
 

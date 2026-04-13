@@ -48,20 +48,44 @@ router.get('/favorites', readerActionController.getFavorites);
  *   post:
  *     summary: Lưu tiến độ đọc sách
  *     tags: [Reader Actions]
+ *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [bookId]
  *             properties:
  *               bookId: { type: 'integer' }
  *               lastPage: { type: 'integer' }
  *               progressPercent: { type: 'number' }
  *               isFinished: { type: 'boolean' }
  *     responses:
- *       200: { description: OK }
+ *       200:
+ *         description: Đã lưu tiến độ đọc
+ *       400:
+ *         description: Thiếu bookId
  */
 router.post('/progress', readerActionController.updateProgress);
+
+/**
+ * @swagger
+ * /api/reader/progress/{bookId}:
+ *   get:
+ *     summary: Lấy tiến độ đọc hiện tại của tôi theo ấn phẩm
+ *     tags: [Reader Actions]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: bookId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Trả tiến độ đọc (hoặc mặc định nếu chưa có)
+ */
+router.get('/progress/:bookId', readerActionController.getProgress);
 
 module.exports = router;

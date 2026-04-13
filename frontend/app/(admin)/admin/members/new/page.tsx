@@ -317,7 +317,7 @@ export default function NewMemberPage() {
                          <SelectContent>
                            {plansData?.data?.map((plan: any) => (
                              <SelectItem key={plan.id} value={plan.id.toString()}>
-                               {plan.name?.vi || plan.name || plan.slug} {plan.tier_code ? `[Tier: ${plan.tier_code.toUpperCase()}]` : ''}
+                               {typeof plan.name === 'object' ? (Object.values(plan.name).find((v: any) => typeof v === 'string' && v.trim()) || plan.slug) : (plan.name || plan.slug)} {plan.tier_code ? `[Tier: ${plan.tier_code.toUpperCase()}]` : ''}
                              </SelectItem>
                            ))}
                          </SelectContent>

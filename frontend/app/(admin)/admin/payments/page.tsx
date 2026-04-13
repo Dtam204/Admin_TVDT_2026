@@ -14,6 +14,7 @@ import {
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { cn } from '@/components/ui/utils';
+import { safeFormatDateVN, safeFormatTimeVN } from '@/lib/date';
 
 export default function PaymentsPage() {
   const [page, setPage] = useState(1);
@@ -343,8 +344,8 @@ export default function PaymentsPage() {
                     </TableCell>
                     <TableCell className="px-4 text-center">
                        <div className="flex flex-col items-center leading-none gap-1">
-                          <span className="text-[11px] text-slate-900 font-black">{new Date(item.created_at).toLocaleDateString('vi-VN')}</span>
-                          <span className="text-[9px] text-indigo-500 font-bold font-mono opacity-80">{new Date(item.created_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
+                          <span className="text-[11px] text-slate-900 font-black">{safeFormatDateVN(item.created_at)}</span>
+                          <span className="text-[9px] text-indigo-500 font-bold font-mono opacity-80">{safeFormatTimeVN(item.created_at)}</span>
                        </div>
                     </TableCell>
                     <TableCell className="pr-8 text-right">

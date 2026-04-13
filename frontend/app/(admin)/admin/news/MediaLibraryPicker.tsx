@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Image as ImageIcon, Grid3x3, List, Video, Music } from "lucide-react";
 import { toast } from "sonner";
+import { safeFormatDateVN } from '@/lib/date';
 
 interface MediaFileItem {
   id: number;
@@ -244,7 +245,7 @@ const MediaLibraryPicker: React.FC<MediaLibraryPickerProps> = ({ onSelectImage, 
                       {dimensionLabel && <span>{dimensionLabel}</span>}
                     </div>
                     <div className="text-[11px] text-gray-400">
-                      {new Date(file.created_at).toLocaleDateString()}
+                      {safeFormatDateVN(file.created_at)}
                     </div>
                   </div>
                 </button>
@@ -301,7 +302,7 @@ const MediaLibraryPicker: React.FC<MediaLibraryPickerProps> = ({ onSelectImage, 
                       )}
                     </div>
                     <div className="text-[11px] text-gray-400">
-                      {new Date(file.created_at).toLocaleDateString()}
+                      {safeFormatDateVN(file.created_at)}
                     </div>
                   </div>
                 </button>

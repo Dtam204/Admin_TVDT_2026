@@ -21,9 +21,21 @@ import { toast } from 'sonner';
 const parseName = (name: any): string => {
   if (!name) return 'N/A';
   if (typeof name === 'string') {
-    try { const p = JSON.parse(name); return p.vi || p.en || p.ja || name; } catch { return name; }
+    try {
+      const p = JSON.parse(name);
+      if (p && typeof p === 'object') {
+        const firstString = Object.values(p).find((v) => typeof v === 'string' && String(v).trim());
+        return (firstString as string) || name;
+      }
+      return name;
+    } catch {
+      return name;
+    }
   }
-  if (typeof name === 'object') return name.vi || name.en || name.ja || 'N/A';
+  if (typeof name === 'object') {
+    const firstString = Object.values(name).find((v) => typeof v === 'string' && String(v).trim());
+    return (firstString as string) || 'N/A';
+  }
   return String(name);
 };
 

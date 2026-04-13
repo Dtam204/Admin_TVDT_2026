@@ -8,83 +8,6 @@ const { pool } = require('../config/database');
 
 /**
  * @openapi
- * /api/public/publications:
- *   get:
- *     tags: [Public Books]
- *     summary: "Tìm kiếm và lọc danh sách ấn phẩm"
- *     description: |
- *       API công khai để tìm kiếm ấn phẩm theo nhiều tiêu chí.
- *       Hỗ trợ **Tìm kiếm cơ bản** (từ khóa chung) và **Tìm kiếm nâng cao** (theo từng trường).
- *     security: []
- *     parameters:
- *       - in: query
- *         name: search
- *         schema: { type: string }
- *         description: "Từ khóa tìm kiếm chung (Nhan đề, tác giả, ISBN...)"
- *       - in: query
- *         name: title
- *         schema: { type: string }
- *         description: "Tìm theo nhan đề (Tìm kiếm nâng cao)"
- *       - in: query
- *         name: author
- *         schema: { type: string }
- *         description: "Tìm theo tác giả"
- *       - in: query
- *         name: year_from
- *         schema: { type: integer, default: 2005 }
- *         description: "Lọc từ năm xuất bản"
- *       - in: query
- *         name: year_to
- *         schema: { type: integer, default: 2026 }
- *         description: "Lọc đến năm xuất bản"
- *       - in: query
- *         name: publisher_id
- *         schema: { type: integer }
- *         description: "Lọc theo nhà xuất bản"
- *       - in: query
- *         name: media_type
- *         schema: { type: string, enum: [Physical, Digital, Hybrid] }
- *         description: "Dạng tài liệu"
- *       - in: query
- *         name: status
- *         schema: { type: string, enum: [available, unavailable, archived], default: all }
- *         description: "Lọc trạng thái ấn phẩm. Mặc định all để lấy toàn bộ ấn phẩm còn hợp tác"
- *       - in: query
- *         name: sort_by
- *         schema: { type: string, enum: [year, title, views, favorites] }
- *       - in: query
- *         name: order
- *         schema: { type: string, enum: [ASC, DESC], default: DESC }
- *       - in: query
- *         name: page
- *         schema: { type: integer, default: 1 }
- *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 10 }
- *     responses:
- *       200:
- *         description: "Danh sách ấn phẩm khớp điều kiện lọc"
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/BaseResponse'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       type: array
- *                       items: { $ref: '#/components/schemas/Publication' }
- *                     pagination: { $ref: '#/components/schemas/Pagination' }
- *       500:
- *         description: "Lỗi hệ thống"
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/ErrorResponse' }
- */
-router.get('/', publicPubController.getPublications);
-
-/**
- * @openapi
  * /api/public/publications/lookups:
  *   get:
  *     tags: [Public Books]
@@ -175,6 +98,109 @@ router.get('/home-unified', publicPubController.getHomePageData);
  *             schema: { $ref: '#/components/schemas/ErrorResponse' }
  */
 router.get('/:id', publicPubController.getPublicationById);
+
+/**
+ * @openapi
+ * /api/public/publications/{id}/reading-content:
+ *   get:
+ *     tags: [Public Books]
+ *     summary: "Dữ liệu đọc online chuẩn cho 3 chế độ"
+ *     description: |
+ *       Trả về payload đọc online đồng bộ cho giao diện Reader:
+ *       - `page_mode`: đọc theo trang PDF
+ *       - `chapter_mode`: đọc theo chương (map từ TOC của PDF)
+ *       - `scroll_mode`: đọc cuộn fulltext
+ *
+ *       Quy ước nguồn dữ liệu:
+ *       - Trang + Chương lấy theo PDF
+ *       - Cuộn lấy theo fulltext
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *         description: "ID hoặc slug của ấn phẩm"
+ *     responses:
+ *       200:
+ *         description: "Dữ liệu đọc online"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         publication:
+ *                           type: object
+ *                           properties:
+ *                             id: { type: integer }
+ *                             title: { type: string }
+ *                             author: { type: string }
+ *                             thumbnail: { type: string, nullable: true }
+ *                             media_type: { type: string }
+ *                             access_policy: { type: string }
+ *                         reading_content:
+ *                           type: object
+ *                           properties:
+ *                             can_read: { type: boolean }
+ *                             source_policy:
+ *                               type: object
+ *                               properties:
+ *                                 page: { type: string, example: "pdf" }
+ *                                 chapter: { type: string, example: "pdf" }
+ *                                 scroll: { type: string, example: "fulltext" }
+ *                             available_modes:
+ *                               type: array
+ *                               items: { type: string, enum: [page, chapter, scroll] }
+ *                             default_mode: { type: string, nullable: true, enum: [page, chapter, scroll] }
+ *                             page_mode:
+ *                               type: object
+ *                               properties:
+ *                                 enabled: { type: boolean }
+ *                                 pdf_url: { type: string, nullable: true }
+ *                                 total_pages: { type: integer }
+ *                                 preview_pages:
+ *                                   type: array
+ *                                   items:
+ *                                     type: object
+ *                                     properties:
+ *                                       index: { type: integer }
+ *                                       label: { type: string }
+ *                                       value: { type: string }
+ *                             chapter_mode:
+ *                               type: object
+ *                               properties:
+ *                                 enabled: { type: boolean }
+ *                                 total_chapters: { type: integer }
+ *                                 chapters:
+ *                                   type: array
+ *                                   items:
+ *                                     type: object
+ *                                     properties:
+ *                                       id: { type: string }
+ *                                       title: { type: string }
+ *                                       order: { type: integer }
+ *                                       start_page: { type: integer }
+ *                                       end_page: { type: integer }
+ *                                       page_range: { type: string }
+ *                             scroll_mode:
+ *                               type: object
+ *                               properties:
+ *                                 enabled: { type: boolean }
+ *                                 full_text:
+ *                                   type: object
+ *                                   properties:
+ *                                     enabled: { type: boolean }
+ *                                     format: { type: string, nullable: true, enum: [html, text] }
+ *                                     content: { type: string }
+ *                                     word_count: { type: integer }
+ *                                     excerpt: { type: string }
+ */
+router.get('/:id/reading-content', publicPubController.getPublicationReadingContent);
 
 /**
  * @openapi

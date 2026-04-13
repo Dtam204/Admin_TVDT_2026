@@ -34,6 +34,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useDashboardStats } from "@/lib/hooks/useDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { safeFormatDateVN } from "@/lib/date";
 
 // Định dạng tiền tệ VNĐ
 const formatCurrency = (val: number) => {
@@ -393,7 +394,7 @@ export default function AdminDashboardPage() {
                            )}>
                              {loan.status === 'borrowing' ? 'Đang mượn' : 'Đã trả'}
                            </div>
-                           <div className="text-[9px] text-slate-400 font-mono italic">{new Date(loan.loan_date || loan.created_at).toLocaleDateString('vi-VN')}</div>
+                           <div className="text-[9px] text-slate-400 font-mono italic">{safeFormatDateVN(loan.loan_date || loan.created_at)}</div>
                         </div>
                       </div>
                     ))}
@@ -424,7 +425,7 @@ export default function AdminDashboardPage() {
                                 {review.rating || 0} ⭐
                              </span>
                           </div>
-                          <span className="text-[9px] text-slate-400 font-mono italic">{new Date(review.created_at).toLocaleDateString('vi-VN')}</span>
+                          <span className="text-[9px] text-slate-400 font-mono italic">{safeFormatDateVN(review.created_at)}</span>
                         </div>
                         <p className="text-[10px] text-slate-400 font-bold line-clamp-1 italic mb-1 opacity-70">"{review.book_title}"</p>
                         <p className="text-[12px] text-slate-700 line-clamp-1 font-medium">{review.content}</p>

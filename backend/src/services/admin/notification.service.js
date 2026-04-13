@@ -1,4 +1,5 @@
 const { pool } = require('../../config/database');
+const { toPlainText } = require('../../utils/locale');
 
 /**
  * Notification Service (Synchronized Phase 2)
@@ -27,9 +28,15 @@ class NotificationService {
 
     query += ` ORDER BY n.created_at DESC LIMIT $1 OFFSET $2`;
     
-    const { rows: notifications } = await pool.query(query, params);
+    const { rows: notificationsRaw } = await pool.query(query, params);
     const { rows: countRes } = await pool.query('SELECT COUNT(*) FROM notifications');
     const totalCount = parseInt(countRes[0].count);
+    const notifications = notificationsRaw.map((item) => ({
+      ...item,
+      title: toPlainText(item.title, 'N/A'),
+      message: toPlainText(item.message, ''),
+      body: toPlainText(item.message, ''),
+    }));
 
     return {
       notifications,
@@ -59,8 +66,8 @@ class NotificationService {
     } = data;
     
     // Chuẩn hóa JSON linh hoạt (hỗ trợ cả string thuần và JSON đa ngôn ngữ)
-    const titleJson = typeof title === 'object' ? title : { vi: title };
-    const messageJson = typeof message === 'object' ? message : { vi: message };
+    const titleJson = typeof title === 'object' ? title : { text: title };
+    const messageJson = typeof message === 'object' ? message : { text: message };
 
     const { rows } = await pool.query(
       `INSERT INTO notifications (

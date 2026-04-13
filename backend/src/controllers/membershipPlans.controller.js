@@ -5,6 +5,114 @@
 
 const { pool } = require('../config/database');
 
+const MEMBERSHIP_JSON_KEYS = new Set(['name', 'description', 'features']);
+
+const parseJsonSafe = (value) => {
+  if (typeof value !== 'string') return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const normalizeFeatures = (value, isJsonColumn) => {
+  if (value == null) return isJsonColumn ? [] : '';
+  if (Array.isArray(value)) return isJsonColumn ? value : value.join('\n');
+  if (typeof value === 'object') return isJsonColumn ? value : JSON.stringify(value);
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return isJsonColumn ? [] : '';
+    const parsed = parseJsonSafe(trimmed);
+    if (parsed != null) {
+      if (Array.isArray(parsed)) return isJsonColumn ? parsed : parsed.join('\n');
+      return isJsonColumn ? parsed : JSON.stringify(parsed);
+    }
+    const lines = trimmed.split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
+    return isJsonColumn ? lines : lines.join('\n');
+  }
+  return isJsonColumn ? [] : String(value);
+};
+
+const normalizeTextLike = (value, isJsonColumn) => {
+  if (value == null) return null;
+  if (typeof value === 'object') {
+    if (isJsonColumn) return value;
+    return value.vi || value.en || JSON.stringify(value);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return isJsonColumn ? null : '';
+    const parsed = parseJsonSafe(trimmed);
+    if (parsed != null) {
+      if (isJsonColumn) return parsed;
+      if (typeof parsed === 'object') return parsed.vi || parsed.en || trimmed;
+      return String(parsed);
+    }
+    if (isJsonColumn) return { vi: trimmed };
+    return trimmed;
+  }
+  if (isJsonColumn) return { vi: String(value) };
+  return String(value);
+};
+
+const getMembershipColumnTypes = async (client) => {
+  const { rows } = await client.query(`
+    SELECT column_name, data_type, udt_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'membership_plans'
+      AND column_name = ANY($1)
+  `, [[...MEMBERSHIP_JSON_KEYS]]);
+
+  return rows.reduce((acc, row) => {
+    const typeName = `${row.data_type || ''} ${row.udt_name || ''}`.toLowerCase();
+    acc[row.column_name] = typeName.includes('json');
+    return acc;
+  }, {});
+};
+
+const getMembershipAllowedColumns = async (client) => {
+  const { rows } = await client.query(`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'membership_plans'
+  `);
+  return new Set(rows.map((row) => row.column_name));
+};
+
+const filterMembershipInputBySchema = (data, allowedColumns) => {
+  const filtered = {};
+  Object.keys(data || {}).forEach((key) => {
+    if (!allowedColumns.has(key)) return;
+    if (data[key] === undefined) return;
+    filtered[key] = data[key];
+  });
+  return filtered;
+};
+
+const normalizeMembershipInput = (data, jsonTypeMap = {}) => {
+  const normalized = { ...data };
+
+  if (normalized.status === 'draft') {
+    // Backward compatibility: some DBs only allow active/inactive.
+    normalized.status = 'inactive';
+  }
+
+  if (Object.prototype.hasOwnProperty.call(normalized, 'features')) {
+    normalized.features = normalizeFeatures(normalized.features, !!jsonTypeMap.features);
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, 'name')) {
+    normalized.name = normalizeTextLike(normalized.name, !!jsonTypeMap.name);
+  }
+  if (Object.prototype.hasOwnProperty.call(normalized, 'description')) {
+    normalized.description = normalizeTextLike(normalized.description, !!jsonTypeMap.description);
+  }
+
+  return normalized;
+};
+
 // ============================================================================
 // CRUD OPERATIONS
 // ============================================================================
@@ -98,7 +206,19 @@ exports.create = async (req, res, next) => {
   try {
     await client.query('BEGIN');
 
-    const data = req.body;
+    const jsonTypeMap = await getMembershipColumnTypes(client);
+    const allowedColumns = await getMembershipAllowedColumns(client);
+    const normalizedInput = normalizeMembershipInput(req.body, jsonTypeMap);
+    const data = filterMembershipInputBySchema(normalizedInput, allowedColumns);
+
+    if (Object.keys(data).length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: 'Không có trường dữ liệu hợp lệ để tạo gói hội viên',
+      });
+    }
+
     const fields = Object.keys(data).join(', ');
     const values = Object.keys(data).map((_, i) => `$${i + 1}`).join(', ');
     const params = Object.values(data);
@@ -130,7 +250,10 @@ exports.update = async (req, res, next) => {
     await client.query('BEGIN');
 
     const { id } = req.params;
-    const data = req.body;
+    const jsonTypeMap = await getMembershipColumnTypes(client);
+    const allowedColumns = await getMembershipAllowedColumns(client);
+    const normalizedInput = normalizeMembershipInput(req.body, jsonTypeMap);
+    const data = filterMembershipInputBySchema(normalizedInput, allowedColumns);
 
     // Check if exists
     const { rows: existing } = await client.query('SELECT * FROM membership_plans WHERE id = $1', [id]);
@@ -212,85 +335,3 @@ exports.remove = async (req, res, next) => {
   }
 };
 
-// ============================================================================
-// PUBLIC API: Dành cho Mobile App (Không yêu cầu Token)
-// ============================================================================
-
-// GET /api/public/membership-plans — Danh sách gói (Trang chủ Mobile, có phân trang)
-exports.getPublicPlans = async (req, res, next) => {
-  try {
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const offset = (page - 1) * limit;
-
-    // Lấy danh sách gọn nhẹ cho thẻ trang chủ
-    const { rows } = await pool.query(`
-      SELECT 
-        id, name, tier_code, slug, price, duration_days, description
-      FROM membership_plans
-      WHERE status = 'active'
-      ORDER BY sort_order ASC, price ASC
-      LIMIT $1 OFFSET $2
-    `, [limit, offset]);
-
-    // Đếm tổng
-    const { rows: countRows } = await pool.query(
-      "SELECT COUNT(*) FROM membership_plans WHERE status = 'active'"
-    );
-    const total = parseInt(countRows[0].count, 10);
-
-    return res.json({
-      code: 0,
-      success: true,
-      message: 'Lấy danh sách gói hội viên thành công',
-      data: rows,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
-      },
-      errors: null
-    });
-  } catch (error) {
-    return next(error);
-  }
-};
-
-// GET /api/public/membership-plans/:id — Chi tiết đặc quyền gói hội viên
-exports.getPublicPlanDetail = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { rows } = await pool.query(`
-      SELECT 
-        id, name, slug, tier_code, description, price, duration_days,
-        late_fee_per_day, features, 
-        max_books_borrowed, max_concurrent_courses, max_renewal_limit,
-        discount_percentage, priority_support,
-        allow_digital_read, allow_download,
-        sort_order, status
-      FROM membership_plans
-      WHERE id = $1 AND status = 'active'
-    `, [parseInt(id, 10)]);
-
-    if (rows.length === 0) {
-      return res.status(404).json({
-        code: 404,
-        success: false,
-        message: 'Không tìm thấy gói hội viên hoặc gói đã bị vô hiệu hóa',
-        data: null,
-        errors: null
-      });
-    }
-
-    return res.json({
-      code: 0,
-      success: true,
-      message: 'Lấy chi tiết gói hội viên thành công',
-      data: rows[0],
-      errors: null
-    });
-  } catch (error) {
-    return next(error);
-  }
-};

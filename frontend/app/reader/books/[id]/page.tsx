@@ -84,11 +84,17 @@ export default function BookDetailPage() {
   if (!book) return <div className="p-20 text-center">Không tìm thấy sách.</div>;
 
   const parseMaybeJsonText = (value: any) => {
+    if (value === null || value === undefined) return value;
+    if (typeof value === 'object') {
+      const firstString = Object.values(value).find((v) => typeof v === 'string' && v.trim());
+      return firstString || '';
+    }
     if (typeof value !== 'string') return value;
     try {
       const parsed = JSON.parse(value);
       if (parsed && typeof parsed === 'object') {
-        return parsed.vi || parsed.en || value;
+        const firstString = Object.values(parsed).find((v) => typeof v === 'string' && String(v).trim());
+        return firstString || value;
       }
       return value;
     } catch {

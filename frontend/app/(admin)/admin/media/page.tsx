@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { buildUrl } from "@/lib/api/base";
+import { safeFormatDateTimeVN, safeFormatDateVN } from "@/lib/date";
 
 interface MediaFolder {
   id: number;
@@ -849,7 +850,7 @@ const MediaLibraryPage: React.FC = () => {
                           {formatFileSize(file.file_size)} • {file.file_type}
                         </div>
                         <div className="text-xs text-gray-400">
-                          Tạo {new Date(file.created_at).toLocaleDateString()}
+                          Tạo {safeFormatDateVN(file.created_at)}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1018,7 +1019,7 @@ const MediaLibraryPage: React.FC = () => {
                 <div className="flex gap-2">
                   <span className="shrink-0">Tạo ngày:</span>
                   <span className="min-w-0 break-words break-all">
-                    {new Date(previewFile.created_at).toLocaleString()}
+                    {safeFormatDateTimeVN(previewFile.created_at)}
                   </span>
                 </div>
                 {previewFile.alt_text && (

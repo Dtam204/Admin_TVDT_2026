@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { safeFormatDateVN } from '@/lib/date';
 
 export default function MembershipRequestsPage() {
   const [statusFilter, setStatusFilter] = useState('pending');
@@ -232,7 +233,7 @@ export default function MembershipRequestsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {new Date(request.created_at).toLocaleDateString('vi-VN')}
+                      {safeFormatDateVN(request.created_at)}
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate italic text-gray-500 text-sm">
                       "{request.request_note || 'Không có ghi chú'}"

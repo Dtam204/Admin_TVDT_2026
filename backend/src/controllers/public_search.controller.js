@@ -33,7 +33,7 @@ exports.searchPublications = async (req, res, next) => {
   try {
     const { 
       search, title, author, year, years, year_from, year_to,
-      publisher_id, media_type, sort_by = 'default', order = 'DESC',
+      publisher_id, media_type, collection, collection_id, sort_by = 'default', order = 'DESC',
       page = 1, limit = 10 
     } = req.query;
 
@@ -44,6 +44,8 @@ exports.searchPublications = async (req, res, next) => {
       page: safePage, limit: safeLimit, search,
       title, author, year, years, year_from, year_to,
       publisher_id, media_type,
+      collection,
+      collection_id,
       sort_by, order,
       status: 'available',
       cooperation_status: 'cooperating'

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Save } from "lucide-react";
@@ -16,21 +17,50 @@ interface MembershipPlanFormProps {
   isSubmitting?: boolean;
 }
 
+const parseFeaturesText = (value: any) => {
+  if (!value) return "";
+  if (Array.isArray(value)) return value.join("\n");
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.join("\n");
+      if (parsed && typeof parsed === "object") return Object.values(parsed).join("\n");
+      return value;
+    } catch {
+      return value;
+    }
+  }
+  if (typeof value === "object") return Object.values(value).join("\n");
+  return String(value);
+};
+
 export function MembershipPlanForm({ initialData = {}, onSubmit, isSubmitting }: MembershipPlanFormProps) {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const featuresRaw = formData.get("features")?.toString() || "";
+    const features = featuresRaw
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
     const data = {
       name: formData.get("name")?.toString() || "", // Gửi chuỗi trực tiếp
       slug: formData.get("slug")?.toString() || "",
       tier_code: formData.get("tier_code")?.toString() || "basic",
       price: Number(formData.get("price")) || 0,
       duration_days: Number(formData.get("duration_days")) || 30,
+      description: formData.get("description")?.toString() || "",
+      features,
       max_books_borrowed: Number(formData.get("max_books_borrowed")) || 0,
       max_renewal_limit: Number(formData.get("max_renewal_limit")) || 0,
+      late_fee_per_day: Number(formData.get("late_fee_per_day")) || 0,
+      discount_percentage: Number(formData.get("discount_percentage")) || 0,
+      sort_order: Number(formData.get("sort_order")) || 0,
       status: formData.get("status")?.toString() || "active",
       allow_digital_read: formData.get("allow_digital_read") === "on",
       allow_download: formData.get("allow_download") === "on",
+      priority_support: formData.get("priority_support") === "on",
     };
     onSubmit(data);
   };
@@ -105,6 +135,21 @@ export function MembershipPlanForm({ initialData = {}, onSubmit, isSubmitting }:
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="sort_order">Thứ tự hiển thị</Label>
+            <Input id="sort_order" name="sort_order" type="number" defaultValue={initialData.sort_order || 0} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="discount_percentage">Giảm giá (%)</Label>
+            <Input id="discount_percentage" name="discount_percentage" type="number" min={0} max={100} defaultValue={initialData.discount_percentage || 0} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="late_fee_per_day">Phí trễ hạn (VNĐ/ngày)</Label>
+            <Input id="late_fee_per_day" name="late_fee_per_day" type="number" min={0} defaultValue={initialData.late_fee_per_day || 0} />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="max_books_borrowed">Max mượn (sách vật lý)</Label>
             <Input id="max_books_borrowed" name="max_books_borrowed" type="number" defaultValue={initialData.max_books_borrowed || 3} required />
           </div>
@@ -115,6 +160,28 @@ export function MembershipPlanForm({ initialData = {}, onSubmit, isSubmitting }:
           </div>
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="description">Mô tả gói</Label>
+          <Textarea
+            id="description"
+            name="description"
+            rows={3}
+            defaultValue={getCleanValue(initialData.description)}
+            placeholder="Mô tả ngắn giúp người đọc hiểu gói phù hợp với ai"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="features">Danh sách quyền lợi nổi bật (mỗi dòng 1 quyền lợi)</Label>
+          <Textarea
+            id="features"
+            name="features"
+            rows={6}
+            defaultValue={parseFeaturesText(initialData.features)}
+            placeholder={"Mượn tối đa 10 sách cùng lúc\nGia hạn 3 lần\nĐược đọc tài liệu số\nHỗ trợ ưu tiên"}
+          />
+        </div>
+
         <div className="flex gap-8 border-t pt-4">
           <div className="flex items-center space-x-2">
             <Switch id="allow_digital_read" name="allow_digital_read" defaultChecked={initialData.allow_digital_read} />
@@ -123,6 +190,10 @@ export function MembershipPlanForm({ initialData = {}, onSubmit, isSubmitting }:
           <div className="flex items-center space-x-2">
             <Switch id="allow_download" name="allow_download" defaultChecked={initialData.allow_download} />
             <Label htmlFor="allow_download">Cho phép tải sách Digital</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Switch id="priority_support" name="priority_support" defaultChecked={initialData.priority_support} />
+            <Label htmlFor="priority_support">Hỗ trợ ưu tiên</Label>
           </div>
         </div>
 

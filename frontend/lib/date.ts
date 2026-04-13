@@ -77,6 +77,47 @@ export const formatDateForInput = (dateString: string): string => {
     return dateOnly;
 };
 
+const parseSafeDate = (value: unknown): Date | null => {
+    if (!value) return null;
+
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value;
+    }
+
+    if (typeof value === "number") {
+        const byNumber = new Date(value);
+        return Number.isNaN(byNumber.getTime()) ? null : byNumber;
+    }
+
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (!trimmed || trimmed === "[object Object]") return null;
+
+        const byString = new Date(trimmed);
+        return Number.isNaN(byString.getTime()) ? null : byString;
+    }
+
+    return null;
+};
+
+export const safeFormatDateVN = (value: unknown, fallback = "---"): string => {
+    const d = parseSafeDate(value);
+    if (!d) return fallback;
+    return d.toLocaleDateString("vi-VN");
+};
+
+export const safeFormatDateTimeVN = (value: unknown, fallback = "---"): string => {
+    const d = parseSafeDate(value);
+    if (!d) return fallback;
+    return d.toLocaleString("vi-VN");
+};
+
+export const safeFormatTimeVN = (value: unknown, fallback = "---"): string => {
+    const d = parseSafeDate(value);
+    if (!d) return fallback;
+    return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+};
+
 /**
  * Chuyển đổi tiếng Việt có dấu sang slug không dấu
  * 
