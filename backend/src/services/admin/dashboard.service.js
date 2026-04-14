@@ -1,10 +1,141 @@
 const { pool } = require('../../config/database');
+const GeminiService = require('../gemini.service');
 
 /**
  * DashboardService - Xử lý nghiệp vụ thống kê toàn hệ thống
  * Đảm bảo số liệu "Chuẩn thật" truy vấn trực tiếp từ Database
  */
 class DashboardService {
+  static _stripMarkdownCodeFence(input = '') {
+    const text = String(input || '').trim();
+    const fenced = text.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    if (fenced) return fenced[1].trim();
+    return text;
+  }
+
+  static _safeJsonParse(text = '') {
+    const cleaned = this._stripMarkdownCodeFence(text);
+    try {
+      return JSON.parse(cleaned);
+    } catch (_err) {
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      if (start > -1 && end > start) {
+        try {
+          return JSON.parse(cleaned.slice(start, end + 1));
+        } catch (_nestedErr) {
+          return null;
+        }
+      }
+      return null;
+    }
+  }
+
+  static _normalizeInsights(raw, source = 'fallback') {
+    const insights = raw && typeof raw === 'object' ? raw : {};
+
+    const normalizeItem = (item, index, prefix) => {
+      if (!item || typeof item !== 'object') return null;
+      const severity = String(item.severity || 'medium').toLowerCase();
+      return {
+        id: item.id || `${prefix}-${index + 1}`,
+        title: String(item.title || '').trim(),
+        reason: String(item.reason || '').trim(),
+        action: String(item.action || '').trim(),
+        severity: ['high', 'medium', 'low'].includes(severity) ? severity : 'medium',
+      };
+    };
+
+    const priorities = Array.isArray(insights.priorities)
+      ? insights.priorities.map((item, index) => normalizeItem(item, index, 'priority')).filter(Boolean).slice(0, 3)
+      : [];
+
+    const opportunities = Array.isArray(insights.opportunities)
+      ? insights.opportunities.map((item, index) => normalizeItem(item, index, 'opportunity')).filter(Boolean).slice(0, 3)
+      : [];
+
+    const risks = Array.isArray(insights.risks)
+      ? insights.risks.map((item, index) => normalizeItem(item, index, 'risk')).filter(Boolean).slice(0, 3)
+      : [];
+
+    return {
+      source,
+      overview: String(insights.overview || '').trim(),
+      priorities,
+      opportunities,
+      risks,
+      fallbackReason: source === 'fallback'
+        ? (String(insights.fallbackReason || '').trim() || 'unknown_fallback')
+        : null,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  static _buildFallbackInsights(summary = {}, alerts = {}, fallbackReason = null) {
+    const fallback = {
+      overview: 'AI đang dùng chế độ phân tích quy tắc nội bộ từ dữ liệu dashboard hiện tại.',
+      priorities: [],
+      opportunities: [],
+      risks: [],
+      fallbackReason,
+    };
+
+    if ((summary.totalPendingRequests || 0) > 0) {
+      fallback.priorities.push({
+        id: 'pending-membership',
+        title: `${summary.totalPendingRequests} đơn gia hạn đang chờ`,
+        reason: 'Tồn đọng duyệt đơn có thể ảnh hưởng trải nghiệm hội viên.',
+        action: 'Ưu tiên xử lý hàng đợi membership requests theo SLA trong ngày.',
+        severity: 'high',
+      });
+    }
+
+    if ((summary.totalOverdueLoans || 0) > 0) {
+      fallback.priorities.push({
+        id: 'overdue-loans',
+        title: `${summary.totalOverdueLoans} phiếu mượn quá hạn`,
+        reason: 'Số lượng quá hạn cao làm giảm vòng quay tài nguyên.',
+        action: 'Kích hoạt nhắc hạn tự động và ưu tiên xử lý nhóm quá hạn lâu ngày.',
+        severity: 'high',
+      });
+    }
+
+    if ((summary.avgRating || 0) < 4 && (summary.totalRatings || 0) >= 20) {
+      fallback.risks.push({
+        id: 'rating-risk',
+        title: `Điểm trung bình ${summary.avgRating}/5 cần theo dõi`,
+        reason: 'Điểm đánh giá thấp kéo dài có thể làm giảm mức độ hài lòng người đọc.',
+        action: 'Rà soát top phản hồi tiêu cực và triển khai cải thiện theo chủ đề.',
+        severity: 'medium',
+      });
+    }
+
+    if ((summary.totalFavorites || 0) > 0 && (summary.totalBorrows || 0) > 0) {
+      const ratio = summary.totalFavorites / Math.max(summary.totalBorrows, 1);
+      if (ratio > 0.4) {
+        fallback.opportunities.push({
+          id: 'favorites-conversion',
+          title: 'Tỷ lệ yêu thích cao so với lượt mượn',
+          reason: 'Có nhu cầu quan tâm tốt, phù hợp để tăng chuyển đổi từ yêu thích sang mượn.',
+          action: 'Thêm chiến dịch nhắc mượn cho sách trong wishlist và ưu đãi theo phân khúc.',
+          severity: 'medium',
+        });
+      }
+    }
+
+    if ((alerts.unreadCount || 0) > 0) {
+      fallback.risks.push({
+        id: 'alert-pressure',
+        title: `${alerts.unreadCount} tín hiệu cần xử lý`,
+        reason: 'Mật độ cảnh báo cao có thể gây trễ phản ứng vận hành.',
+        action: 'Thiết lập quy trình phân loại cảnh báo theo mức độ và người chịu trách nhiệm.',
+        severity: 'medium',
+      });
+    }
+
+    return this._normalizeInsights(fallback, 'fallback');
+  }
+
   /**
    * Lấy tổng hợp số liệu (Summary Stats)
    */
@@ -250,6 +381,85 @@ class DashboardService {
       alerts: limitedAlerts,
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Lấy phân tích AI cho Dashboard (không ảnh hưởng luồng thống kê hiện tại)
+   */
+  static async getAIInsights() {
+    const [summary, alerts] = await Promise.all([
+      this.getSummary(),
+      this.getSystemAlerts(),
+    ]);
+
+    const fallbackInsights = this._buildFallbackInsights(summary, alerts);
+    const buildFallback = (reason) => this._normalizeInsights(
+      {
+        ...fallbackInsights,
+        fallbackReason: reason || fallbackInsights.fallbackReason || 'unknown_fallback',
+      },
+      'fallback'
+    );
+
+    if (!GeminiService?.model) {
+      return buildFallback('missing_gemini_model');
+    }
+
+    const inputPayload = {
+      kpi: {
+        totalViews: summary.totalViews || 0,
+        totalRevenue: summary.totalRevenue || 0,
+        totalBorrows: summary.totalBorrows || 0,
+        totalFavorites: summary.totalFavorites || 0,
+        totalOverdueLoans: summary.totalOverdueLoans || 0,
+        totalPendingRequests: summary.totalPendingRequests || 0,
+        avgRating: summary.avgRating || 0,
+        totalRatings: summary.totalRatings || 0,
+      },
+      loanTrends: Array.isArray(summary.loanTrends) ? summary.loanTrends.slice(-7) : [],
+      ratingDistribution: Array.isArray(summary.ratingDistribution) ? summary.ratingDistribution : [],
+      systemAlerts: Array.isArray(alerts.alerts)
+        ? alerts.alerts.slice(0, 8).map((item) => ({
+            type: item.type,
+            severity: item.severity,
+            title: item.title,
+            count: item.count,
+          }))
+        : [],
+    };
+
+    const prompt = [
+      'Bạn là AI Analyst cho hệ thống quản trị thư viện.',
+      'Hãy phân tích dữ liệu dashboard và trả về JSON THUẦN (không markdown, không giải thích).',
+      'Schema bắt buộc:',
+      '{',
+      '  "overview": "string",',
+      '  "priorities": [{"id":"string","title":"string","reason":"string","action":"string","severity":"high|medium|low"}],',
+      '  "opportunities": [{"id":"string","title":"string","reason":"string","action":"string","severity":"high|medium|low"}],',
+      '  "risks": [{"id":"string","title":"string","reason":"string","action":"string","severity":"high|medium|low"}]',
+      '}',
+      'Giới hạn: tối đa 3 mục cho mỗi danh sách, ngắn gọn, tiếng Việt chuyên nghiệp, hướng hành động rõ ràng.',
+      `Dữ liệu đầu vào: ${JSON.stringify(inputPayload)}`,
+    ].join('\n');
+
+    try {
+      const result = await GeminiService.model.generateContent(prompt);
+      const response = await result.response;
+      const parsed = this._safeJsonParse(response.text());
+      if (!parsed) return buildFallback('gemini_invalid_json');
+
+      const normalized = this._normalizeInsights(parsed, 'gemini');
+      const hasUsefulContent =
+        normalized.overview ||
+        normalized.priorities.length > 0 ||
+        normalized.opportunities.length > 0 ||
+        normalized.risks.length > 0;
+
+      return hasUsefulContent ? normalized : buildFallback('gemini_empty_insights');
+    } catch (error) {
+      console.error('[DashboardService.getAIInsights] Gemini analyze failed:', error.message);
+      return buildFallback('gemini_error');
+    }
   }
 }
 

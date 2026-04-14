@@ -1,5 +1,5 @@
 const express = require('express');
-const { getSummary, getAlerts } = require('../controllers/dashboard.controller');
+const { getSummary, getAlerts, getAIInsights } = require('../controllers/dashboard.controller');
 const { checkPermission } = require('../middlewares/rbac.middleware');
 
 const router = express.Router();
@@ -33,5 +33,6 @@ const router = express.Router();
  */
 router.get('/summary', checkPermission('dashboard.view'), getSummary);
 router.get('/alerts', checkPermission('dashboard.view'), getAlerts);
+router.get('/ai-insights', checkPermission('dashboard.view'), getAIInsights);
 
 module.exports = router;

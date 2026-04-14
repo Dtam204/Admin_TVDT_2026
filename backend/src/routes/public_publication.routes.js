@@ -204,6 +204,33 @@ router.get('/:id/reading-content', publicPubController.getPublicationReadingCont
 
 /**
  * @openapi
+ * /api/public/publications/{id}/pdf-file:
+ *   get:
+ *     tags: [Public Books]
+ *     summary: "Tải/đọc file PDF thực tế (hỗ trợ Range)"
+ *     description: "Dùng cho app tải lần đầu, đọc offline và resume download khi mạng yếu."
+ *     security:
+ *       - bearerAuth: []
+ *       - {}
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: "Trả toàn bộ file PDF"
+ *       206:
+ *         description: "Trả theo byte range"
+ *       403:
+ *         description: "Không đủ quyền truy cập tệp"
+ *       404:
+ *         description: "Không tìm thấy tệp PDF"
+ */
+router.get('/:id/pdf-file', authenticateTokenOptional, publicPubController.getPublicationPdfFile);
+
+/**
+ * @openapi
  * /api/public/publications/{id}/related:
  *   get:
  *     tags: [Public Books]

@@ -34,6 +34,19 @@ exports.getAlerts = async (req, res, next) => {
   }
 };
 
+exports.getAIInsights = async (req, res, next) => {
+  try {
+    const insights = await DashboardService.getAIInsights();
+    return res.json({
+      success: true,
+      data: insights,
+    });
+  } catch (error) {
+    console.error('[Dashboard AI Insights Error]:', error);
+    return next(error);
+  }
+};
+
 
 
 

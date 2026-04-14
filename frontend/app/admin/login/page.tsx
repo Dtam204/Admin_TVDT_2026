@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { setAuthToken } from "@/lib/auth/token";
 
 export default function AdminLoginPage() {
@@ -93,17 +94,25 @@ export default function AdminLoginPage() {
 
           {/* Form card */}
           <div className="w-full max-w-md ml-auto rounded-2xl border border-slate-200 bg-white/95 shadow-2xl shadow-slate-200/90 p-8">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#006FB3] to-[#0088D9] shadow-lg">
-                <span className="text-sm font-bold tracking-wide text-white">
-                  TVTN
-                </span>
+            <div className="mb-6 flex items-center gap-3.5">
+              <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#E7F4FF] via-white to-[#DBEEFF] p-1 shadow-[0_10px_30px_-14px_rgba(0,111,179,0.85)] ring-1 ring-[#006FB3]/20">
+                <div className="h-full w-full overflow-hidden rounded-xl bg-white">
+                  <Image
+                    src="/images/admin-logo.png"
+                    alt="Admin logo"
+                    width={40}
+                    height={40}
+                    className="h-full w-full object-cover"
+                    priority
+                  />
+                </div>
+                <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-tr from-transparent via-white/40 to-transparent" />
               </div>
               <div className="leading-tight">
                 <h2 className="text-base font-semibold text-slate-900">
                   Đăng nhập Admin
                 </h2>
-                <p className="text-[11px] text-slate-500">
+                <p className="mt-0.5 text-[11px] text-slate-500">
                   Nhập thông tin để truy cập khu vực quản trị
                 </p>
               </div>

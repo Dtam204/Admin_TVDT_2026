@@ -39,6 +39,7 @@ import {
   Key,
   BadgeCent,
   History as HistoryIcon,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +60,7 @@ import {
 import Link from "next/link";
 import NextImage from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { removeAuthToken } from "@/lib/auth/token";
 import { adminApiCall } from "@/lib/api/admin/client";
 import { Toaster } from "sonner";
@@ -402,9 +403,34 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [alertsLoading, setAlertsLoading] = useState(false);
   const [seenAlertIds, setSeenAlertIds] = useState<Set<string>>(new Set());
   const [bellMenuOpen, setBellMenuOpen] = useState(false);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
 
   const pathname = usePathname() || "/admin";
   const router = useRouter();
+  const touchStartYRef = useRef<number | null>(null);
+  const touchStartXRef = useRef<number | null>(null);
+  const gestureTriggeredRef = useRef(false);
+  const refreshCooldownRef = useRef(false);
+  const pullRefreshTimerRef = useRef<number | null>(null);
+
+  const triggerAdminRefresh = () => {
+    if (refreshCooldownRef.current) return;
+
+    refreshCooldownRef.current = true;
+    setPullRefreshing(true);
+    router.refresh();
+
+    if (pullRefreshTimerRef.current) {
+      window.clearTimeout(pullRefreshTimerRef.current);
+    }
+    pullRefreshTimerRef.current = window.setTimeout(() => {
+      setPullRefreshing(false);
+    }, 900);
+
+    window.setTimeout(() => {
+      refreshCooldownRef.current = false;
+    }, 1200);
+  };
 
   // State để quản lý submenu mở/đóng
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set());
@@ -544,6 +570,65 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     });
   }, [bellMenuOpen, systemAlerts]);
 
+  useEffect(() => {
+    if (!mounted) return;
+
+    const PULL_THRESHOLD = 110;
+    const HORIZONTAL_TOLERANCE = 70;
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return;
+
+      if (window.scrollY > 0) {
+        touchStartYRef.current = null;
+        touchStartXRef.current = null;
+        gestureTriggeredRef.current = false;
+        return;
+      }
+
+      touchStartYRef.current = event.touches[0].clientY;
+      touchStartXRef.current = event.touches[0].clientX;
+      gestureTriggeredRef.current = false;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return;
+      if (touchStartYRef.current === null || touchStartXRef.current === null) return;
+      if (window.scrollY > 0) return;
+
+      const deltaY = event.touches[0].clientY - touchStartYRef.current;
+      const deltaX = Math.abs(event.touches[0].clientX - touchStartXRef.current);
+
+      if (deltaY < PULL_THRESHOLD) return;
+      if (deltaX > HORIZONTAL_TOLERANCE) return;
+      if (gestureTriggeredRef.current || refreshCooldownRef.current) return;
+
+      gestureTriggeredRef.current = true;
+      triggerAdminRefresh();
+    };
+
+    const onTouchEnd = () => {
+      touchStartYRef.current = null;
+      touchStartXRef.current = null;
+      gestureTriggeredRef.current = false;
+    };
+
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", onTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
+      if (pullRefreshTimerRef.current) {
+        window.clearTimeout(pullRefreshTimerRef.current);
+      }
+    };
+  }, [mounted, router]);
+
   const unreadAlertCount = systemAlerts.reduce((sum, alert) => {
     if (seenAlertIds.has(alert.id)) return sum;
     return sum + (Number(alert.count) || 1);
@@ -601,6 +686,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      {pullRefreshing && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
+          <div className="flex items-center gap-2 rounded-full border border-indigo-200 bg-white/95 px-3 py-1.5 shadow-lg shadow-slate-900/10 backdrop-blur">
+            <RefreshCw className="w-4 h-4 text-indigo-600 animate-[spin_0.9s_linear_1]" />
+            <span className="text-[11px] font-bold text-slate-700">Đang làm mới...</span>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside
         className={`fixed left-0 top-0 z-40 h-screen transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -825,6 +919,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </div>
 
             <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={triggerAdminRefresh}
+                title="Làm mới dữ liệu"
+              >
+                <RefreshCw className={pullRefreshing ? "w-5 h-5 animate-spin" : "w-5 h-5"} />
+              </Button>
+
               <DropdownMenu open={bellMenuOpen} onOpenChange={setBellMenuOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">

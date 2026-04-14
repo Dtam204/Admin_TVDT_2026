@@ -38,6 +38,15 @@ Trường quan trọng:
 - `data.reading_content.chapter_mode`
 - `data.reading_content.scroll_mode`
 
+PDF asset mới cho tải offline/cache:
+- `data.reading_content.page_mode.pdf_asset.download_url` (URL tải file PDF thật)
+- `data.reading_content.page_mode.pdf_asset.file_hash`
+- `data.reading_content.page_mode.pdf_asset.version`
+- `data.reading_content.page_mode.pdf_asset.file_size`
+- `data.reading_content.page_mode.pdf_asset.updated_at`
+- `data.reading_content.page_mode.pdf_asset.mime_type`
+- `data.reading_content.page_mode.pdf_asset.supports_range`
+
 ### 2.3 Lưu tiến độ đọc
 - Method: `POST /api/reader/actions/progress`
 - Auth: required
@@ -45,15 +54,29 @@ Trường quan trọng:
 ```json
 {
   "bookId": 123,
+  "readMode": "page",
   "lastPage": 27,
   "progressPercent": 45.5,
+  "scrollPercent": null,
+  "scrollOffset": null,
   "isFinished": false
 }
 ```
 
+Quy ước mode:
+- `readMode = page|chapter`: đồng bộ theo số trang PDF, đồng thời cập nhật bảng tiến độ chuẩn để resume chính xác theo trang.
+- `readMode = scroll`: lưu tiến độ riêng cho fulltext (`scrollPercent`, `scrollOffset`), không ghi đè vị trí trang PDF.
+
 ### 2.4 Lấy tiến độ đọc theo ấn phẩm
 - Method: `GET /api/reader/actions/progress/{bookId}`
 - Auth: required
+
+Response có thêm:
+- `data.mode_progress`: tiến độ tách theo từng mode (`page`, `chapter`, `scroll`).
+- `data.preferred_mode`: mode ưu tiên để resume.
+
+Nguyên tắc ưu tiên resume:
+- Ưu tiên `page` (PDF) -> nếu không có thì `chapter` -> nếu không có thì `scroll`.
 
 Nếu chưa có dữ liệu, backend trả mặc định:
 - `last_page = 1`
@@ -77,10 +100,23 @@ Nếu chưa có dữ liệu, backend trả mặc định:
   "page_mode": {
     "enabled": true,
     "pdf_url": "/uploads/.../file.pdf",
+    "pdf_asset": {
+      "download_url": "/api/public/publications/123/pdf-file",
+      "pdf_url_absolute": "https://api.example.com/uploads/.../file.pdf",
+      "download_url_absolute": "https://api.example.com/api/public/publications/123/pdf-file",
+      "file_hash": "sha256...",
+      "version": "1245000-1713078123456",
+      "file_size": 1245000,
+      "updated_at": "2026-04-14T08:01:20.000Z",
+      "mime_type": "application/pdf",
+      "supports_range": true
+    },
     "total_pages": 210,
     "preview_pages": [
       { "index": 1, "label": "Trang 1", "value": 1 }
-    ]
+    ],
+    "preview_source": "pdf_pages",
+    "preview_images_ready": false
   },
   "chapter_mode": {
     "enabled": true,
@@ -172,6 +208,7 @@ Nếu chưa có dữ liệu, backend trả mặc định:
 - Public/Reader view:
   - `GET /api/public/publications/{id_or_slug}`
   - `GET /api/public/publications/{id_or_slug}/reading-content`
+  - `GET /api/public/publications/{id_or_slug}/pdf-file`
 
 - Authenticated reader actions:
   - `POST /api/reader/actions/progress`

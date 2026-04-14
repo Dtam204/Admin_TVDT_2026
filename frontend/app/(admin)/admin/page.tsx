@@ -12,7 +12,9 @@ import {
   History,
   MessageSquare,
   AlertCircle,
-  LayoutDashboard
+  LayoutDashboard,
+  Bot,
+  RefreshCw
 } from "lucide-react";
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
@@ -32,7 +34,7 @@ import {
   Cell,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useDashboardStats } from "@/lib/hooks/useDashboard";
+import { useDashboardAIInsights, useDashboardStats } from "@/lib/hooks/useDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { safeFormatDateVN } from "@/lib/date";
 
@@ -50,6 +52,12 @@ const formatNumber = (num: number) => {
 
 export default function AdminDashboardPage() {
   const { data: stats, isLoading, error } = useDashboardStats();
+  const {
+    data: aiInsights,
+    isLoading: isAIInsightsLoading,
+    isFetching: isAIInsightsFetching,
+    refetch: refetchAIInsights,
+  } = useDashboardAIInsights();
 
   if (error) return <div className="p-10 text-rose-500 font-bold">Lỗi tải dữ liệu Dashboard: {(error as any).message}</div>;
 
@@ -92,6 +100,24 @@ export default function AdminDashboardPage() {
     name: `${item.rating} Sao`,
     value: parseInt(item.count)
   })) || [];
+
+  const getSeverityClass = (severity: string) => {
+    if (severity === "high") return "bg-rose-100 text-rose-700";
+    if (severity === "medium") return "bg-amber-100 text-amber-700";
+    return "bg-emerald-100 text-emerald-700";
+  };
+
+  const fallbackReasonMap: Record<string, string> = {
+    missing_gemini_model: "Chưa cấu hình Gemini API key hoặc model.",
+    gemini_invalid_json: "Gemini trả về dữ liệu không đúng định dạng JSON.",
+    gemini_empty_insights: "Gemini chưa sinh được insight hữu ích cho dữ liệu hiện tại.",
+    gemini_error: "Gemini tạm thời lỗi hoặc timeout.",
+    unknown_fallback: "Hệ thống chuyển sang fallback để đảm bảo ổn định.",
+  };
+
+  const fallbackReason = aiInsights?.fallbackReason
+    ? (fallbackReasonMap[aiInsights.fallbackReason] || aiInsights.fallbackReason)
+    : null;
 
   return (
     <div className="w-full pb-8 space-y-0 text-slate-900 bg-slate-50/30 min-h-screen">
@@ -199,6 +225,86 @@ export default function AdminDashboardPage() {
             ))
           )}
         </div>
+
+        <Card className="border-2 border-slate-100 shadow-xl rounded-2xl overflow-hidden">
+          <CardHeader className="bg-slate-50/80 p-5 border-b border-slate-100">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Bot className="w-4 h-4 text-indigo-600" />
+                <CardTitle className="text-sm font-black uppercase tracking-tight">AI Dashboard Insights</CardTitle>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {aiInsights?.source === "gemini" ? "Powered by Gemini" : "Fallback Rules"}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-[10px] font-bold"
+                  onClick={() => refetchAIInsights()}
+                  disabled={isAIInsightsFetching}
+                >
+                  <RefreshCw className={cn("w-3 h-3 mr-1", isAIInsightsFetching ? "animate-spin" : "")} />
+                  Làm mới
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 space-y-4">
+            {isAIInsightsLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-2/3 rounded-md" />
+                <Skeleton className="h-20 w-full rounded-xl" />
+                <Skeleton className="h-20 w-full rounded-xl" />
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-slate-700 leading-relaxed">
+                  {aiInsights?.overview || "Chưa có phân tích AI cho dữ liệu hiện tại."}
+                </p>
+
+                {aiInsights?.source === "fallback" && fallbackReason && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+                    <span className="font-bold">Lý do fallback:</span> {fallbackReason}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                  {[
+                    { key: "priorities", label: "Ưu tiên" },
+                    { key: "opportunities", label: "Cơ hội" },
+                    { key: "risks", label: "Rủi ro" },
+                  ].map((group: any) => {
+                    const items = (aiInsights as any)?.[group.key] || [];
+                    return (
+                      <div key={group.key} className="rounded-xl border border-slate-100 bg-white p-3">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">{group.label}</div>
+                        <div className="space-y-2">
+                          {items.length === 0 ? (
+                            <p className="text-[11px] text-slate-400 italic">Không có dữ liệu</p>
+                          ) : (
+                            items.map((item: any) => (
+                              <div key={item.id} className="rounded-lg border border-slate-100 p-2.5 space-y-1.5">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-[12px] font-bold text-slate-900 leading-snug">{item.title}</p>
+                                  <span className={cn("text-[9px] px-2 py-0.5 rounded-full font-black uppercase", getSeverityClass(item.severity))}>
+                                    {item.severity}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-600 leading-relaxed">{item.reason}</p>
+                                <p className="text-[11px] text-indigo-700 font-semibold leading-relaxed">{item.action}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Loan Trends Chart */}
