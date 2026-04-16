@@ -194,7 +194,11 @@ app.use((req, res, next) => {
 });
 
 // Cấu hình static folder cho uploads
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+const uploadsRoot = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadsRoot)) {
+  fs.mkdirSync(uploadsRoot, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsRoot));
 
 // Swagger Documentation (Lazy loaded to optimize startup)
 const mountSwaggerDocs = (routePath, specSelector) => {
