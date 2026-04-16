@@ -21,7 +21,8 @@ export default function FavoritesPage() {
 
   useEffect(() => {
     fetchFavorites();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchFavorites = async () => {
     try {

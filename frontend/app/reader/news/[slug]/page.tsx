@@ -63,7 +63,8 @@ export default function PublicNewsDetailPage() {
     };
 
     if (slug) fetchArticle();
-  }, [slug, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
 
   if (loading) {
     return (
