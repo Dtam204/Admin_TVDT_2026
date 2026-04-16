@@ -6,8 +6,9 @@ const fs = require('fs');
  * Cấu hình Multer để upload PDF chuẩn production
  */
 
-// 1. Tự động tạo thư mục uploads/pdfs nếu chưa có
-const uploadDir = path.join(process.cwd(), 'uploads/pdfs');
+// Luôn resolve theo thư mục backend để tránh phụ thuộc vào process.cwd()
+const uploadsRoot = path.join(__dirname, '../../uploads');
+const uploadDir = path.join(uploadsRoot, 'pdfs');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -61,7 +62,7 @@ const handleUploadError = (err, req, res, next) => {
 };
 
 // 5. Cấu hình upload cho Media Library (image/file)
-const mediaDir = path.join(process.cwd(), 'uploads/media');
+const mediaDir = path.join(uploadsRoot, 'media');
 if (!fs.existsSync(mediaDir)) {
   fs.mkdirSync(mediaDir, { recursive: true });
 }
