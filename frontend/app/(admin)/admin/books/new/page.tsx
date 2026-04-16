@@ -825,7 +825,7 @@ export default function NewBookPage() {
                 <div className="flex gap-4">
                   <div className="w-20 h-28 bg-slate-100 rounded-xl overflow-hidden shadow-sm flex-shrink-0 flex items-center justify-center border border-slate-100">
                     {formData.publication.thumbnail ? (
-                      <img src={typeof formData.publication.thumbnail === 'string' && formData.publication.thumbnail.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000'}${formData.publication.thumbnail}` : (typeof formData.publication.thumbnail === 'string' ? formData.publication.thumbnail : '')} className="w-full h-full object-cover" />
+                      <img src={typeof formData.publication.thumbnail === 'string' && formData.publication.thumbnail.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL || 'https://api.thuvientn.site'}${formData.publication.thumbnail}` : (typeof formData.publication.thumbnail === 'string' ? formData.publication.thumbnail : '')} className="w-full h-full object-cover" />
                     ) : (
                       <Image className="w-8 h-8 text-slate-300" />
                     )}
@@ -918,7 +918,7 @@ export default function NewBookPage() {
                    <div className="w-full aspect-[3/4] bg-slate-800 rounded-lg mb-4 flex items-center justify-center overflow-hidden border-none">
                       {formData.publication.thumbnail ? (
                         <img 
-                          src={formData.publication.thumbnail.startsWith('http') ? formData.publication.thumbnail : `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000'}${formData.publication.thumbnail}`} 
+                          src={formData.publication.thumbnail.startsWith('http') ? formData.publication.thumbnail : `${process.env.NEXT_PUBLIC_API_URL || 'https://api.thuvientn.site'}${formData.publication.thumbnail}`}
                           className="w-full h-full object-cover" 
                         />
                       ) : (

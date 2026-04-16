@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_THUVIEN_TN_URL ||
   process.env.API_THUVIEN_TN_URL ||
-  "http://localhost:5000";
+  "https://api.thuvientn.site";
 
 export async function POST(req: Request) {
   try {

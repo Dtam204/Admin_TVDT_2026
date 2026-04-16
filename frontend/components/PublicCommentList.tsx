@@ -58,7 +58,7 @@ export default function PublicCommentList({ objectId, objectType }: PublicCommen
 
   const fetchComments = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/public/comments/${objectType}/${objectId}`);
+      const res = await fetch(buildUrl(`/api/public/comments/${objectType}/${objectId}`));
       const data = await res.json();
       if (data.success) {
         setComments(data.data);
@@ -71,6 +71,7 @@ export default function PublicCommentList({ objectId, objectType }: PublicCommen
   };
 
   const handleLoginRedirect = () => {
+    if (typeof window === "undefined") return;
     // Lưu URL hiện tại để chuyển hướng sau khi đăng nhập
     localStorage.setItem("redirectAfterLogin", pathname);
     router.push("/admin/login"); // Giả định trang login dùng chung hoặc login cho reader
@@ -88,7 +89,7 @@ export default function PublicCommentList({ objectId, objectType }: PublicCommen
 
     try {
       setSubmitting(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/public/comments`, {
+      const res = await fetch(buildUrl('/api/public/comments'), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

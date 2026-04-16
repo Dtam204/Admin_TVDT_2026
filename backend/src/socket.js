@@ -7,9 +7,24 @@ let io;
  * Cấu hình chuyên nghiệp hỗ trợ CORS và Room-based logic
  */
 const initSocket = (server) => {
+  const configuredOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const allowedOrigins = configuredOrigins.length > 0
+    ? configuredOrigins
+    : [
+        'https://thuvientn.site',
+        'https://www.thuvientn.site',
+        'http://thuvientn.site',
+        'http://www.thuvientn.site',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000'
+      ];
+
   io = new Server(server, {
     cors: {
-      origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+      origin: allowedOrigins,
       methods: ['GET', 'POST', 'PUT', 'DELETE'],
       credentials: true
     }

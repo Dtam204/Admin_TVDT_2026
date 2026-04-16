@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import PublicCommentList from "@/components/PublicCommentList";
 import { toast } from "sonner";
+import { buildUrl } from "@/lib/api/base";
 
 interface NewsArticle {
   id: number;
@@ -46,13 +47,13 @@ export default function PublicNewsDetailPage() {
   useEffect(() => {
     const fetchArticle = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/public/news/${slug}`);
+        const res = await fetch(buildUrl(`/api/public/news/${slug}`));
         const data = await res.json();
         if (data.success) {
           setArticle(data.data);
         } else {
           toast.error("Không tìm thấy bài viết");
-          router.push("/admin/news");
+          router.push("/reader/news");
         }
       } catch (error) {
         toast.error("Lỗi khi tải nội dung");
@@ -62,7 +63,7 @@ export default function PublicNewsDetailPage() {
     };
 
     if (slug) fetchArticle();
-  }, [slug]);
+  }, [slug, router]);
 
   if (loading) {
     return (

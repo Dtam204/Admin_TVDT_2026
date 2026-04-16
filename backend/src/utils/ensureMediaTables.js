@@ -19,6 +19,17 @@ function ensureMediaFolderDir(id) {
 async function ensureMediaTables() {
   const client = await pool.connect();
   try {
+    // Đảm bảo trigger function tồn tại trước khi tạo trigger cho media tables
+    await client.query(`
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        NEW.updated_at = CURRENT_TIMESTAMP;
+        RETURN NEW;
+      END;
+      $$ language 'plpgsql';
+    `);
+
     // Kiểm tra bảng media_folders
     const checkFolders = await client.query(`
       SELECT EXISTS (
@@ -143,8 +154,14 @@ async function ensureMediaTables() {
     `);
     
     // Ensure directory exists for each folder
-    // Optimization: Only check first 100 folders OR just root folders
-    const foldersResult = await client.query('SELECT id FROM media_folders LIMIT 50');
+    // Chỉ đồng bộ các thư mục gốc để tránh tốn I/O khi số lượng bản ghi lớn
+    const foldersResult = await client.query(`
+      SELECT id
+      FROM media_folders
+      WHERE parent_id IS NULL
+      ORDER BY id ASC
+      LIMIT 50
+    `);
     foldersResult.rows.forEach((row) => {
       ensureMediaFolderDir(row.id);
     });

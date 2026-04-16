@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-library_tn}
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-123456}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -32,13 +32,24 @@ services:
     environment:
       NODE_ENV: production
       PORT: ${BACKEND_PORT:-5000}
+      DOMAIN: ${DOMAIN:-thuvientn.site}
+      PROTOCOL: ${PROTOCOL:-https}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://api.thuvientn.site}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://thuvientn.site,https://www.thuvientn.site}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-123456}
       DB_NAME: ${DB_NAME:-library_tn}
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      SEPAY_WEBHOOK_KEY: ${SEPAY_WEBHOOK_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_PASS: ${MAIL_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-Thu vien TN <noreply@thuvientn.site>}
     volumes:
       - ./backend/uploads:/app/uploads
       - backend_node_modules:/app/node_modules
@@ -65,11 +76,11 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
-      NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL:-http://localhost:5000}
-      # API_THUVIEN_TN_URL và NEXT_PUBLIC_API_THUVIEN_TN_URL (fallback nếu không có NEXT_PUBLIC_API_URL)
-      API_THUVIEN_TN_URL: ${API_THUVIEN_TN_URL:-${NEXT_PUBLIC_API_URL:-http://localhost:5000}}
-      NEXT_PUBLIC_API_THUVIEN_TN_URL: ${NEXT_PUBLIC_API_THUVIEN_TN_URL:-${NEXT_PUBLIC_API_URL:-http://localhost:5000}}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.thuvientn.site}
+      NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL:-https://api.thuvientn.site}
+      # API_THUVIEN_TN_URL và NEXT_PUBLIC_API_THUVIEN_TN_URL dùng chung endpoint API chính
+      API_THUVIEN_TN_URL: ${API_THUVIEN_TN_URL:-https://api.thuvientn.site}
+      NEXT_PUBLIC_API_THUVIEN_TN_URL: ${NEXT_PUBLIC_API_THUVIEN_TN_URL:-https://api.thuvientn.site}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:

@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { buildUrl } from '@/lib/api/base';
 
 export default function FavoritesPage() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function FavoritesPage() {
 
   useEffect(() => {
     fetchFavorites();
-  }, []);
+  }, [router]);
 
   const fetchFavorites = async () => {
     try {
@@ -30,7 +31,7 @@ export default function FavoritesPage() {
         router.push('/login');
         return;
       }
-      const res = await fetch(`http://localhost:5000/api/reader/actions/favorites`, {
+      const res = await fetch(buildUrl('/api/reader/actions/favorites'), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const json = await res.json();
@@ -48,7 +49,7 @@ export default function FavoritesPage() {
     e.stopPropagation();
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/reader/actions/favorites/toggle`, {
+      const res = await fetch(buildUrl('/api/reader/actions/favorites/toggle'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +103,7 @@ export default function FavoritesPage() {
                 <div className="aspect-[3/4] relative overflow-hidden bg-slate-100">
                   {book.thumbnail ? (
                     <img 
-                      src={book.thumbnail.startsWith('http') ? book.thumbnail : `http://localhost:5000${book.thumbnail}`} 
+                      src={book.thumbnail.startsWith('http') ? book.thumbnail : buildUrl(book.thumbnail)} 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                     />
                   ) : (

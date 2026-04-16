@@ -12,6 +12,7 @@ import {
 import { useAuthorsSelect, usePublishersSelect } from '@/lib/hooks/useBooks';
 import { usePublishers } from '@/lib/hooks/usePublishers';
 import { useBookLoans } from '@/lib/hooks/useBookLoans';
+import { getApiBaseUrl } from '@/lib/api/base';
 import { useState, useEffect } from 'react';
 import { getCleanValue, normalizeLocaleValue } from '@/lib/utils/locale-admin';
 import { Button } from '@/components/ui/button';
@@ -813,7 +814,7 @@ export default function EditBookPage() {
                                     toast.info(`Đang chuyển đến trang ${item.page}`);
                                     const iframe = document.querySelector('iframe');
                                     if (iframe && formData.publication.digital_file_url) {
-                                       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+                                       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.thuvientn.site';
                                        const rawUrl = formData.publication.digital_file_url;
                                        const fullUrl = rawUrl.startsWith('http') ? rawUrl : `${baseUrl}${rawUrl}`;
                                        iframe.src = `${fullUrl}#page=${item.page}`;
@@ -1041,7 +1042,7 @@ export default function EditBookPage() {
                 <div className="flex gap-4">
                   <div className="w-20 h-28 bg-slate-100 rounded-xl overflow-hidden shadow-sm flex-shrink-0 border border-slate-100">
                     {formData.publication.thumbnail ? (
-                      <img src={typeof formData.publication.thumbnail === 'string' && formData.publication.thumbnail.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000'}${formData.publication.thumbnail}` : (typeof formData.publication.thumbnail === 'string' ? formData.publication.thumbnail : '')} className="w-full h-full object-cover" />
+                      <img src={typeof formData.publication.thumbnail === 'string' && formData.publication.thumbnail.startsWith('/') ? `${getApiBaseUrl()}${formData.publication.thumbnail}` : (typeof formData.publication.thumbnail === 'string' ? formData.publication.thumbnail : '')} className="w-full h-full object-cover" />
                     ) : (
                       <Image className="w-6 h-6 text-slate-300 m-4" />
                     )}
@@ -1104,7 +1105,7 @@ export default function EditBookPage() {
                       const url = formData.publication.digital_file_url;
                       if (!url) return '';
                       if (url.startsWith('http')) return url;
-                      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+                      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.thuvientn.site';
                       const fullUrl = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${url.startsWith('/') ? url : `/${url}`}`;
                       console.log('PDF Preview URL debug:', fullUrl);
                       return fullUrl;

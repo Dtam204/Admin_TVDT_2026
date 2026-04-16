@@ -122,7 +122,7 @@ export function AuthorForm({ initialData, isNew = false, id }: AuthorFormProps) 
     const cleanUrl = getCleanValue(url);
     if (!cleanUrl) return "";
     if (cleanUrl.startsWith('http')) return cleanUrl;
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000'}${cleanUrl}`;
+    return `${process.env.NEXT_PUBLIC_API_URL || 'https://api.thuvientn.site'}${cleanUrl}`;
   };
 
   return (
