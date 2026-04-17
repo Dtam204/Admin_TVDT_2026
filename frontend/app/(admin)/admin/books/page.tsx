@@ -55,6 +55,7 @@ function CoopBadge({ status }: { status?: string }) {
 // ─── Component Chính ────────────────────────────────────────────────────────
 function BooksContent() {
   const searchParams = useSearchParams();
+  const [isMounted, setIsMounted] = useState(false);
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -73,6 +74,10 @@ function BooksContent() {
 
   const { data: collectionsData } = useAdminCollections();
   const collections = collectionsData?.data || [];
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Debounce search
   useEffect(() => {
@@ -107,6 +112,10 @@ function BooksContent() {
   const filteredItems = policyFilter === 'all'
     ? items
     : items.filter(i => i.access_policy === policyFilter);
+
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <div className="w-full pb-8 space-y-0 text-slate-900 bg-slate-50/30 min-h-screen">
@@ -235,17 +244,17 @@ function BooksContent() {
 
           {/* Access Policy */}
           <Select value={policyFilter} onValueChange={(v) => { setPolicyFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-[135px] h-10 rounded-xl border-none bg-slate-50/80 font-bold text-slate-700 text-[10px]">
-            <SelectValue placeholder="Hạng thẻ TN" />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl">
-            <SelectItem value="all" className="text-[10px] font-bold">Tất cả hạng</SelectItem>
-            <SelectItem value="basic" className="text-[10px] font-bold text-slate-600">🌐 Cơ bản</SelectItem>
-            <SelectItem value="premium" className="text-[10px] font-bold text-amber-600">🔒 Premium</SelectItem>
-            <SelectItem value="vip" className="text-[10px] font-bold text-purple-600">⭐ VIP</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+            <SelectTrigger className="w-[135px] h-10 rounded-xl border-none bg-slate-50/80 font-bold text-slate-700 text-[10px]">
+              <SelectValue placeholder="Hạng thẻ TN" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="all" className="text-[10px] font-bold">Tất cả hạng</SelectItem>
+              <SelectItem value="basic" className="text-[10px] font-bold text-slate-600">🌐 Cơ bản</SelectItem>
+              <SelectItem value="premium" className="text-[10px] font-bold text-amber-600">🔒 Premium</SelectItem>
+              <SelectItem value="vip" className="text-[10px] font-bold text-purple-600">⭐ VIP</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
       {/* ── BẢNG DỮ LIỆU – COMPACT & PRO ── */}
       <div className="bg-white rounded-2xl border-2 border-slate-200 shadow-xl overflow-hidden mb-6">

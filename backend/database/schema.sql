@@ -56,6 +56,30 @@ CREATE TABLE IF NOT EXISTS storages (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Bảng storage_locations (Vị trí lưu trữ vật lý/kệ)
+-- Đồng bộ với admin/publication luồng cũ đang gọi GET /api/admin/publications/storage-locations
+CREATE TABLE IF NOT EXISTS storage_locations (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_storage_locations_name ON storage_locations(name);
+CREATE INDEX IF NOT EXISTS idx_storage_locations_active ON storage_locations(is_active);
+
+DROP TRIGGER IF EXISTS update_storage_locations_updated_at ON storage_locations;
+CREATE TRIGGER update_storage_locations_updated_at BEFORE UPDATE ON storage_locations
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+INSERT INTO storage_locations (name, description, is_active) VALUES
+  ('Kho chính', 'Khu lưu trữ chính của thư viện', TRUE),
+  ('Kho tham khảo', 'Tài liệu tham khảo, không cho mượn về', TRUE),
+  ('Kho số', 'Tài nguyên số và file media', TRUE)
+ON CONFLICT (name) DO NOTHING;
+
 -- Bảng collections (Bộ sưu tập/Thể loại cấp cao)
 CREATE TABLE IF NOT EXISTS collections (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -263,8 +287,11 @@ CREATE TABLE IF NOT EXISTS media_files (
   filename VARCHAR(500) NOT NULL UNIQUE,
   file_path VARCHAR(1000) NOT NULL,
   file_url VARCHAR(1000) NOT NULL,
+  file_type VARCHAR(50) NOT NULL DEFAULT 'other',
   mime_type VARCHAR(100),
   file_size BIGINT,
+  width INTEGER,
+  height INTEGER,
   dimensions VARCHAR(50),
   alt_text VARCHAR(500),
   title VARCHAR(500),
@@ -277,11 +304,22 @@ CREATE TABLE IF NOT EXISTS media_files (
 CREATE INDEX IF NOT EXISTS idx_media_files_folder_id ON media_files(folder_id);
 CREATE INDEX IF NOT EXISTS idx_media_files_filename ON media_files(filename);
 CREATE INDEX IF NOT EXISTS idx_media_files_mime_type ON media_files(mime_type);
+CREATE INDEX IF NOT EXISTS idx_media_files_file_type ON media_files(file_type);
 CREATE INDEX IF NOT EXISTS idx_media_files_uploaded_by ON media_files(uploaded_by);
 
 DROP TRIGGER IF EXISTS update_media_files_updated_at ON media_files;
 CREATE TRIGGER update_media_files_updated_at BEFORE UPDATE ON media_files
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+UPDATE media_files
+SET file_type = CASE
+  WHEN mime_type LIKE 'image/%' THEN 'image'
+  WHEN mime_type LIKE 'video/%' THEN 'video'
+  WHEN mime_type LIKE 'audio/%' THEN 'audio'
+  WHEN mime_type = 'application/pdf' THEN 'document'
+  ELSE 'other'
+END
+WHERE file_type IS NULL;
 
 -- ============================================================================
 -- 6. MENU MANAGEMENT
@@ -1037,14 +1075,27 @@ CREATE TABLE IF NOT EXISTS wishlists (
 CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     member_id INTEGER REFERENCES members(id) ON DELETE CASCADE,
+    sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    target_type VARCHAR(20) NOT NULL DEFAULT 'individual' CHECK (target_type IN ('individual', 'all')),
     type VARCHAR(50) NOT NULL, -- 'overdue', 'renewal', 'system', 'payment'
     title JSONB NOT NULL,
     message JSONB NOT NULL,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    status VARCHAR(20) NOT NULL DEFAULT 'sent' CHECK (status IN ('draft', 'sent', 'failed', 'archived')),
     is_read BOOLEAN DEFAULT false,
     related_id INTEGER,
     related_type VARCHAR(50), -- 'book_loan', 'payment', 'membership_request'
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_notifications_member_id ON notifications(member_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_target_type ON notifications(target_type);
+CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status);
+
+DROP TRIGGER IF EXISTS update_notifications_updated_at ON notifications;
+CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON notifications
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE INDEX IF NOT EXISTS idx_notifications_member_id ON notifications(member_id);
 

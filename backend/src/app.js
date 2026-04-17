@@ -63,19 +63,19 @@ const configuredCorsOrigins = (process.env.CORS_ORIGINS || '')
 const allowedCorsOrigins = configuredCorsOrigins.length > 0
   ? configuredCorsOrigins
   : [
-      "https://thuvientn.site",
-      "https://www.thuvientn.site",
-      "http://thuvientn.site",
-      "http://www.thuvientn.site",
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      "http://localhost:3001",
-      "http://127.0.0.1:3001"
-    ];
+    "https://thuvientn.site",
+    "https://www.thuvientn.site",
+    "http://thuvientn.site",
+    "http://www.thuvientn.site",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001"
+  ];
 
 // Middleware cơ bản
 app.use(cors({
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     // Cho phép request không có origin (curl, postman)
     if (!origin) return callback(null, true);
 
@@ -91,7 +91,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.options(/.*/, cors({
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     if (!origin) return callback(null, true);
 
     if (allowedCorsOrigins.includes(origin)) {
@@ -183,7 +183,7 @@ app.use((req, res, next) => {
 
 app.use((req, res, next) => {
   const originalStatus = res.status;
-  res.status = function(code) {
+  res.status = function (code) {
     if (code === 401) {
       console.log(`[401_DETECTED] Path: ${req.url} | Method: ${req.method}`);
       console.trace('401 Trace');
@@ -193,12 +193,36 @@ app.use((req, res, next) => {
   next();
 });
 
-// Cấu hình static folder cho uploads
-const uploadsRoot = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadsRoot)) {
-  fs.mkdirSync(uploadsRoot, { recursive: true });
-}
-app.use('/uploads', express.static(uploadsRoot));
+// Cấu hình route rõ ràng cho uploads
+const uploadsRoot = path.resolve(process.cwd(), 'uploads');
+const mediaUploadsRoot = path.join(uploadsRoot, 'media');
+const pdfUploadsRoot = path.join(uploadsRoot, 'pdfs');
+
+app.use('/uploads', express.static(uploadsRoot, {
+  maxAge: '7d',
+  etag: true,
+  lastModified: true,
+}));
+
+app.get('/uploads/media/:filename', (req, res) => {
+  const filePath = path.join(mediaUploadsRoot, req.params.filename);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ success: false, message: 'File not found' });
+  }
+
+  return res.sendFile(filePath);
+});
+
+app.get('/uploads/pdfs/:filename', (req, res) => {
+  const filePath = path.join(pdfUploadsRoot, req.params.filename);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ success: false, message: 'File not found' });
+  }
+
+  return res.sendFile(filePath);
+});
 
 // Swagger Documentation (Lazy loaded to optimize startup)
 const mountSwaggerDocs = (routePath, specSelector) => {
@@ -223,12 +247,12 @@ mountSwaggerDocs('/api-docs', (specs) => specs.swaggerSpec);
  */
 app.use((req, res, next) => {
   const oldUrl = req.url;
-  
+
   // 1. Phân biệt Case cho Publication -> /api/public/publications/
   if (req.url.match(/\/api\/publication/i)) {
     req.url = req.url.replace(/\/api\/publication/i, '/api/public/publications');
   }
-  
+
   // 2. Patch cho Collections trong Publications (nếu frontend vẫn gọi đường dẫn cũ)
   if (req.url === '/api/admin/publications/collections') {
     req.url = '/api/admin/collections';
@@ -236,7 +260,7 @@ app.use((req, res, next) => {
 
   // 3. Patch cho upload-pdf cũ
   if (req.url.includes('/publications/upload-pdf')) {
-    req.url = '/api/admin/upload/pdf'; 
+    req.url = '/api/admin/upload/pdf';
   }
 
   // 4. Patch cho /api/Home cũ của .NET sang /api/public/home
@@ -287,7 +311,7 @@ adminRouter.use('/news', newsRoutes);
 adminRouter.use('/news-categories', newsCategoriesRoutes);
 adminRouter.use('/menu', menuRoutes);
 adminRouter.use('/menus', menuRoutes);
-adminRouter.use('/upload', uploadRoutes); 
+adminRouter.use('/upload', uploadRoutes);
 adminRouter.use('/collections', collectionRoutes);
 adminRouter.use('/media-folders', mediaFoldersRoutes);
 adminRouter.use('/media-files', mediaFilesRoutes);

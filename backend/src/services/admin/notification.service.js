@@ -1,36 +1,56 @@
 const { pool } = require('../../config/database');
 const { toPlainText } = require('../../utils/locale');
+const { emitToRoom, emitToUser, DEFAULT_ROOMS } = require('../../socket');
 
 /**
  * Notification Service (Synchronized Phase 2)
- * Hỗ trợ gửi thông báo cho cá nhân hội viên (Individual) và toàn hệ thống (All).
+ * Đồng bộ thông báo giữa Admin và App thông qua DB + Socket.io.
  */
 
 class NotificationService {
-  /**
-   * Lấy lịch sử thông báo (Admin/Editor xem)
-   */
+  static normalizeJson(value) {
+    if (value && typeof value === 'object') return value;
+    return { text: String(value || '') };
+  }
+
+  static buildWhereClause(target_type, member_id) {
+    const clauses = ['1=1'];
+    const params = [];
+    let idx = 1;
+
+    if (target_type) {
+      clauses.push(`n.target_type = $${idx++}`);
+      params.push(target_type);
+    }
+
+    if (member_id) {
+      clauses.push(`(n.member_id = $${idx++} OR n.target_type = 'all')`);
+      params.push(member_id);
+    }
+
+    return { where: clauses.join(' AND '), params };
+  }
+
   static async getNotificationHistory({ page = 1, limit = 20, target_type = null }) {
     const offset = (page - 1) * limit;
-    let query = `
+    const { where, params } = this.buildWhereClause(target_type, null);
+    const queryParams = [...params, limit, offset];
+
+    const query = `
       SELECT n.*, u.name as sender_name, m.full_name as member_name
       FROM notifications n
       LEFT JOIN users u ON n.sender_id = u.id
       LEFT JOIN members m ON n.member_id = m.id
-      WHERE 1=1
+      WHERE ${where}
+      ORDER BY n.created_at DESC
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
-    const params = [limit, offset];
 
-    if (target_type) {
-      query += ` AND n.target_type = $3`;
-      params.push(target_type);
-    }
+    const { rows: notificationsRaw } = await pool.query(query, queryParams);
+    const countQuery = `SELECT COUNT(*) FROM notifications n WHERE ${where}`;
+    const { rows: countRes } = await pool.query(countQuery, params);
+    const totalCount = parseInt(countRes[0].count, 10);
 
-    query += ` ORDER BY n.created_at DESC LIMIT $1 OFFSET $2`;
-    
-    const { rows: notificationsRaw } = await pool.query(query, params);
-    const { rows: countRes } = await pool.query('SELECT COUNT(*) FROM notifications');
-    const totalCount = parseInt(countRes[0].count);
     const notifications = notificationsRaw.map((item) => ({
       ...item,
       title: toPlainText(item.title, 'N/A'),
@@ -44,48 +64,65 @@ class NotificationService {
         totalCount,
         totalPages: Math.ceil(totalCount / limit),
         currentPage: page,
-        limit
-      }
+        limit,
+      },
     };
   }
 
-  /**
-   * Gửi thông báo (Lưu vào DB và sẵn sàng tích hợp Push Notification)
-   */
   static async sendNotification(data) {
-    const { 
-      title, 
-      message, 
-      type = 'system', 
-      target_type = 'individual', 
-      member_id = null, 
-      sender_id = null, 
-      related_id = null, 
-      related_type = null, 
-      metadata = {} 
+    const {
+      title,
+      message,
+      type = 'system',
+      target_type = 'individual',
+      member_id = null,
+      sender_id = null,
+      related_id = null,
+      related_type = null,
+      metadata = {},
+      status = 'sent',
     } = data;
-    
-    // Chuẩn hóa JSON linh hoạt (hỗ trợ cả string thuần và JSON đa ngôn ngữ)
-    const titleJson = typeof title === 'object' ? title : { text: title };
-    const messageJson = typeof message === 'object' ? message : { text: message };
+
+    const titleJson = this.normalizeJson(title);
+    const messageJson = this.normalizeJson(message);
+    const metadataJson = metadata && typeof metadata === 'object' ? metadata : { text: String(metadata || '') };
 
     const { rows } = await pool.query(
       `INSERT INTO notifications (
-        title, message, type, target_type, member_id, sender_id, 
+        title, message, type, target_type, member_id, sender_id,
         related_id, related_type, metadata, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)
+      RETURNING *`,
       [
-        JSON.stringify(titleJson), JSON.stringify(messageJson), type, target_type, 
-        member_id, sender_id, related_id, related_type, JSON.stringify(metadata), 'sent'
+        JSON.stringify(titleJson),
+        JSON.stringify(messageJson),
+        type,
+        target_type,
+        member_id,
+        sender_id,
+        related_id,
+        related_type,
+        JSON.stringify(metadataJson),
+        status,
       ]
     );
 
-    return rows[0];
+    const notification = rows[0];
+
+    try {
+      if (target_type === 'all') {
+        emitToRoom(DEFAULT_ROOMS.app, 'notification:new', notification);
+        emitToRoom(DEFAULT_ROOMS.admin, 'notification:new', notification);
+      } else if (member_id) {
+        emitToUser(member_id, 'notification:new', notification);
+      }
+    } catch (socketError) {
+      console.error('[NotificationService] Socket emit failed:', socketError.message);
+    }
+
+    return notification;
   }
 
-  /**
-   * Gửi thông báo hàng loạt cho toàn bộ Độc giả
-   */
   static async broadcastToAll(data) {
     const { title, message, sender_id, metadata = {} } = data;
     return this.sendNotification({
@@ -94,7 +131,8 @@ class NotificationService {
       type: 'system',
       target_type: 'all',
       sender_id,
-      metadata
+      metadata,
+      status: 'sent',
     });
   }
 }

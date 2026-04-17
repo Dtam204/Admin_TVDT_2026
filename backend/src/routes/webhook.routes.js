@@ -58,4 +58,36 @@ const webhookController = require('../controllers/webhook.controller');
 // POST /api/webhooks/sepay
 router.post('/sepay', webhookController.handleSePayWebhook);
 
+/**
+ * @swagger
+ * /api/webhooks/sepay:
+ *   post:
+ *     summary: Xử lý webhook SePay cho nạp tiền/gia hạn/nộp phạt
+ *     tags: [Webhooks]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *               transfer_amount:
+ *                 type: number
+ *               gateway:
+ *                 type: string
+ *               transfer_type:
+ *                 type: string
+ *                 enum: [in, out]
+ *     responses:
+ *       200:
+ *         description: Đã xử lý hoặc bỏ qua
+ *       401:
+ *         description: Sai chữ ký / key
+ */
+
 module.exports = router;

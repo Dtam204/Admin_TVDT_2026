@@ -13,6 +13,16 @@ import { cn } from "./utils";
 function Select({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
   return <SelectPrimitive.Root data-slot="select" {...props} />;
 }
 

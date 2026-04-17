@@ -169,7 +169,11 @@ export default function EditBookPage() {
   
   const { data: authorsSelect } = useAuthorsSelect();
   const { data: storageLocationsRes } = useAdminStorageLocations();
-  const storageLocations = storageLocationsRes?.data || [];
+  const storageLocations = Array.isArray(storageLocationsRes?.data)
+    ? storageLocationsRes.data
+    : Array.isArray((storageLocationsRes as any)?.data?.data)
+      ? (storageLocationsRes as any).data.data
+      : [];
 
   // Đã chuyển sang dùng getCleanValue từ locale-admin.ts
 
