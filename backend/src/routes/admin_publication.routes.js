@@ -124,6 +124,7 @@ const { checkPermission } = require('../middlewares/rbac.middleware');
  *   get:
  *     tags: [Admin Books]
  *     summary: Chi tiết ấn phẩm
+ *     description: Trả về thông tin ấn phẩm kèm đường dẫn PDF/ảnh chuẩn để FE hiển thị.
  *     parameters:
  *       - in: path
  *         name: id
@@ -177,6 +178,19 @@ const { checkPermission } = require('../middlewares/rbac.middleware');
 router.post('/', checkPermission('books.manage'), adminPubController.create);
 router.post('/summarize', checkPermission('books.manage'), AdminAIController.summarize);
 router.get('/storage-locations', checkPermission('books.view'), adminPubController.getStorageLocations);
+
+/**
+ * @swagger
+ * /api/admin/publications/storage-locations:
+ *   get:
+ *     summary: Lấy danh sách vị trí lưu trữ
+ *     tags: [Admin Storage]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Danh sách vị trí lưu trữ
+ */
 router.get('/dashboard/stats', checkPermission('books.view'), adminPubController.getStats);
 router.get('/all/select', checkPermission('books.view'), adminPubController.getAllNoPagination);
 router.get('/:id', checkPermission('books.view'), adminPubController.getDetail);

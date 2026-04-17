@@ -13,8 +13,8 @@ class AdminNotificationController {
     try {
       const { page, limit, target_type } = req.query;
       const result = await NotificationService.getNotificationHistory({
-        page: parseInt(page) || 1,
-        limit: parseInt(limit) || 20,
+        page: parseInt(page, 10) || 1,
+        limit: parseInt(limit, 10) || 20,
         target_type
       });
       res.json({ success: true, ...result });
@@ -28,7 +28,7 @@ class AdminNotificationController {
    */
   static async send(req, res) {
     try {
-      const { title, message, target_type, member_id, metadata, type } = req.body;
+      const { title, message, target_type, member_id, metadata, type, related_id, related_type } = req.body;
       const sender_id = req.user?.id;
 
       const result = await NotificationService.sendNotification({
@@ -38,6 +38,8 @@ class AdminNotificationController {
         member_id,
         sender_id,
         metadata,
+        related_id,
+        related_type,
         type: type || 'system'
       });
 

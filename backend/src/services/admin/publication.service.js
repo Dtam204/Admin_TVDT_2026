@@ -310,6 +310,16 @@ class PublicationService {
     ].filter((f) => f.value !== null && f.value !== undefined && f.value !== '');
   }
 
+  static normalizePublicFileUrl(value) {
+    if (!value || typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (trimmed.startsWith('/')) return trimmed;
+    if (trimmed.startsWith('uploads/')) return `/${trimmed}`;
+    return `/uploads/${trimmed.replace(/^\.\//, '')}`;
+  }
+
   /**
    * Chi tiết ấn phẩm "Full Field" - Dữ liệu thực 100%
    * Hỗ trợ user_interaction nếu có readerId (từ token)
@@ -359,6 +369,11 @@ class PublicationService {
     let publication = pubRows[0];
 
     const mediaType = (publication.media_type || '').toLowerCase();
+    publication.digital_file_url = this.normalizePublicFileUrl(publication.digital_file_url);
+    publication.cover_image = this.normalizePublicFileUrl(publication.cover_image);
+    publication.thumbnail = this.normalizePublicFileUrl(publication.thumbnail);
+    publication.content_url = this.normalizePublicFileUrl(publication.content_url);
+
     const shouldSyncPdfPages = (mediaType === 'digital' || mediaType === 'hybrid' || publication.is_digital === true)
       && publication.digital_file_url;
 
@@ -493,7 +508,11 @@ class PublicationService {
       information_fields: informationFields,
       trailerInfo,
       preview_pages: previewPages,
-      digitized_files: digitizedFiles
+      digitized_files: digitizedFiles,
+      file_url: publication.digital_file_url,
+      pdf_url: publication.digital_file_url,
+      cover_url: publication.cover_image,
+      thumbnail_url: publication.thumbnail,
     };
   }
 

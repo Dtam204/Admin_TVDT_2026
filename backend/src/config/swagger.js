@@ -23,9 +23,13 @@ const TAG_DEFINITIONS = [
   { name: 'Admin Menus', description: 'Quản lý menu giao diện' },
   { name: 'Admin News', description: 'Quản lý tin tức' },
   { name: 'Admin Payments', description: 'Quản lý giao dịch tài chính và ví' },
-  { name: 'Admin Publication', description: 'Nghiệp vụ AI/tác vụ mở rộng cho ấn phẩm' },
+  { name: 'Admin Publication', description: 'Nghiệp vụ quản lý ấn phẩm và luồng kho lưu trữ' },
   { name: 'Admin Publishers', description: 'Quản lý nhà xuất bản' },
   { name: 'Admin Upload', description: 'Upload tệp phục vụ CMS' },
+  { name: 'Admin Storage', description: 'Quản lý vị trí lưu trữ/kho/kệ sách' },
+  { name: 'Admin Notifications', description: 'Gửi và quản lý notification realtime cho app/admin' },
+  { name: 'Admin MediaFiles', description: 'Quản lý file media đã upload' },
+  { name: 'Admin MediaFolders', description: 'Quản lý thư mục media' },
 
   // Reader/App APIs
   { name: 'Reader Portal', description: 'API nghiệp vụ bạn đọc (đăng nhập và thao tác cá nhân)' },
@@ -44,6 +48,8 @@ const TAG_DEFINITIONS = [
 
   // Integrations
   { name: 'Webhooks', description: 'Webhook tích hợp cổng thanh toán/ngân hàng' },
+  { name: 'Admin Wallet', description: 'API nạp tiền ví và đồng bộ giao dịch ngân hàng' },
+  { name: 'Admin Membership', description: 'API nâng cấp/gia hạn gói hội viên' },
 ];
 
 function filterPaths(paths, matcher) {
@@ -101,6 +107,17 @@ const options = {
         '### Xác thực',
         'Sử dụng **Bearer JWT Token** cho endpoint `/api/admin/*` và `/api/reader/*`.',
         'Lấy token tại `POST /api/auth/login`.',
+        '',
+        '### Swagger endpoints',
+        '- `/api-docs` : toàn bộ API',
+        '- `/api-docs/admin` : API Admin/CMS',
+        '- `/api-docs/app` : API App/Reader/Public',
+        '- `/api-docs/integration` : API webhook/tích hợp',
+        '',
+        '### Luồng realtime',
+        '- Notification realtime cho Admin/App',
+        '- SePay webhook tự động cập nhật ví / hội viên / nộp phạt',
+        '- FE chỉ cần subscribe socket và gọi API theo Swagger',
         '',
         '### Cấu trúc Response chuẩn (7 trường)',
         '```json',
@@ -263,6 +280,23 @@ const options = {
             created_at:  { type: 'string', format: 'date-time' },
           },
         },
+        WalletDepositOrder: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer' },
+            member_id: { type: 'integer' },
+            amount: { type: 'number' },
+            client_reference: { type: 'string' },
+            transfer_code: { type: 'string' },
+            status: { type: 'string', enum: ['pending', 'credited', 'failed', 'expired', 'cancelled'] },
+            expires_at: { type: 'string', format: 'date-time' },
+            matched_external_txn_id: { type: 'string', nullable: true },
+            credited_at: { type: 'string', format: 'date-time', nullable: true },
+            failure_reason: { type: 'string', nullable: true },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
         Payment: {
           type: 'object',
           description: 'Thông tin giao dịch tài chính',
@@ -360,6 +394,7 @@ const options = {
             format:           { type: 'string', enum: ['Physical', 'Digital', 'Hybrid'] },
             access_policy:    { type: 'string', enum: ['basic', 'premium', 'vip'] },
             cooperation_status: { type: 'string', nullable: true, example: 'cooperating' },
+            storage_location_id: { type: 'integer', nullable: true, example: 1 },
             copy_count:       { type: 'integer', example: 12 },
             total_copies:     { type: 'integer', example: 12 },
             countCopies:      { type: 'integer', example: 12 },
@@ -440,11 +475,16 @@ const options = {
             is_digital: { type: 'boolean' },
             format: { type: 'string', enum: ['Physical', 'Digital', 'Hybrid'] },
             cooperation_status: { type: 'string', nullable: true },
+            storage_location_id: { type: 'integer', nullable: true },
             view_count: { type: 'integer' },
             favorite_count: { type: 'integer' },
             copy_count: { type: 'integer' },
             content_url: { type: 'string', nullable: true },
             digital_file_url: { type: 'string', nullable: true },
+            file_url: { type: 'string', nullable: true },
+            pdf_url: { type: 'string', nullable: true },
+            cover_url: { type: 'string', nullable: true },
+            thumbnail_url: { type: 'string', nullable: true },
             access_policy: { type: 'string', enum: ['basic', 'premium', 'vip'] },
             canRead: { type: 'boolean' },
             current_collection: {
@@ -476,7 +516,6 @@ const options = {
                   copy_number: { type: 'string' },
                   price: { type: 'number' },
                   status: { type: 'string' },
-                  condition: { type: 'string' },
                   storage_location_id: { type: 'integer', nullable: true },
                   storage_name: { type: 'string', nullable: true }
                 }
@@ -500,47 +539,6 @@ const options = {
                       { type: 'boolean' }
                     ]
                   }
-                }
-              }
-            },
-            trailerInfo: {
-              type: 'object',
-              nullable: true,
-              properties: {
-                url: { type: 'string', nullable: true },
-                provider: { type: 'string', nullable: true },
-                thumbnail: { type: 'string', nullable: true },
-                duration: { type: 'string', nullable: true },
-                title: { type: 'string', nullable: true }
-              }
-            },
-            preview_pages: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  index: { type: 'integer' },
-                  label: { type: 'string' },
-                  value: {
-                    oneOf: [
-                      { type: 'string' },
-                      { type: 'object' }
-                    ]
-                  }
-                }
-              }
-            },
-            digitized_files: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  name: { type: 'string' },
-                  type: { type: 'string' },
-                  url: { type: 'string' },
-                  path: { type: 'string', nullable: true },
-                  size: { type: 'number', nullable: true }
                 }
               }
             },
@@ -668,26 +666,81 @@ const options = {
         MediaFile: {
           type: 'object',
           properties: {
-            id:         { type: 'integer' },
-            name:       { type: 'string' },
-            file_path:  { type: 'string' },
-            file_type:  { type: 'string' },
-            file_size:  { type: 'integer' },
-            created_at: { type: 'string', format: 'date-time' },
+            id:            { type: 'integer' },
+            folder_id:      { type: 'integer', nullable: true },
+            original_name:  { type: 'string' },
+            filename:       { type: 'string' },
+            file_path:      { type: 'string' },
+            file_url:       { type: 'string' },
+            file_type:      { type: 'string' },
+            mime_type:      { type: 'string', nullable: true },
+            file_size:      { type: 'integer', nullable: true },
+            width:          { type: 'integer', nullable: true },
+            height:         { type: 'integer', nullable: true },
+            dimensions:     { type: 'string', nullable: true },
+            alt_text:       { type: 'string', nullable: true },
+            title:          { type: 'string', nullable: true },
+            description:    { type: 'string', nullable: true },
+            uploaded_by:    { type: 'integer', nullable: true },
+            created_at:     { type: 'string', format: 'date-time' },
           },
+        },
+        StorageLocation: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer' },
+            name: { type: 'string' },
+            description: { type: 'string', nullable: true },
+            is_active: { type: 'boolean' },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          }
         },
         Notification: {
           type: 'object',
           properties: {
-            id:           { type: 'integer' },
-            member_id:    { type: 'integer' },
-            title:        { type: 'object', description: 'Tiêu đề đa ngôn ngữ (JSONB)' },
-            message:      { type: 'object', description: 'Nội dung đa ngôn ngữ (JSONB)' },
-            type:         { type: 'string', enum: ['overdue', 'renewal', 'system', 'payment'] },
-            is_read:      { type: 'boolean', default: false },
-            related_id:   { type: 'string', nullable: true, description: 'ID liên quan (Transaction ID, etc.)' },
-            related_type: { type: 'string', nullable: true },
-            created_at:   { type: 'string', format: 'date-time' },
+            id:            { type: 'integer' },
+            member_id:     { type: 'integer', nullable: true },
+            sender_id:     { type: 'integer', nullable: true },
+            target_type:   { type: 'string', enum: ['individual', 'all'] },
+            title:         { type: 'object', description: 'Tiêu đề đa ngôn ngữ (JSONB)' },
+            message:       { type: 'object', description: 'Nội dung đa ngôn ngữ (JSONB)' },
+            metadata:      { type: 'object', nullable: true },
+            type:          { type: 'string', enum: ['overdue', 'renewal', 'system', 'payment'] },
+            status:        { type: 'string', enum: ['draft', 'sent', 'failed', 'archived'] },
+            is_read:       { type: 'boolean', default: false },
+            related_id:    { type: 'string', nullable: true, description: 'ID liên quan (Transaction ID, etc.)' },
+            related_type:  { type: 'string', nullable: true },
+            created_at:    { type: 'string', format: 'date-time' },
+            updated_at:    { type: 'string', format: 'date-time' },
+          },
+        },
+        StorageLocation: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer' },
+            name: { type: 'string' },
+            description: { type: 'string', nullable: true },
+            is_active: { type: 'boolean' },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        WalletDepositOrder: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer' },
+            member_id: { type: 'integer' },
+            amount: { type: 'number' },
+            client_reference: { type: 'string' },
+            transfer_code: { type: 'string' },
+            status: { type: 'string', enum: ['pending', 'credited', 'failed', 'expired', 'cancelled'] },
+            expires_at: { type: 'string', format: 'date-time' },
+            matched_external_txn_id: { type: 'string', nullable: true },
+            credited_at: { type: 'string', format: 'date-time', nullable: true },
+            failure_reason: { type: 'string', nullable: true },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
           },
         },
       },

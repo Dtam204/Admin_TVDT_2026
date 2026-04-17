@@ -199,6 +199,10 @@ export const publicationsApi = {
   },
 
   getStorageLocations: async () => {
-    return adminApiCall('/api/admin/publications/storage-locations');
+    const response = await adminApiCall<ApiEnvelope<any[]>>('/api/admin/publications/storage-locations');
+    return {
+      ...response,
+      data: Array.isArray(response?.data) ? response.data : [],
+    };
   },
 };

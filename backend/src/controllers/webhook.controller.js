@@ -4,6 +4,7 @@ const { processMembershipUpgrade } = require('../services/membership_upgrade.ser
 const { processPenaltyPayment } = require('../services/penalty_payment.service');
 const { generateTransactionId } = require('../utils/id_helper');
 const NotificationService = require('../services/admin/notification.service');
+const { getIO, emitToRoom, emitToUser, DEFAULT_ROOMS } = require('../socket');
 require('dotenv').config();
 
 function normalizeReference(value) {
@@ -521,38 +522,63 @@ exports.handleSePayWebhook = async (req, res, next) => {
  */
 async function triggerSync(memberId, memberName, type, amount, message, internalId, newBalance = null) {
   try {
-    const { getIO } = require('../socket');
     const io = getIO();
     if (!io) return;
 
-    await NotificationService.sendNotification({
+    const notification = await NotificationService.sendNotification({
       member_id: memberId,
-      title: 'Thông báo thanh toán',
-      message,
+      title: {
+        vi: 'Thông báo thanh toán',
+        en: 'Payment notification'
+      },
+      message: {
+        vi: message,
+        en: message
+      },
       type: 'payment',
+      target_type: 'individual',
       related_id: internalId,
-      related_type: 'payment'
+      related_type: 'payment',
+      metadata: {
+        source: 'sepay',
+        memberName,
+        amount,
+        newBalance,
+        syncType: type
+      }
     });
 
-    io.to(`member_${memberId}`).emit('payment_success', {
+    emitToUser(memberId, 'notification:new', notification);
+    emitToUser(memberId, 'payment_success', {
       type,
       amount,
       message,
       transaction_id: internalId,
       new_balance: newBalance
     });
-
-    io.to(`member_${memberId}`).emit('wallet_balance_updated', {
+    emitToUser(memberId, 'wallet_balance_updated', {
       amount,
       new_balance: newBalance,
       message
     });
 
-    io.to('admins').emit('new_transaction', {
+    emitToRoom(DEFAULT_ROOMS.admin, 'new_transaction', {
       type: 'BANK_AUTOMATION',
       member_name: memberName,
       amount,
-      message: `[SePay] ${memberName} - ${message}`
+      message: `[SePay] ${memberName} - ${message}`,
+      transaction_id: internalId,
+      new_balance: newBalance
+    });
+
+    emitToRoom(DEFAULT_ROOMS.notifications, 'notification:new', {
+      member_id: memberId,
+      member_name: memberName,
+      type: 'payment',
+      amount,
+      message,
+      transaction_id: internalId,
+      new_balance: newBalance
     });
   } catch (err) {
     console.error('[Webhook Sync Error]', err.message);
