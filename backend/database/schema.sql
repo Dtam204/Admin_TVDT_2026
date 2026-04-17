@@ -829,15 +829,23 @@ CREATE TABLE IF NOT EXISTS publication_copies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     publication_id INTEGER REFERENCES books(id) ON DELETE CASCADE,
     storage_id UUID REFERENCES storages(id) ON DELETE SET NULL,
+    storage_location_id INTEGER REFERENCES storage_locations(id) ON DELETE SET NULL,
     barcode VARCHAR(100) UNIQUE,
     copy_number VARCHAR(100),
     price NUMERIC(15,2),
     status VARCHAR(50) DEFAULT 'available',
+    condition VARCHAR(50) DEFAULT 'good',
     added_date DATE DEFAULT CURRENT_DATE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS idx_publication_copies_storage_location_id
+ON publication_copies(storage_location_id);
 
+DROP TRIGGER IF EXISTS update_publication_copies_updated_at ON publication_copies;
+CREATE TRIGGER update_publication_copies_updated_at BEFORE UPDATE ON publication_copies
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  
 -- Bảng Bookmarks (Digital Reading)
 CREATE TABLE IF NOT EXISTS publication_bookmarks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
