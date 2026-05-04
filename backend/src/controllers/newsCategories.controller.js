@@ -1,4 +1,5 @@
 const { pool } = require('../config/database');
+const { sendApiResponse } = require('../utils/apiResponse');
 
 // Helper function để xử lý locale object: convert thành JSON string nếu là object, giữ nguyên nếu là string
 const processLocaleField = (value) => {
@@ -67,7 +68,13 @@ exports.getCategories = async (_req, res, next) => {
        FROM news_categories
        ORDER BY name ASC`,
     );
-    return res.json({ success: true, data: rows.map(mapCategory) });
+    return sendApiResponse(res, {
+      status: 200,
+      success: true,
+      message: 'Lấy danh sách danh mục tin tức thành công',
+      data: rows.map(mapCategory),
+      errors: null,
+    });
   } catch (error) {
     return next(error);
   }
@@ -85,9 +92,21 @@ exports.getCategoryByCode = async (req, res, next) => {
       [code],
     );
     if (!rows.length) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy danh mục' });
+      return sendApiResponse(res, {
+        status: 404,
+        success: false,
+        message: 'Không tìm thấy danh mục',
+        data: null,
+        errors: ['NEWS_CATEGORY_NOT_FOUND'],
+      });
     }
-    return res.json({ success: true, data: mapCategory(rows[0]) });
+    return sendApiResponse(res, {
+      status: 200,
+      success: true,
+      message: 'Lấy chi tiết danh mục tin tức thành công',
+      data: mapCategory(rows[0]),
+      errors: null,
+    });
   } catch (error) {
     return next(error);
   }
@@ -101,7 +120,13 @@ exports.createCategory = async (req, res, next) => {
     // Validate: kiểm tra name có giá trị không (có thể là string hoặc locale object)
     const nameValue = typeof name === 'string' ? name : (name?.vi || name?.en || name?.ja || '');
     if (!code || !nameValue.trim()) {
-      return res.status(400).json({ success: false, message: 'code và name là bắt buộc' });
+      return sendApiResponse(res, {
+        status: 400,
+        success: false,
+        message: 'code và name là bắt buộc',
+        data: null,
+        errors: ['VALIDATION_ERROR'],
+      });
     }
 
     const normalizedParent = parentCode || null;
@@ -115,10 +140,22 @@ exports.createCategory = async (req, res, next) => {
       [code, processedName, processedDescription, normalizedParent, isActive],
     );
 
-    return res.status(201).json({ success: true, data: mapCategory(rows[0]) });
+    return sendApiResponse(res, {
+      status: 201,
+      success: true,
+      message: 'Tạo danh mục tin tức thành công',
+      data: mapCategory(rows[0]),
+      errors: null,
+    });
   } catch (error) {
     if (error.code === '23505') {
-      return res.status(409).json({ success: false, message: 'Mã code đã tồn tại' });
+      return sendApiResponse(res, {
+        status: 409,
+        success: false,
+        message: 'Mã code đã tồn tại',
+        data: null,
+        errors: ['DUPLICATE_CODE'],
+      });
     }
     return next(error);
   }
@@ -150,7 +187,13 @@ exports.updateCategory = async (req, res, next) => {
     if (parentCode !== undefined) addField('parent_code', parentCode || null);
 
     if (!fields.length) {
-      return res.status(400).json({ success: false, message: 'Không có dữ liệu để cập nhật' });
+      return sendApiResponse(res, {
+        status: 400,
+        success: false,
+        message: 'Không có dữ liệu để cập nhật',
+        data: null,
+        errors: ['EMPTY_UPDATE_PAYLOAD'],
+      });
     }
 
     params.push(code);
@@ -164,10 +207,22 @@ exports.updateCategory = async (req, res, next) => {
     );
 
     if (!rows.length) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy danh mục' });
+      return sendApiResponse(res, {
+        status: 404,
+        success: false,
+        message: 'Không tìm thấy danh mục',
+        data: null,
+        errors: ['NEWS_CATEGORY_NOT_FOUND'],
+      });
     }
 
-    return res.json({ success: true, data: mapCategory(rows[0]) });
+    return sendApiResponse(res, {
+      status: 200,
+      success: true,
+      message: 'Cập nhật danh mục tin tức thành công',
+      data: mapCategory(rows[0]),
+      errors: null,
+    });
   } catch (error) {
     return next(error);
   }
@@ -183,10 +238,22 @@ exports.deleteCategory = async (req, res, next) => {
     );
 
     if (!rowCount) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy danh mục' });
+      return sendApiResponse(res, {
+        status: 404,
+        success: false,
+        message: 'Không tìm thấy danh mục',
+        data: null,
+        errors: ['NEWS_CATEGORY_NOT_FOUND'],
+      });
     }
 
-    return res.json({ success: true, message: 'Đã xóa danh mục' });
+    return sendApiResponse(res, {
+      status: 200,
+      success: true,
+      message: 'Đã xóa danh mục',
+      data: { deleted: true, code },
+      errors: null,
+    });
   } catch (error) {
     return next(error);
   }

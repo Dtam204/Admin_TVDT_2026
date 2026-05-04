@@ -14,7 +14,7 @@ const router = express.Router();
 
 /**
  * @openapi
- * /api/admin/media/folders:
+ * /api/admin/media-folders:
  *   get:
  *     tags: [Admin Media]
  *     summary: Danh sách thư mục
@@ -57,7 +57,7 @@ const router = express.Router();
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
- * /api/admin/media/folders/tree:
+ * /api/admin/media-folders/tree:
  *   get:
  *     tags: [Admin Media]
  *     summary: Cây thư mục hệ thống
@@ -71,7 +71,7 @@ const router = express.Router();
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
- * /api/admin/media/folders/{id}:
+ * /api/admin/media-folders/{id}:
  *   get:
  *     tags: [Admin Media]
  *     summary: Thông tin thư mục

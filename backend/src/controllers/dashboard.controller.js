@@ -12,7 +12,8 @@ exports.getSummary = async (req, res, next) => {
       success: true,
       data: {
         ...summary,
-        ...activities
+        ...activities,
+        communityDiscussion: summary.communityDiscussion,
       }
     });
   } catch (error) {

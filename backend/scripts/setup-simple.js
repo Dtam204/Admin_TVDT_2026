@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 const { createDatabaseIfNotExists } = require('../src/config/database');
+const { seedSampleData } = require('./seed-sample-data');
 
 async function setupSimple() {
   console.log('🚀 Starting database synchronization...\n');
@@ -67,6 +68,11 @@ async function setupSimple() {
     // But for a simple sync, running the whole file is OK as it uses IF NOT EXISTS
     await client.query(schemaSQL);
     console.log('✅ Schema synchronization completed\n');
+
+    // Seed additional cross-flow sample data (admin/app/reader/webhook)
+    console.log('🌱 Seeding supplemental sample data...');
+    await seedSampleData();
+    console.log('✅ Supplemental sample data completed\n');
 
     // Verify
     console.log('🔍 Verifying system integrity...');

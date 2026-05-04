@@ -188,9 +188,7 @@ router.post('/ai-smart', searchController.aiSmartSearch);
  *                 - type: object
  *                   properties:
  *                     data:
- *                       type: array
- *                       items: { $ref: '#/components/schemas/News' }
- *                     pagination: { $ref: '#/components/schemas/Pagination' }
+ *                       $ref: '#/components/schemas/SearchNewsResponse'
  */
 router.get('/ai-news-suggest', searchController.aiNewsSuggest);
 
@@ -229,15 +227,7 @@ router.get('/ai-news-suggest', searchController.aiNewsSuggest);
  *                   properties:
  *                     data:
  *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           id: { type: integer, example: 42 }
- *                           label: { type: string, example: "Python Crash Course" }
- *                           subtitle: { type: string, example: "Eric Matthes", description: "Tên tác giả" }
- *                           thumbnail: { type: string, nullable: true, example: "https://..." }
- *                           year: { type: integer, example: 2023 }
- *                           type: { type: string, enum: [Physical, Digital, Hybrid] }
+ *                       items: { $ref: '#/components/schemas/SearchAutocompleteItem' }
  */
 router.get('/autocomplete', searchController.autocomplete);
 
@@ -315,9 +305,7 @@ router.get('/autocomplete', searchController.autocomplete);
  *                 - type: object
  *                   properties:
  *                     data:
- *                       type: array
- *                       items: { $ref: '#/components/schemas/Publication' }
- *                     pagination: { $ref: '#/components/schemas/Pagination' }
+ *                       $ref: '#/components/schemas/SearchPublicationsResponse'
  */
 router.get('/publications', searchController.searchPublications);
 

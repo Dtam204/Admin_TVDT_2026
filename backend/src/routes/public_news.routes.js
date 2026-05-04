@@ -12,6 +12,9 @@ const router = express.Router();
  *     description: |
  *       Lấy danh sách tin tức đã xuất bản (status=published) dành cho Mobile App và Reader Portal.
  *       Hỗ trợ lọc theo từ khóa, danh mục và phân trang.
+ *       Response trả về dạng `{ items, totalRecords, pageIndex, pageSize }` để FE map dễ dàng.
+ *       Schema: `NewsListResponse`.
+ *       Example item: `{ id, title, slug, summary, thumbnail, imageUrl, isFeatured, publishedDate }`.
  *     security: []
  *     parameters:
  *       - in: query
@@ -66,8 +69,10 @@ router.get('/', getPublicNews);
  *     tags: [Public News]
  *     summary: "Chi tiết bài viết theo slug"
  *     description: |
- *       Lấy toàn bộ nội dung chi tiết một bài viết tin tức dựa trên slug hoặc ID.
+ *       Lấy toàn bộ nội dung chi tiết một bài viết tin tức dựa trên slug.
  *       Dùng cho màn hình **Chi tiết Tin tức** trên Mobile App.
+ *       Response dùng schema `NewsDetailResponse`.
+ *       FE có thể dùng `thumbnail`, `imageUrl`, `content`, `galleryImages`, `commentsCount` để render chi tiết.
  *     security: []
  *     parameters:
  *       - in: path

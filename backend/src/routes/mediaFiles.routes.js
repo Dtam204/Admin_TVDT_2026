@@ -6,7 +6,7 @@ const { checkPermission } = require('../middlewares/rbac.middleware');
 
 /**
  * @openapi
- * /api/admin/media/files:
+ * /api/admin/media-files:
  *   get:
  *     tags: [Admin Media]
  *     summary: Danh sách tệp tin
@@ -40,7 +40,7 @@ router.get('/', requireAuth, checkPermission('media.view'), mediaController.getF
 
 /**
  * @openapi
- * /api/admin/media/files/{id}:
+ * /api/admin/media-files/{id}:
  *   get:
  *     tags: [Admin Media]
  *     summary: Chi tiết tệp tin

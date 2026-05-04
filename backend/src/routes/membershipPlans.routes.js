@@ -23,7 +23,7 @@ router.get('/', requireAuth, checkPermission('membership_plans.view'), getAll);
 
 /**
  * @openapi
- * /api/admin/membership-plans/:id:
+ * /api/admin/membership-plans/{id}:
  *   get:
  *     tags:
  *       - Admin MembershipPlans
@@ -73,7 +73,7 @@ router.post('/', requireAuth, checkPermission('membership_plans.manage'), create
 
 /**
  * @openapi
- * /api/admin/membership-plans/:id:
+ * /api/admin/membership-plans/{id}:
  *   put:
  *     tags:
  *       - Admin MembershipPlans
@@ -111,7 +111,7 @@ router.put('/:id', requireAuth, checkPermission('membership_plans.manage'), upda
 
 /**
  * @openapi
- * /api/admin/membership-plans/:id:
+ * /api/admin/membership-plans/{id}:
  *   delete:
  *     tags:
  *       - Admin MembershipPlans

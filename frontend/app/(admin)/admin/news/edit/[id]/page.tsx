@@ -28,7 +28,8 @@ export default function EditNewsPage() {
           content: getCleanValue(news.content) || "",
           status: news.status || "draft",
           isFeatured: news.isFeatured ?? false,
-          imageUrl: news.imageUrl,
+          thumbnail: news.thumbnail || news.imageUrl || "",
+          imageUrl: news.imageUrl || news.image_url || "",
           author: getCleanValue(news.author) || "Thư viện TN",
           readTime: getCleanValue(news.readTime) || "5 phút đọc",
           gradient: news.gradient || "from-blue-600 to-cyan-600",
@@ -63,9 +64,14 @@ export default function EditNewsPage() {
 
   const handleSave = async (formData: any) => {
     try {
+      const payload = {
+        ...formData,
+        imageUrl: formData.imageUrl || formData.thumbnail || "",
+        thumbnail: formData.thumbnail || formData.imageUrl || "",
+      };
       await adminApiCall(AdminEndpoints.news.detail(Number(id)), {
         method: "PUT",
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
       toast.success("Đã cập nhật bài viết");
       // Delay nhỏ để toast hiển thị trước khi redirect

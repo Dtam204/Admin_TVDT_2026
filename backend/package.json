@@ -9,6 +9,7 @@
     "dev": "node --watch server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "setup": "node scripts/setup-simple.js",
+    "seed:sample": "node scripts/seed-sample-data.js",
     "reset-db": "node scripts/reset-database.js",
     "force-reset-db": "node scripts/force-reset-database.js",
     "optimize-db": "node scripts/optimize-database.js",

@@ -61,6 +61,7 @@ interface NewsFormData {
   content: string;
   status: NewsStatus;
   isFeatured: boolean;
+  thumbnail?: string;
   imageUrl?: string;
   author: string;
   readTime: string;
@@ -94,7 +95,8 @@ export default function NewsForm({
     content: initialData?.content || "",
     status: (initialData?.status as NewsStatus) || "draft",
     isFeatured: initialData?.isFeatured ?? false,
-    imageUrl: initialData?.imageUrl,
+    thumbnail: initialData?.thumbnail || "",
+    imageUrl: initialData?.imageUrl || "",
     author: initialData?.author || "Thư viện TN",
     readTime: initialData?.readTime || "5 phút đọc",
     slug: initialData?.slug || "",
@@ -109,6 +111,7 @@ export default function NewsForm({
   });
 
   const [saving, setSaving] = useState(false);
+  const [showThumbnailDialog, setShowThumbnailDialog] = useState(false);
   const [showImageDialog, setShowImageDialog] = useState(false);
   const [imageTab, setImageTab] = useState<"library" | "upload">("library");
   const [activeTab, setActiveTab] = useState<"content" | "settings" | "comments">("content");
@@ -558,29 +561,65 @@ export default function NewsForm({
 
                   <div className="md:col-span-6">
                     <Card className="p-4 space-y-4">
-                      <h2 className="text-lg font-semibold">Ảnh bìa bài viết</h2>
+                      <h2 className="text-lg font-semibold">Ảnh hiển thị ngoài danh sách</h2>
                       <div 
-                        className="w-full h-64 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 overflow-hidden"
-                        onClick={() => setShowImageDialog(true)}
+                        className="w-full h-56 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 overflow-hidden"
+                        onClick={() => setShowThumbnailDialog(true)}
                       >
-                        {formData.imageUrl ? (
-                          <img src={typeof formData.imageUrl === 'string' && formData.imageUrl.startsWith("/") ? buildUrl(formData.imageUrl) : (typeof formData.imageUrl === 'string' ? formData.imageUrl : '')} className="w-full h-full object-cover" alt="Cover" />
+                        {formData.thumbnail ? (
+                          <img
+                            src={typeof formData.thumbnail === 'string' && formData.thumbnail.startsWith("/") ? buildUrl(formData.thumbnail) : (typeof formData.thumbnail === 'string' ? formData.thumbnail : '')}
+                            className="w-full h-full object-cover"
+                            alt="Thumbnail"
+                          />
                         ) : (
                           <div className="text-center text-gray-500">
                             <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                            <p>Nhấn để chọn ảnh bìa</p>
+                            <p>Nhấn để chọn ảnh đại diện</p>
                           </div>
                         )}
                       </div>
                       <div className="flex gap-2">
-                        <Button type="button" variant="outline" className="flex-1" onClick={() => setShowImageDialog(true)}>
-                          {formData.imageUrl ? "Thay đổi ảnh" : "Chọn ảnh"}
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => setShowThumbnailDialog(true)}>
+                          {formData.thumbnail ? "Thay đổi ảnh đại diện" : "Chọn ảnh đại diện"}
                         </Button>
-                        {formData.imageUrl && (
-                          <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={() => setFormData({ ...formData, imageUrl: "" })}>
+                        {formData.thumbnail && (
+                          <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={() => setFormData({ ...formData, thumbnail: "" })}>
                             <Trash className="w-4 h-4" />
                           </Button>
                         )}
+                      </div>
+
+                      <div className="pt-4 space-y-3 border-t">
+                        <h3 className="text-base font-semibold">Ảnh chi tiết bài viết</h3>
+                        <p className="text-xs text-gray-500">Ảnh này dùng trong nội dung chi tiết của bài viết.</p>
+                        <div 
+                          className="w-full h-48 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-indigo-500 transition-colors bg-gray-50 overflow-hidden"
+                          onClick={() => setShowImageDialog(true)}
+                        >
+                          {formData.imageUrl ? (
+                            <img
+                              src={typeof formData.imageUrl === 'string' && formData.imageUrl.startsWith("/") ? buildUrl(formData.imageUrl) : (typeof formData.imageUrl === 'string' ? formData.imageUrl : '')}
+                              className="w-full h-full object-cover"
+                              alt="Detail"
+                            />
+                          ) : (
+                            <div className="text-center text-gray-500">
+                              <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                              <p>Nhấn để chọn ảnh chi tiết</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button type="button" variant="outline" className="flex-1" onClick={() => setShowImageDialog(true)}>
+                            {formData.imageUrl ? "Thay đổi ảnh chi tiết" : "Chọn ảnh chi tiết"}
+                          </Button>
+                          {formData.imageUrl && (
+                            <Button type="button" variant="ghost" size="icon" className="text-red-500" onClick={() => setFormData({ ...formData, imageUrl: "" })}>
+                              <Trash className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </Card>
                   </div>
@@ -600,10 +639,35 @@ export default function NewsForm({
         </form>
       </div>
 
+      <Dialog open={showThumbnailDialog} onOpenChange={setShowThumbnailDialog}>
+        <DialogContent className="max-w-6xl h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Chọn ảnh đại diện bài viết</DialogTitle>
+            <DialogDescription>
+              Ảnh này hiển thị ngoài danh sách tin tức trên app và trang admin.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mb-4 bg-gray-100 p-1 rounded-lg w-fit">
+            <Button type="button" size="sm" variant={imageTab === "library" ? "default" : "ghost"} onClick={() => setImageTab("library")}>Thư viện</Button>
+            <Button type="button" size="sm" variant={imageTab === "upload" ? "default" : "ghost"} onClick={() => setImageTab("upload")}>Tải lên</Button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {imageTab === "library" ? (
+              <MediaLibraryPicker onSelectImage={(url) => { setFormData({ ...formData, thumbnail: url }); setShowThumbnailDialog(false); }} />
+            ) : (
+              <ImageUpload currentImage={formData.thumbnail} onImageSelect={(url) => { setFormData({ ...formData, thumbnail: url }); setShowThumbnailDialog(false); }} />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
         <DialogContent className="max-w-6xl h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Thư viện Media</DialogTitle>
+            <DialogTitle>Chọn ảnh chi tiết bài viết</DialogTitle>
+            <DialogDescription>
+              Ảnh này được chèn trong nội dung chi tiết của bài viết.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mb-4 bg-gray-100 p-1 rounded-lg w-fit">
             <Button type="button" size="sm" variant={imageTab === "library" ? "default" : "ghost"} onClick={() => setImageTab("library")}>Thư viện</Button>
@@ -613,7 +677,7 @@ export default function NewsForm({
             {imageTab === "library" ? (
               <MediaLibraryPicker onSelectImage={(url) => { setFormData({ ...formData, imageUrl: url }); setShowImageDialog(false); }} />
             ) : (
-              <ImageUpload currentImage={formData.imageUrl} onImageSelect={(url) => { setFormData({ ...formData, imageUrl: url }); }} />
+              <ImageUpload currentImage={formData.imageUrl} onImageSelect={(url) => { setFormData({ ...formData, imageUrl: url }); setShowImageDialog(false); }} />
             )}
           </div>
         </DialogContent>

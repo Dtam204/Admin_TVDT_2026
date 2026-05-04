@@ -20,7 +20,13 @@ const publicResourceController = require('../controllers/public_resource.control
  *         description: "Thành công"
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/ResourceListResponse'
  */
 router.post('/list', publicResourceController.getResourceList);
 
@@ -36,7 +42,13 @@ router.post('/list', publicResourceController.getResourceList);
  *         description: "Thành công"
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/ResourceTabResponse'
  */
 router.post('/list-tab', publicResourceController.getResourceListTab);
 
@@ -62,7 +74,13 @@ router.post('/list-tab', publicResourceController.getResourceListTab);
  *         description: "Thành công"
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/ResourceListResponse'
  */
 router.post('/trending', publicResourceController.getTrendingItems);
 
@@ -90,7 +108,13 @@ router.post('/trending', publicResourceController.getTrendingItems);
  *         description: "Thành công"
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/ResourceListResponse'
  */
 router.post('/alias', publicResourceController.getDocumentsByAlias);
 

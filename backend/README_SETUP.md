@@ -11,7 +11,7 @@ Lệnh này sẽ setup toàn bộ:
 - ✅ Tạo database
 - ✅ Tạo tất cả bảng (users, roles, news, media, ...)
 - ✅ Thêm permissions
-- ✅ Tạo dữ liệu mẫu
+- ✅ Tạo dữ liệu mẫu đầy đủ cho luồng Admin/App/Reader/Webhook
 ## 📋 Yêu cầu
 
 - Node.js ≥ 18
@@ -48,6 +48,12 @@ PORT=4000
 2. Backend sẽ chạy tại: `http://localhost:5000`
 
 3. Media tables sẽ tự động được tạo nếu chưa tồn tại (không cần chạy script riêng)
+
+4. Tài khoản mẫu có sẵn:
+   - Admin: `admin@gmail.com` / `admin123`
+   - Reader: `reader.basic@example.com` / `admin123` (Card: `TV0010001`)
+   - Reader: `reader.premium@example.com` / `admin123` (Card: `TV0010002`)
+   - Reader: `reader.vip@example.com` / `admin123` (Card: `TV0010003`)
 
 ## 📚 Thêm thông tin
 

@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS storage_locations (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE storage_locations ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 
 CREATE INDEX IF NOT EXISTS idx_storage_locations_name ON storage_locations(name);
 CREATE INDEX IF NOT EXISTS idx_storage_locations_active ON storage_locations(is_active);
@@ -92,6 +93,7 @@ CREATE TABLE IF NOT EXISTS collections (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE collections ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 
 -- ============================================================================
 -- 1. CORE SYSTEM: ROLES, USERS, PERMISSIONS
@@ -136,6 +138,39 @@ DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Bảng refresh_tokens (quản lý phiên đăng nhập Reader/App)
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id BIGSERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  revoked BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_revoked ON refresh_tokens(revoked);
+
+DROP TRIGGER IF EXISTS update_refresh_tokens_updated_at ON refresh_tokens;
+CREATE TRIGGER update_refresh_tokens_updated_at BEFORE UPDATE ON refresh_tokens
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Bảng password_resets (OTP reset mật khẩu Reader/App)
+CREATE TABLE IF NOT EXISTS password_resets (
+  id BIGSERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  otp_code VARCHAR(10) NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  is_verified BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_resets_email ON password_resets(email);
+CREATE INDEX IF NOT EXISTS idx_password_resets_otp ON password_resets(otp_code);
+CREATE INDEX IF NOT EXISTS idx_password_resets_expires_at ON password_resets(expires_at);
+
 -- Bảng permissions (quyền chi tiết)
 CREATE TABLE IF NOT EXISTS permissions (
   id SERIAL PRIMARY KEY,
@@ -177,6 +212,7 @@ CREATE TABLE IF NOT EXISTS news_categories (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE news_categories ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 
 CREATE INDEX IF NOT EXISTS idx_news_categories_parent_code ON news_categories(parent_code);
 
@@ -188,11 +224,18 @@ CREATE TABLE IF NOT EXISTS news (
   slug VARCHAR(255) UNIQUE NOT NULL,
   summary TEXT,
   content TEXT NOT NULL,
+  author TEXT,
+  read_time TEXT,
   thumbnail VARCHAR(500),
+  image_url VARCHAR(1000),
+  gallery_images JSONB,
+  gallery_position VARCHAR(20),
+  show_author_box BOOLEAN DEFAULT TRUE,
   views INTEGER DEFAULT 0,
   is_featured BOOLEAN DEFAULT FALSE,
   status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
   published_at TIMESTAMP,
+  published_date DATE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -203,6 +246,14 @@ CREATE INDEX IF NOT EXISTS idx_news_author_id ON news(author_id);
 CREATE INDEX IF NOT EXISTS idx_news_status ON news(status);
 CREATE INDEX IF NOT EXISTS idx_news_published_at ON news(published_at);
 CREATE INDEX IF NOT EXISTS idx_news_is_featured ON news(is_featured) WHERE is_featured = TRUE;
+
+ALTER TABLE news ADD COLUMN IF NOT EXISTS author TEXT;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS read_time TEXT;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS image_url VARCHAR(1000);
+ALTER TABLE news ADD COLUMN IF NOT EXISTS gallery_images JSONB;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS gallery_position VARCHAR(20);
+ALTER TABLE news ADD COLUMN IF NOT EXISTS show_author_box BOOLEAN DEFAULT TRUE;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS published_date DATE;
 
 DROP TRIGGER IF EXISTS update_news_updated_at ON news;
 CREATE TRIGGER update_news_updated_at BEFORE UPDATE ON news
@@ -272,6 +323,7 @@ CREATE TABLE IF NOT EXISTS media_folders (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE media_folders ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 
 CREATE INDEX IF NOT EXISTS idx_media_folders_parent_id ON media_folders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_media_folders_slug ON media_folders(slug);
@@ -334,6 +386,7 @@ CREATE TABLE IF NOT EXISTS menus (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE menus ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 
 CREATE INDEX IF NOT EXISTS idx_menus_code ON menus(code);
 CREATE INDEX IF NOT EXISTS idx_menus_location ON menus(location);
@@ -1027,6 +1080,7 @@ CREATE TABLE IF NOT EXISTS comments (
   status VARCHAR(20) DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected', 'hidden', 'deleted')),
   is_featured BOOLEAN DEFAULT FALSE,
   likes_count INTEGER DEFAULT 0,
+  dislikes_count INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1044,13 +1098,46 @@ CREATE TABLE IF NOT EXISTS comment_reports (
   comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
   reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   reason TEXT NOT NULL,
+  description TEXT,
+  report_type SMALLINT DEFAULT 4 CHECK (report_type IN (1, 2, 3, 4)), -- 1=Spam | 2=Ngôn từ xúc phạm | 3=Thông tin sai | 4=Khác
   status VARCHAR(20) DEFAULT 'new' CHECK (status IN ('new', 'processing', 'resolved', 'ignored')),
   resolved_by INTEGER REFERENCES users(id),
   resolved_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 14.3. Book Reviews (Đánh giá & Xếp hạng)
+-- Backward-compatible patch for existing databases created by older schema versions
+ALTER TABLE IF EXISTS comment_reports
+  ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE IF EXISTS comment_reports
+  ADD COLUMN IF NOT EXISTS report_type SMALLINT DEFAULT 4;
+ALTER TABLE IF EXISTS comment_reports
+  ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'new';
+ALTER TABLE IF EXISTS comment_reports
+  ADD COLUMN IF NOT EXISTS resolved_by INTEGER REFERENCES users(id);
+ALTER TABLE IF EXISTS comment_reports
+  ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP;
+ALTER TABLE IF EXISTS comment_reports
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+CREATE INDEX IF NOT EXISTS idx_comment_reports_comment ON comment_reports(comment_id);
+CREATE INDEX IF NOT EXISTS idx_comment_reports_status ON comment_reports(status);
+
+-- 14.3. Comment Reactions
+CREATE TABLE IF NOT EXISTS comment_reactions (
+  id SERIAL PRIMARY KEY,
+  comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reaction_type SMALLINT NOT NULL CHECK (reaction_type IN (0, 1, 2)), -- 0=unlike/remove, 1=like, 2=dislike
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(comment_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_comment_reactions_comment ON comment_reactions(comment_id);
+CREATE INDEX IF NOT EXISTS idx_comment_reactions_user ON comment_reactions(user_id);
+
+-- 14.4. Book Reviews (Đánh giá & Xếp hạng)
 CREATE TABLE IF NOT EXISTS book_reviews (
     id SERIAL PRIMARY KEY,
     book_id INTEGER REFERENCES books(id) ON DELETE CASCADE,

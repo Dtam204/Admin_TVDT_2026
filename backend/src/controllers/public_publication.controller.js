@@ -525,17 +525,17 @@ const buildReadingContentDto = async (pub = {}, canRead = false, req = null) => 
       pdf_asset: pdfAsset,
       total_pages: totalPages,
       preview_pages: previewPages,
-      preview_source: 'pdf_pages',
+      preview_source: pageModeEnabled ? 'pdf_pages' : null,
       preview_images_ready: false,
     },
     chapter_mode: {
       enabled: chapterModeEnabled,
       total_chapters: chapters.length,
-      chapters,
+      chapters: chapterModeEnabled ? chapters : [],
     },
     scroll_mode: {
       enabled: scrollModeEnabled,
-      full_text: fullText,
+      full_text: scrollModeEnabled ? fullText : null,
     },
   };
 };
@@ -592,6 +592,15 @@ const buildPublicationDetailDto = async (pub, canRead, req = null) => {
     user_interaction: pub.user_interaction || null,
   };
 };
+
+const buildPublicationActionsDto = (pub, canRead, readingContent) => ({
+  can_read_online: Boolean(canRead),
+  can_download_pdf: Boolean(canRead && readingContent?.page_mode?.enabled),
+  can_borrow_request: canBorrowPhysicalPublication(pub),
+  required_action: canRead
+    ? 'read_now'
+    : (canBorrowPhysicalPublication(pub) ? 'borrow_request' : 'none'),
+});
 
 const getDisplayText = (value, fallback = '') => {
   if (typeof value === 'string') return value;

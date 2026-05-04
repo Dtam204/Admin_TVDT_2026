@@ -34,9 +34,7 @@ const requireAuth = require('../middlewares/auth.middleware');
  *                 - type: object
  *                   properties:
  *                     data:
- *                       type: array
- *                       items: { $ref: '#/components/schemas/Notification' }
- *                     unreadCount: { type: integer, example: 3, description: "Số thông báo chưa đọc" }
+ *                       $ref: '#/components/schemas/NotificationListResponse'
  *       401:
  *         description: "Chưa đăng nhập"
  *         content:
@@ -51,6 +49,7 @@ router.get('/', requireAuth, notificationController.getMyNotifications);
  *   post:
  *     tags: [App Reader]
  *     summary: "Đánh dấu một thông báo là đã đọc"
+ *     description: Cập nhật trạng thái đọc của thông báo thuộc user hiện tại.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -63,7 +62,16 @@ router.get('/', requireAuth, notificationController.getMyNotifications);
  *         description: "Đã đánh dấu đã đọc"
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         id: { type: integer }
+ *                         is_read: { type: boolean, example: true }
  *       404:
  *         description: "Không tìm thấy thông báo"
  *         content:
@@ -85,7 +93,15 @@ router.post('/:id/read', requireAuth, notificationController.markAsRead);
  *         description: "Tất cả đã được đánh dấu đã đọc"
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         updated: { type: integer, example: 5 }
  */
 router.post('/mark-all-read', requireAuth, notificationController.markAllAsRead);
 
@@ -107,7 +123,16 @@ router.post('/mark-all-read', requireAuth, notificationController.markAllAsRead)
  *         description: "Xóa thành công"
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BaseResponse' }
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         deleted: { type: boolean, example: true }
+ *                         id: { type: integer }
  *       404:
  *         description: "Không tìm thấy thông báo"
  *         content:

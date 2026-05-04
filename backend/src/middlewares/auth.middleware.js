@@ -21,7 +21,12 @@ function authenticateToken(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, secret);
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      id: decoded.id ?? decoded.userId ?? decoded.user_id ?? decoded.member_id ?? decoded.sub ?? null,
+      role: decoded.role ?? decoded.userRole ?? decoded.user_role ?? null,
+      type: decoded.type ?? decoded.userType ?? decoded.user_type ?? null,
+    };
     next();
   } catch (error) {
     return res.status(401).json({ 
@@ -45,7 +50,12 @@ function authenticateTokenOptional(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, secret);
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      id: decoded.id ?? decoded.userId ?? decoded.user_id ?? decoded.member_id ?? decoded.sub ?? null,
+      role: decoded.role ?? decoded.userRole ?? decoded.user_role ?? null,
+      type: decoded.type ?? decoded.userType ?? decoded.user_type ?? null,
+    };
     next();
   } catch (error) {
     // Token lỗi cũng không chặn, chỉ là không gán req.user
