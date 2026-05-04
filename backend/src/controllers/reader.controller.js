@@ -497,14 +497,15 @@ exports.payFine = async (req, res, next) => {
       const io = getIO();
       
       // Báo cho App của chính bạn đọc đó
-      io.to(`member_${readerId}`).emit('wallet_balance_updated', {
+      const { emitToUser, DEFAULT_ROOMS } = require('../socket');
+      emitToUser(readerId, 'wallet_balance_updated', {
         amount: -fineAmount,
         new_balance: parseFloat(memRows[0].balance || 0),
         message: `Bạn vừa thanh toán phiếu phạt ${fineAmount.toLocaleString()}đ`
-      });
+      }, 'member');
 
       // Thông báo cho Admin CMS
-      io.to('admins').emit('new_transaction', {
+      io.to(DEFAULT_ROOMS.admin).emit('new_transaction', {
         id: fineId,
         type: 'FINE_PAYMENT',
         member_name: memRows[0].full_name,
@@ -591,19 +592,19 @@ exports.upgradeMembership = async (req, res, next) => {
 
     // 6. Push Socket Event (App & Admin sync)
     try {
-      const { getIO } = require('../socket');
+      const { getIO, emitToUser, DEFAULT_ROOMS } = require('../socket');
       const { rows: memberData } = await client.query('SELECT balance, full_name FROM members WHERE id = $1', [readerId]);
       const io = getIO();
 
       // Báo về máy Bạn đọc
-      io.to(`member_${readerId}`).emit('wallet_balance_updated', {
+      emitToUser(readerId, 'wallet_balance_updated', {
         amount: -planPrice,
         new_balance: parseFloat(memberData[0].balance || 0),
         message: `Gia hạn thẻ thành công! Bạn đã đăng ký gói ${planDetails.plan_name}`
-      });
+      }, 'member');
 
       // Báo cho Admin có đăng ký mới
-      getIO().to('admins').emit('new_transaction', {
+      io.to(DEFAULT_ROOMS.admin).emit('new_transaction', {
         id: payRows[0].id,
         type: 'MEMBERSHIP_UPGRADE',
         member_name: memberData[0].full_name,

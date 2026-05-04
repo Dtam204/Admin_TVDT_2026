@@ -18,7 +18,28 @@ node scripts/setup-simple.js
 **Chức năng:**
 - Tạo database nếu chưa có
 - Chạy `schema.sql` (tất cả tables, indexes, triggers, seed data, optimizations)
+- Chạy bổ sung `seed-sample-data.js` để tạo dữ liệu mẫu đầy đủ cho luồng admin/app/reader
 - Verify setup thành công
+
+---
+
+#### `seed-sample-data.js` - Bổ sung dữ liệu mẫu đa luồng
+```bash
+npm run seed:sample
+# hoặc
+node scripts/seed-sample-data.js
+```
+
+**Chức năng:**
+- Seed dữ liệu mẫu cho các luồng chính: Publications, Members, Borrow, Payments, News, Homepage, Menu, Notifications
+- Seed tài khoản bạn đọc mẫu để test API Reader/App qua Swagger
+- Idempotent: chạy lại không bị trùng dữ liệu chính
+
+**Tài khoản mẫu sau khi seed:**
+- Admin: `admin@gmail.com` / `admin123`
+- Reader: `reader.basic@example.com` / `admin123` (Card: `TV0010001`)
+- Reader: `reader.premium@example.com` / `admin123` (Card: `TV0010002`)
+- Reader: `reader.vip@example.com` / `admin123` (Card: `TV0010003`)
 
 ---
 

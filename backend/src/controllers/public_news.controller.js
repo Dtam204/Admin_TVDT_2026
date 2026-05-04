@@ -1,23 +1,5 @@
 const { pool } = require('../config/database');
-
-// Helper để tạo response chuẩn 7 trường
-const sendResponse = (res, status, message, data = null, errors = null, pagination = null) => {
-  const response = {
-    code: status,
-    success: status >= 200 && status < 300,
-    message: message,
-    data: data,
-    errorId: null,
-    appId: null,
-    errors: errors
-  };
-
-  if (pagination) {
-    response.pagination = pagination;
-  }
-
-  return res.status(status).json(response);
-};
+const { sendApiResponse } = require('../utils/apiResponse');
 
 // Helper function để parse locale field
 const parseLocaleField = (value, locale = 'vi') => {
@@ -42,7 +24,7 @@ exports.getPublicNews = async (req, res, next) => {
     const { search, locale = 'vi' } = req.query;
     const params = [];
     let query = `
-      SELECT n.id, n.title, n.slug, n.summary, n.image_url, n.author, 
+      SELECT n.id, n.title, n.slug, n.summary, n.thumbnail, n.image_url, n.author,
              n.published_date, n.is_featured, n.read_time
       FROM news n
       WHERE n.status = 'published'
@@ -60,11 +42,20 @@ exports.getPublicNews = async (req, res, next) => {
     const data = rows.map(row => ({
       ...row,
       title: parseLocaleField(row.title, locale),
+      summary: parseLocaleField(row.summary, locale),
       excerpt: parseLocaleField(row.summary, locale),
-      author: parseLocaleField(row.author, locale)
+      author: parseLocaleField(row.author, locale),
+      thumbnail: row.thumbnail || '',
+      imageUrl: row.image_url || ''
     }));
 
-    return sendResponse(res, 200, "Lấy danh sách tin tức thành công", data);
+    return sendApiResponse(res, {
+      status: 200,
+      success: true,
+      message: 'Lấy danh sách tin tức thành công',
+      data,
+      errors: null,
+    });
   } catch (error) {
     return next(error);
   }
@@ -84,7 +75,13 @@ exports.getPublicNewsDetail = async (req, res, next) => {
     );
 
     if (rows.length === 0) {
-      return sendResponse(res, 404, "Không tìm thấy bài viết", null, ["News post not found"]);
+      return sendApiResponse(res, {
+        status: 404,
+        success: false,
+        message: 'Không tìm thấy bài viết',
+        data: null,
+        errors: ['NEWS_NOT_FOUND'],
+      });
     }
 
     const row = rows[0];
@@ -92,8 +89,11 @@ exports.getPublicNewsDetail = async (req, res, next) => {
       ...row,
       title: parseLocaleField(row.title, locale),
       content: parseLocaleField(row.content, locale),
+      summary: parseLocaleField(row.summary, locale),
       excerpt: parseLocaleField(row.summary, locale),
       author: parseLocaleField(row.author, locale),
+      thumbnail: row.thumbnail || '',
+      imageUrl: row.image_url || '',
       galleryTitle: parseLocaleField(row.gallery_title, locale),
       seoTitle: parseLocaleField(row.seo_title, locale),
       seoDescription: parseLocaleField(row.seo_description, locale),
@@ -105,7 +105,13 @@ exports.getPublicNewsDetail = async (req, res, next) => {
       })()
     };
 
-    return sendResponse(res, 200, "Lấy chi tiết tin tức thành công", data);
+    return sendApiResponse(res, {
+      status: 200,
+      success: true,
+      message: 'Lấy chi tiết tin tức thành công',
+      data,
+      errors: null,
+    });
   } catch (error) {
     return next(error);
   }

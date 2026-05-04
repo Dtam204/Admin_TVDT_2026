@@ -10,9 +10,14 @@ export default function CreateNewsPage() {
 
   const handleSave = async (formData: any) => {
     try {
+      const payload = {
+        ...formData,
+        imageUrl: formData.imageUrl || formData.thumbnail || "",
+        thumbnail: formData.thumbnail || formData.imageUrl || "",
+      };
       await adminApiCall(AdminEndpoints.news.list, {
         method: "POST",
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
       toast.success("Đã tạo bài viết mới");
       // Delay nhỏ để toast hiển thị trước khi redirect

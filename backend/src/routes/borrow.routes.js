@@ -7,7 +7,7 @@ const router = express.Router();
 
 /**
  * @openapi
- * /api/Borrow/register:
+ * /api/admin/borrow/register:
  *   post:
  *     tags: [Admin Loans]
  *     summary: Đăng ký mượn sách mới
@@ -32,7 +32,7 @@ const router = express.Router();
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
- * /api/Borrow/approve:
+ * /api/admin/borrow/approve:
  *   post:
  *     tags: [Admin Loans]
  *     summary: Duyệt yêu cầu mượn sách
@@ -52,7 +52,7 @@ const router = express.Router();
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
- * /api/Borrow/extend:
+ * /api/admin/borrow/extend:
  *   post:
  *     tags: [Admin Loans]
  *     summary: Gia hạn thời gian mượn
@@ -73,7 +73,7 @@ const router = express.Router();
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
- * /api/Borrow/return:
+ * /api/admin/borrow/return:
  *   post:
  *     tags: [Admin Loans]
  *     summary: Xử lý trả sách
@@ -93,7 +93,7 @@ const router = express.Router();
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
- * /api/Borrow/all:
+ * /api/admin/borrow/all:
  *   get:
  *     tags: [Admin Loans]
  *     summary: Danh sách phiếu mượn
@@ -121,7 +121,7 @@ const router = express.Router();
  *                     data: { type: 'array', items: { $ref: '#/components/schemas/BookLoan' } }
  *                     pagination: { $ref: '#/components/schemas/Pagination' }
  *
- * /api/Borrow/export:
+ * /api/admin/borrow/export:
  *   get:
  *     tags: [Admin Loans]
  *     summary: Xuất dữ liệu mượn trả ra Excel
@@ -129,7 +129,7 @@ const router = express.Router();
  *       200:
  *         description: Trả về file Excel binary
  *
- * /api/Borrow/reserve:
+ * /api/admin/borrow/reserve:
  *   post:
  *     tags: [Admin Loans]
  *     summary: Đăng ký giữ chỗ (Reservation)
@@ -151,7 +151,7 @@ const router = express.Router();
  *           application/json:
  *             schema: { $ref: '#/components/schemas/BaseResponse' }
  *
- * /api/Borrow/reservations:
+ * /api/admin/borrow/reservations:
  *   get:
  *     tags: [Admin Loans]
  *     summary: Danh sách hàng đợi đặt chỗ

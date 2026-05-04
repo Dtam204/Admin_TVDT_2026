@@ -1,7 +1,7 @@
 const { port } = require('./src/config/env');
 const http = require('http');
 const app = require('./src/app.js');
-const { testConnection } = require('./src/config/database');
+const { testConnection, ensureCommentTables } = require('./src/config/database');
 const { initSocket } = require('./src/socket');
 
 const PORT = port;
@@ -36,11 +36,13 @@ async function startServer() {
       try {
         await ensureTablesOnce();
         console.log('✅ Media tables initialization checked');
+        await ensureCommentTables();
+        console.log('✅ Comment tables initialization checked');
         
         // Bắt đầu các tác vụ định kỳ (Quét quá hạn lúc 8h sáng)
         CronJobManager.start();
       } catch (err) {
-        console.error('❌ Failed to initialize media tables:', err.message);
+        console.error('❌ Failed to initialize media/comment tables:', err.message);
       }
     });
     

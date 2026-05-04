@@ -10,7 +10,6 @@ import {
   RotateCcw,
   ArrowLeft,
   ArrowRight,
-  Maximize2,
   FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,9 +21,10 @@ export default function ReadingPage() {
   const { id } = useParams();
   const router = useRouter();
   const [book, setBook] = useState<any>(null);
+  const [readingContent, setReadingContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(100); // Giả định
+  const [totalPages, setTotalPages] = useState(100);
   const saveTimerRef = useRef<any>(null);
 
   useEffect(() => {
@@ -37,15 +37,28 @@ export default function ReadingPage() {
   const fetchReadingContent = async () => {
     try {
       const token = localStorage.getItem('token');
-         const res = await fetch(buildUrl(`/api/public/publications/${id}`), {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      const json = await res.json();
-      if (json.success) {
-        setBook(json.data);
-        // Nếu có tiến độ cũ thì set
-        if (json.data.readingProgress) {
-            setCurrentPage(json.data.readingProgress.last_page);
+      const [detailRes, readingRes] = await Promise.all([
+        fetch(buildUrl(`/api/public/publications/${id}`), {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        }),
+        fetch(buildUrl(`/api/public/publications/${id}/reading-content`), {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        })
+      ]);
+
+      const [detailJson, readingJson] = await Promise.all([detailRes.json(), readingRes.json()]);
+
+      if (detailJson.success && readingJson.success) {
+        setBook(detailJson.data);
+        setReadingContent(readingJson.data?.reading_content || null);
+
+        const pageMode = readingJson.data?.reading_content?.page_mode;
+        if (pageMode?.total_pages) {
+          setTotalPages(pageMode.total_pages);
+        }
+
+        if (detailJson.data.readingProgress?.last_page) {
+          setCurrentPage(detailJson.data.readingProgress.last_page);
         }
       } else {
         toast.error("Không có quyền truy cập nội dung này");
@@ -138,24 +151,30 @@ export default function ReadingPage() {
       {/* Main Content Area (Fake Reader View) */}
       <div className="flex-1 overflow-y-auto p-4 md:p-10 flex justify-center bg-slate-200/50">
          <div className="bg-white w-full max-w-2xl shadow-xl rounded-lg p-8 md:p-16 min-h-[120%] text-slate-800 leading-relaxed font-serif">
-            {book.digital_file_url ? (
+            {readingContent?.page_mode?.enabled && readingContent.page_mode.pdf_url ? (
                <div className="flex flex-col items-center justify-center h-full space-y-6">
                   <div className="p-10 bg-indigo-50 rounded-full text-indigo-200">
                      <FileText className="w-20 h-20" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-800">Trình xem PDF đang khởi tạo</h3>
-                  <p className="text-slate-500 text-center max-w-xs">Tài liệu "{book.digital_file_url}" đang được tải bảo mật.</p>
-                  <Button className="bg-indigo-600">Tải xuống để đọc offline</Button>
+                  <h3 className="text-xl font-bold text-slate-800">Tệp PDF sẵn sàng để đọc</h3>
+                  <p className="text-slate-500 text-center max-w-xs">Hệ thống đã chuẩn hóa nguồn đọc từ API `reading-content` và tệp PDF bảo mật.</p>
+                  <div className="flex gap-3">
+                    <Button className="bg-indigo-600" onClick={() => window.open(buildUrl(`/api/public/publications/${id}/pdf-file`), '_blank')}>
+                      Tải/Đọc PDF
+                    </Button>
+                    {readingContent?.available_modes?.includes('scroll') && (
+                      <Button variant="outline">Chế độ cuộn</Button>
+                    )}
+                  </div>
                </div>
             ) : (
                <div className="space-y-6">
-                  <h3 className="text-3xl font-black mb-10 text-slate-900">Chương {Math.ceil(currentPage / 10)}</h3>
+                  <h3 className="text-3xl font-black mb-10 text-slate-900">{readingContent?.chapter_mode?.enabled ? `Chương ${Math.ceil(currentPage / 10)}` : 'Nội dung đọc'}</h3>
                   <p>
-                     Đây là nội dung giả định của ấn phẩm. Trong thực tế, hệ thống sẽ tích hợp `react-pdf` hoặc `epub.js` để hiển thị nội dung gốc từ file `{book.digital_file_url || 'N/A'}`.
+                     Đây là màn đọc chuẩn theo API `reading-content`. Frontend có thể thay thế bằng `react-pdf`, `pdf.js` hoặc `epub.js`.
                   </p>
                   <p>
-                     Tiến độ đọc của bạn hiện tại là <strong>{currentPage} / {totalPages} ({(currentPage/totalPages*100).toFixed(0)}%)</strong>.
-                     Hệ thống đã tự động ghi nhận vị trí này vào Database để bạn có thể tiếp tục đọc trên thiết bị khác.
+                     Tiến độ đọc hiện tại là <strong>{currentPage} / {totalPages} ({(currentPage/totalPages*100).toFixed(0)}%)</strong>.
                   </p>
                   <div className="h-40 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-400 italic">
                      [Nội dung trang {currentPage} tiếp tục tại đây...]

@@ -8,6 +8,28 @@ const DEFAULT_ROOMS = {
   notifications: 'notifications_room',
 };
 
+const normalizeRole = (role = 'user') => {
+  const value = String(role || 'user').toLowerCase().trim();
+  if (['admin', 'admins'].includes(value)) return 'admin';
+  if (['app', 'reader', 'member', 'user'].includes(value)) return 'app';
+  return value || 'app';
+};
+
+const getUserRoom = (userId, role = 'user') => {
+  if (userId === undefined || userId === null || userId === '') return null;
+  return `${normalizeRole(role)}:${userId}`;
+};
+
+const getAdminRoom = (adminId = null) => {
+  if (adminId === undefined || adminId === null || adminId === '') return DEFAULT_ROOMS.admin;
+  return `admin:${adminId}`;
+};
+
+const getNotificationRoom = (userId = null, role = 'user') => {
+  if (userId === undefined || userId === null || userId === '') return DEFAULT_ROOMS.notifications;
+  return `${normalizeRole(role)}:${userId}`;
+};
+
 /**
  * Initialize Socket.io Server
  * Đồng bộ luồng thông báo giữa Admin và App
@@ -49,9 +71,9 @@ const initSocket = (server) => {
 
     socket.on('join_user_room', (payload = {}) => {
       const userId = payload.userId || payload.id;
-      const role = payload.role || 'user';
-      if (!userId) return;
-      const roomName = `${role}:${userId}`;
+      const role = normalizeRole(payload.role || 'member');
+      const roomName = getUserRoom(userId, role);
+      if (!roomName) return;
       socket.join(roomName);
       socket.join(DEFAULT_ROOMS.notifications);
       console.log(`[Socket.io] Client ${socket.id} joined user room: ${roomName}`);
@@ -59,18 +81,19 @@ const initSocket = (server) => {
 
     socket.on('join_admin_room', (payload = {}) => {
       const adminId = payload.adminId || payload.id;
-      const roomName = adminId ? `admin:${adminId}` : DEFAULT_ROOMS.admin;
+      const roomName = getAdminRoom(adminId);
       socket.join(DEFAULT_ROOMS.admin);
       socket.join(DEFAULT_ROOMS.notifications);
-      if (adminId) socket.join(roomName);
+      if (adminId !== undefined && adminId !== null && adminId !== '') socket.join(roomName);
       console.log(`[Socket.io] Client ${socket.id} joined admin room: ${roomName}`);
     });
 
     socket.on('join_notification_room', (payload = {}) => {
       const userId = payload.userId || payload.id;
-      const role = payload.role || 'user';
-      const roomName = payload.room || (userId ? `${role}:${userId}` : DEFAULT_ROOMS.notifications);
+      const role = normalizeRole(payload.role || 'member');
+      const roomName = payload.room || getNotificationRoom(userId, role);
       socket.join(roomName);
+      socket.join(DEFAULT_ROOMS.notifications);
       console.log(`[Socket.io] Client ${socket.id} joined notification room: ${roomName}`);
     });
 
@@ -87,12 +110,14 @@ const emitToRoom = (room, eventName, data) => {
   io.to(room).emit(eventName, data);
 };
 
-const emitToUser = (userId, eventName, data) => {
+const emitToUser = (userId, eventName, data, role = 'member') => {
   if (!io) throw new Error('Socket.io has not been initialized!');
   if (userId === undefined || userId === null) return;
-  io.to(`user:${userId}`).emit(eventName, data);
-  io.to(`admin:${userId}`).emit(eventName, data);
-  io.to(`app:${userId}`).emit(eventName, data);
+  const userRoom = getUserRoom(userId, role);
+  const notificationRoom = getNotificationRoom(userId, role);
+  if (userRoom) io.to(userRoom).emit(eventName, data);
+  if (notificationRoom) io.to(notificationRoom).emit(eventName, data);
+  io.to(DEFAULT_ROOMS.notifications).emit(eventName, data);
 };
 
 const getIO = () => {
@@ -108,4 +133,8 @@ module.exports = {
   emitToRoom,
   emitToUser,
   DEFAULT_ROOMS,
+  getUserRoom,
+  getAdminRoom,
+  getNotificationRoom,
+  normalizeRole,
 };

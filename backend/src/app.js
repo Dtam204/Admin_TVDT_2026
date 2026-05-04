@@ -19,7 +19,6 @@ const mediaFilesRoutes = require('./routes/mediaFiles.routes');
 const testimonialsRoutes = require('./routes/testimonials.routes');
 const homepageRoutes = require('./routes/homepage.routes');
 const contactRoutes = require('./routes/contact.routes');
-const seoRoutes = require('./routes/seo.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const healthRoutes = require('./routes/health.routes');
 const membersRoutes = require('./routes/members.routes');
@@ -70,7 +69,9 @@ const allowedCorsOrigins = configuredCorsOrigins.length > 0
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:3001",
-    "http://127.0.0.1:3001"
+    "http://127.0.0.1:3001",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000"
   ];
 
 // Middleware cơ bản
@@ -318,7 +319,6 @@ adminRouter.use('/media-files', mediaFilesRoutes);
 adminRouter.use('/testimonials', testimonialsRoutes);
 adminRouter.use('/homepage', homepageRoutes);
 adminRouter.use('/contact', contactRoutes);
-adminRouter.use('/seo', seoRoutes);
 adminRouter.use('/settings', settingsRoutes);
 adminRouter.use('/members', membersRoutes);
 adminRouter.use('/membership-plans', membershipPlansRoutes);

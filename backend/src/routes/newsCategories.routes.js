@@ -12,7 +12,7 @@ const router = express.Router();
 
 /**
  * @openapi
- * /api/admin/categories:
+ * /api/admin/news-categories:
  *   get:
  *     tags:
  *       - Admin News Categories
@@ -36,7 +36,7 @@ router.get('/', checkPermission('news_categories.view'), getCategories);
 
 /**
  * @openapi
- * /api/admin/categories/{code}:
+ * /api/admin/news-categories/{code}:
  *   get:
  *     tags:
  *       - Admin News Categories
@@ -57,7 +57,7 @@ router.get('/:code', checkPermission('news_categories.view'), getCategoryByCode)
 
 /**
  * @openapi
- * /api/admin/categories:
+ * /api/admin/news-categories:
  *   post:
  *     tags:
  *       - Admin News Categories
@@ -78,7 +78,7 @@ router.post('/', checkPermission('news_categories.manage'), createCategory);
 
 /**
  * @openapi
- * /api/admin/categories/{code}:
+ * /api/admin/news-categories/{code}:
  *   put:
  *     tags:
  *       - Admin News Categories
@@ -105,7 +105,7 @@ router.put('/:code', checkPermission('news_categories.manage'), updateCategory);
 
 /**
  * @openapi
- * /api/admin/categories/{code}:
+ * /api/admin/news-categories/{code}:
  *   delete:
  *     tags:
  *       - Admin News Categories

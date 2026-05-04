@@ -36,13 +36,23 @@ export default function BookDetailPage() {
   const fetchBookDetail = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(buildUrl(`/api/public/publications/${id}`), {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      const json = await res.json();
-      if (json.success) {
-        setBook(json.data);
-        setIsFavorited(Boolean(json.data?.user_interaction?.isFavorited || json.data?.isFavorited));
+      const [detailRes, readingRes] = await Promise.all([
+        fetch(buildUrl(`/api/public/publications/${id}`), {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        }),
+        fetch(buildUrl(`/api/public/publications/${id}/reading-content`), {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        })
+      ]);
+
+      const [detailJson, readingJson] = await Promise.all([detailRes.json(), readingRes.json()]);
+      if (detailJson.success) {
+        const merged = {
+          ...detailJson.data,
+          reading_content: readingJson.success ? readingJson.data?.reading_content : null,
+        };
+        setBook(merged);
+        setIsFavorited(Boolean(merged?.user_interaction?.isFavorited || merged?.isFavorited));
       } else {
         toast.error("Không tìm thấy ấn phẩm");
       }
@@ -253,14 +263,25 @@ export default function BookDetailPage() {
               <Button disabled className="w-full h-16 bg-slate-100 text-slate-400 rounded-2xl shadow-none font-bold text-lg border border-slate-200 cursor-not-allowed">
                 Bản quyền ngưng hợp tác
               </Button>
-            ) : book.canRead ? (
-              <Button 
-                onClick={() => router.push(`/reader/books/${id}/read`)} 
-                className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 rounded-2xl shadow-2xl shadow-indigo-200 font-black text-lg group"
-              >
-                Đọc Ngay 
-                <BookOpen className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
+            ) : book.actions?.can_read_online || book.canRead ? (
+              <div className="grid grid-cols-2 gap-3 w-full">
+                <Button 
+                  onClick={() => router.push(`/reader/books/${id}/read`)} 
+                  className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 rounded-2xl shadow-2xl shadow-indigo-200 font-black text-lg group"
+                >
+                  Đọc Ngay 
+                  <BookOpen className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </Button>
+                {book.actions?.can_download_pdf && book.pdf_url && (
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(buildUrl(`/api/public/publications/${id}/pdf-file`), '_blank')}
+                    className="w-full h-16 rounded-2xl font-bold"
+                  >
+                    Tải PDF
+                  </Button>
+                )}
+              </div>
             ) : (
               <Button disabled className="w-full h-16 bg-slate-200 text-slate-500 rounded-2xl shadow-none font-bold text-lg">
                 <Lock className="w-5 h-5 mr-2" /> Đăng nhập để đọc

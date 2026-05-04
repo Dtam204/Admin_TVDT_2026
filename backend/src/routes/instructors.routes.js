@@ -22,7 +22,7 @@ router.get('/', requireAuth, getAll);
 
 /**
  * @openapi
- * /api/admin/instructors/:id:
+ * /api/admin/instructors/{id}:
  *   get:
  *     tags:
  *       - Admin Instructors
@@ -42,7 +42,7 @@ router.post('/', requireAuth, create);
 
 /**
  * @openapi
- * /api/admin/instructors/:id:
+ * /api/admin/instructors/{id}:
  *   put:
  *     tags:
  *       - Admin Instructors
@@ -52,7 +52,7 @@ router.put('/:id', requireAuth, update);
 
 /**
  * @openapi
- * /api/admin/instructors/:id:
+ * /api/admin/instructors/{id}:
  *   delete:
  *     tags:
  *       - Admin Instructors

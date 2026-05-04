@@ -61,6 +61,7 @@ const generateTokens = (readerData, effective) => {
   const accessToken = jwt.sign(
     {
       sub: readerData.id,
+      user_id: readerData.user_id,
       email: readerData.email,
       card_number: readerData.card_number,
       role: readerData.role_code,

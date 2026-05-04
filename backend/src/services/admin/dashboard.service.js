@@ -140,6 +140,17 @@ class DashboardService {
    * Lấy tổng hợp số liệu (Summary Stats)
    */
   static async getSummary() {
+    const safeQuery = async (query, fallback = null) => {
+      try {
+        const { rows } = await pool.query(query);
+        return rows;
+      } catch (error) {
+        const missingTable = error?.code === '42P01';
+        if (missingTable) return fallback;
+        throw error;
+      }
+    };
+
     const queries = {
       // 1. Thống kê cơ bản
       totalBooks: 'SELECT COUNT(*) FROM books',
@@ -158,10 +169,19 @@ class DashboardService {
       avgRating: "SELECT AVG(rating)::numeric(10,1) FROM book_reviews WHERE rating > 0 AND status = 'published'",
       totalRatings: "SELECT COUNT(*) FROM book_reviews WHERE rating > 0 AND status = 'published'",
       
+      // 3. Thống kê cộng đồng thảo luận (tối giản, ổn định)
+      totalComments: "SELECT COUNT(*) FROM comments WHERE status <> 'deleted'",
+      totalApprovedComments: "SELECT COUNT(*) FROM comments WHERE status = 'approved'",
+      totalPendingComments: "SELECT COUNT(*) FROM comments WHERE status = 'pending'",
+      totalDeletedComments: "SELECT COUNT(*) FROM comments WHERE status = 'deleted'",
+      totalCommentReports: "SELECT COUNT(*) FROM comment_reports",
+      totalOpenCommentReports: "SELECT COUNT(*) FROM comment_reports WHERE status IN ('new', 'processing')",
+      totalResolvedCommentReports: "SELECT COUNT(*) FROM comment_reports WHERE status = 'resolved'",
+      
       // Phân phối sao (1-5) để vẽ biểu đồ
       ratingDistribution: "SELECT rating, COUNT(*) as count FROM book_reviews WHERE rating > 0 AND status = 'published' GROUP BY rating ORDER BY rating DESC",
 
-      // 3. Xu hướng mượn sách (7 ngày gần nhất)
+      // 4. Xu hướng mượn sách (7 ngày gần nhất)
       loanTrends: `
         SELECT 
           to_char(date_series, 'DD/MM') as date,
@@ -178,19 +198,31 @@ class DashboardService {
     const results = {};
     const keys = Object.keys(queries);
     
-    // Chạy song song tất cả các câu lệnh COUNT/SUM để tối ưu tốc độ
-    const promises = keys.map(key => pool.query(queries[key]));
+    const promises = keys.map(async (key) => {
+      const rows = await safeQuery(queries[key], key === 'ratingDistribution' || key === 'loanTrends' ? [] : [{ count: 0 }]);
+      return { key, rows: rows || [] };
+    });
     const queryResults = await Promise.all(promises);
     
-    keys.forEach((key, index) => {
+    queryResults.forEach(({ key, rows }) => {
       if (key === 'ratingDistribution' || key === 'loanTrends') {
-        results[key] = queryResults[index].rows;
+        results[key] = rows;
       } else {
-        const row = queryResults[index].rows[0];
+        const row = rows[0];
         const val = row ? row[Object.keys(row)[0]] : 0;
         results[key] = parseFloat(val) || 0;
       }
     });
+
+    results.communityDiscussion = {
+      totalComments: results.totalComments || 0,
+      totalApprovedComments: results.totalApprovedComments || 0,
+      totalPendingComments: results.totalPendingComments || 0,
+      totalDeletedComments: results.totalDeletedComments || 0,
+      totalCommentReports: results.totalCommentReports || 0,
+      totalOpenCommentReports: results.totalOpenCommentReports || 0,
+      totalResolvedCommentReports: results.totalResolvedCommentReports || 0,
+    };
 
     return results;
   }
@@ -199,8 +231,18 @@ class DashboardService {
    * Lấy hoạt động gần đây (Recent Activities)
    */
   static async getRecentActivities() {
+    const safeQuery = async (query, fallback = []) => {
+      try {
+        const { rows } = await pool.query(query);
+        return rows;
+      } catch (error) {
+        if (error?.code === '42P01') return fallback;
+        throw error;
+      }
+    };
+
     // 5 phiếu mượn mới nhất
-    const { rows: loans } = await pool.query(`
+    const loans = await safeQuery(`
       SELECT bl.*, m.full_name as member_name, b.title as book_title
       FROM book_loans bl
       JOIN members m ON bl.member_id = m.id
@@ -210,7 +252,7 @@ class DashboardService {
     `);
     
     // 5 bình luận/đánh giá mới nhất
-    const { rows: reviews } = await pool.query(`
+    const reviews = await safeQuery(`
       SELECT c.*, u.name as user_name, b.title as book_title
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
@@ -220,9 +262,22 @@ class DashboardService {
       LIMIT 5
     `);
 
+    // 5 bình luận cộng đồng mới nhất (news/book/course)
+    const recentComments = await safeQuery(`
+      SELECT c.*, u.name as user_name, u.email as user_email,
+             COALESCE(n.title, b.title, 'Đối tượng không xác định') as object_title
+      FROM comments c
+      LEFT JOIN users u ON c.user_id = u.id
+      LEFT JOIN news n ON c.object_type = 'news' AND c.object_id = n.id
+      LEFT JOIN books b ON c.object_type = 'book' AND c.object_id = b.id
+      ORDER BY c.created_at DESC
+      LIMIT 5
+    `);
+
     return {
       recentLoans: loans,
-      recentReviews: reviews
+      recentReviews: reviews,
+      recentComments,
     };
   }
 

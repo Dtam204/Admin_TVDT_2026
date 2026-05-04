@@ -81,6 +81,7 @@ async function authenticateAdmin({ email, password }) {
     const token = jwt.sign(
       {
         sub: user.id,
+        user_id: user.id,
         email: user.email,
         role: user.role_code,
         permissions,
